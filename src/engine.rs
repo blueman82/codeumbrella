@@ -212,10 +212,15 @@ impl Run {
             before: before.as_ref(),
         })?;
         for paper in &step.writes {
-            let print = fingerprint(&self.dir.join("papers").join(paper))?;
+            let print = fingerprint(&self.paper(paper))?;
             self.state.prints.insert(paper.clone(), print);
         }
         Ok(Some(outcome))
+    }
+
+    /// The folder of one paper.
+    fn paper(&self, name: &str) -> PathBuf {
+        self.dir.join("papers").join(name)
     }
 
     /// Sets the status and the note, and writes the notebook.
