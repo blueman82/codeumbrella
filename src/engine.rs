@@ -177,14 +177,6 @@ impl Run {
     /// Does one step. `None` means that the run waits or stopped.
     fn step(&mut self, name: &str, step: &Step, roles: &Path, worker: &dyn Worker) -> Result<Option<Outcome>> {
         let before = self.state.last.as_ref().and_then(|l| self.state.results.get(l)).cloned();
-        if let Some(max) = step.max_tries {
-            let tries = self.state.tries.entry(name.to_owned()).or_default();
-            if *tries >= max {
-                let note = format!("Step {name} reached its maximum of {max} tries.");
-                return self.halt(Status::Stopped, note).map(|()| None);
-            }
-            *tries += 1;
-        }
         if step.kind == Kind::Person {
             let answer = self.state.answer.take();
             if answer.is_none() {
@@ -194,6 +186,14 @@ impl Run {
                 self.halt(Status::Waiting, note)?;
             }
             return Ok(answer);
+        }
+        if let Some(max) = step.max_tries {
+            let tries = self.state.tries.entry(name.to_owned()).or_default();
+            if *tries >= max {
+                let note = format!("Step {name} reached its maximum of {max} tries.");
+                return self.halt(Status::Stopped, note).map(|()| None);
+            }
+            *tries += 1;
         }
         for paper in &step.reads {
             if self.state.prints.get(paper) != Some(&fingerprint(&self.dir.join("papers").join(paper))?) {
