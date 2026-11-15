@@ -174,21 +174,13 @@ impl Run {
         roles: &Path,
         worker: &dyn Worker,
     ) -> Result<Option<Outcome>> {
-        let before = self
-            .state
-            .last
-            .as_ref()
-            .and_then(|l| self.state.results.get(l))
-            .cloned();
+        let before = self.state.last.clone();
         if step.kind == Kind::Person {
             let answer = self.state.answer.take();
             if answer.is_none() {
                 let last = before.map_or_else(String::new, |o| o.summary);
-                let papers = self.dir.join("papers");
-                let note = format!(
-                    "Step {name} is for you. Look at {} and answer yes or no. Result before: {last}",
-                    papers.display()
-                );
+                let papers = self.paper("").display().to_string();
+                let note = format!("Step {name} is for you. Look at {papers} and answer yes or no. Result before: {last}");
                 self.halt(Status::Waiting, note)?;
             }
             return Ok(answer);
