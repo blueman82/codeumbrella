@@ -194,19 +194,14 @@ impl Run {
             *tries += 1;
         }
         for paper in &step.reads {
-            if self.state.prints.get(paper)
-                != Some(&fingerprint(&self.dir.join("papers").join(paper))?)
-            {
+            if self.state.prints.get(paper) != Some(&fingerprint(&self.paper(paper))?) {
                 bail!("the paper {paper} is not as its writer left it");
             }
         }
         for paper in &step.writes {
-            fs::create_dir_all(self.dir.join("papers").join(paper))?;
+            fs::create_dir_all(self.paper(paper))?;
         }
-        let role = step
-            .role
-            .as_deref()
-            .context("a worker step must have a role")?;
+        let role = step.role.as_deref().context("a worker step must have a role")?;
         let outcome = worker.run(&Job {
             task: &self.state.task,
             step: name,
