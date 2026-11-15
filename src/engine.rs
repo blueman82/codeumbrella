@@ -46,9 +46,10 @@ pub trait Worker {
 }
 
 /// Where a run is.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub enum Status {
     /// The supervisor does steps.
+    #[default]
     Running,
     /// The supervisor waits for an answer from the person.
     Waiting,
