@@ -98,17 +98,8 @@ impl Run {
     /// Gives an error if the folder or the notebook cannot be written.
     pub fn start(dir: PathBuf, task: &str, graph: &Graph) -> Result<Self> {
         fs::create_dir_all(dir.join("papers"))?;
-        let state = State {
-            task: task.to_owned(),
-            status: Status::Running,
-            at: Some(graph.start.clone()),
-            note: String::new(),
-            answer: None,
-            tries: BTreeMap::new(),
-            results: BTreeMap::new(),
-            prints: BTreeMap::new(),
-            last: None,
-        };
+        let (task, at) = (task.to_owned(), Some(graph.start.clone()));
+        let state = State { task, at, ..State::default() };
         let run = Self { dir, state };
         run.save()?;
         Ok(run)
