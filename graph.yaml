@@ -24,6 +24,8 @@ steps:
     role: builder
     reads: [spec, check_result]
     max_tries: 3
+    # on_limit has one possible value. The run always stops at max_tries,
+    # with or without this line. The line only tells the reader what occurs.
     on_limit: stop_for_person
     next: check
   approval:
