@@ -147,23 +147,20 @@ impl Run {
     pub fn go(&mut self, graph: &Graph, roles: &Path, worker: &dyn Worker) -> Result<()> {
         self.state.status = Status::Running;
         while let Some(name) = self.state.at.clone() {
-            let outcome = match graph
-                .step(&name)
-                .and_then(|s| self.step(&name, s, roles, worker))
-            {
+            let step = graph.step(&name)?;
+            let outcome = match self.step(&name, step, roles, worker) {
                 Ok(Some(outcome)) => outcome,
                 Ok(None) => return self.save(),
                 Err(error) => return self.halt(Status::Stopped, format!("Step {name}: {error:#}")),
             };
-            let step = graph.step(&name)?;
             let target = if outcome.ok { &step.next } else { &step.on_bad };
             if !outcome.ok && target.is_none() {
                 let note = format!("Step {name} gave a bad result: {}", outcome.summary);
                 return self.halt(Status::Stopped, note);
             }
             self.state.at.clone_from(target);
-            self.state.results.insert(name.clone(), outcome);
-            self.state.last = Some(name);
+            self.state.last = Some(outcome.clone());
+            self.state.results.insert(name, outcome);
             self.save()?;
         }
         self.halt(Status::Done, "All steps are complete.".to_owned())
