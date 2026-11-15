@@ -143,6 +143,13 @@ impl Run {
         self.save()
     }
 
+    /// Sets the count of tries of the stopped step to 0, so `go` can do it again.
+    pub fn resume(&mut self) {
+        if let Some(at) = &self.state.at {
+            self.state.tries.remove(at);
+        }
+    }
+
     /// Does steps until the run ends, stops, or waits for the person.
     ///
     /// # Errors

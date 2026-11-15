@@ -72,6 +72,9 @@ fn main() -> Result<()> {
     if let Cmd::Answer { answer, text, .. } = &cli.command {
         run.answer(*answer == YesNo::Yes, text)?;
     }
+    if matches!(cli.command, Cmd::Resume { .. }) {
+        run.resume();
+    }
     if !matches!(cli.command, Cmd::Status { .. }) {
         let graph = Graph::load(&cli.sheet, &cli.roles)?;
         let worker = Claude {

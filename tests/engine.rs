@@ -149,6 +149,11 @@ fn the_repair_stops_at_its_maximum() {
         .filter(|c| *c == "repair")
         .count();
     assert_eq!(repairs, 3);
+
+    // After `resume`, the run can do the stopped step again.
+    run.resume();
+    run.go(&graph, &roles, &worker).unwrap();
+    assert_eq!(worker.calls.borrow().len(), 3 + 2 * 3 + 2 * 3);
 }
 
 #[test]

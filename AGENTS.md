@@ -33,7 +33,7 @@ cargo build --locked                           # build
 codeumbrella run "<task>"                      # start a run
 codeumbrella status [run-id]                   # show where a run is
 codeumbrella answer <run-id> yes|no ["text"]   # answer the open question, then continue
-codeumbrella resume <run-id>                   # try a stopped step again
+codeumbrella resume <run-id>                   # try a stopped step again, with its count of tries at 0
 ```
 
 Run all four `cargo` commands before you say that work is complete.

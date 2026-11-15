@@ -7,6 +7,8 @@
       "Edit",
       "Write",
       "Bash(git status *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
       "Bash(git switch *)",
       "Bash(git checkout *)",
       "Bash(git diff *)",
