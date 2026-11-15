@@ -26,7 +26,7 @@ The supervisor knows nothing about software work. All knowledge of the steps is 
 
 ```sh
 cargo fmt --check                              # layout
-cargo clippy --all-targets -- -D warnings      # usual errors; a warning stops the code
+cargo clippy --all-targets -- -D warnings      # usual errors, and a warning stops the code
 cargo test                                     # tests, with a simulated worker
 cargo build --locked                           # build
 
@@ -63,7 +63,7 @@ A step can have only these lines: `role`, `type`, `reads`, `writes`, `next`, `on
 ## Safety rules
 
 - The run always stops for the approval of the person before the publish step.
-- Only the publish step can push, open a pull request or merge.
+- Only the publish step can push, open a PR or merge.
 - A paper can change only in a step that lists it in `writes`. The supervisor keeps a fingerprint of each paper. If a paper is different when a step reads it, the run stops.
 - The rules of Claude and Codex cannot lock a folder. A test on 15 November 2026 showed this. Do not use tool rules as the only protection.
 - Each role has one rules page.
@@ -77,7 +77,7 @@ A step can have only these lines: `role`, `type`, `reads`, `writes`, `next`, `on
 | Usual errors | Clippy, with the group `pedantic` on. A warning stops the code. |
 | Check settings | In the `[lints]` table of `Cargo.toml`. |
 | `unsafe` | Not permitted. |
-| Errors | Functions give back a `Result`. No `unwrap`, `expect` or `panic` outside tests. Each error message tells what went bad and where. |
+| Errors | Functions give back a `Result`. No `unwrap`, `expect` or `panic` in code that is not a test. Each error message tells what went bad and where. |
 | Names and structure | The Rust API Guidelines: https://rust-lang.github.io/api-guidelines/checklist.html |
 | Descriptions | A `///` description on each public item. |
 | Tests | Each rule between steps has a test. Tests use a simulated worker, not Claude or Codex. |
@@ -103,17 +103,17 @@ A new package gets into this list only when all of these are correct:
 3. This table gets one line that tells, in plain words, what the package does.
 4. The message to the person tells why the code cannot do the work without it.
 
-## Size limits
+## Limits for lines of code
 
 - The supervisor (`src/graph.rs`, `src/engine.rs`, `src/main.rs`, `src/lib.rs`): 300 lines of code.
 - Each tool part: 100 lines of code.
-- Blank lines, comment lines and tests do not count.
+- Empty lines, comment lines and tests do not count.
 - Count with: `grep -v -E '^\s*(//|$)' <file> | wc -l`
 
 ## Rules for growth
 
-1. Add a new type of step, a new line for the sheet, or a new package only after a run shows that it is necessary.
-2. Obey the size limits.
+1. Add a part only after a run shows that it is necessary. A part is a new type of step, a new line for the sheet, or a new package.
+2. Obey the limits for lines of code.
 3. Each time you add a part, look for a part to remove.
 4. If a rule is too complex for the sheet, the worker makes that decision, not the supervisor.
 5. Copy no part from a different project until a run shows that it is necessary.

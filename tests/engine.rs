@@ -34,7 +34,10 @@ impl Worker for Script {
         let left = bad.entry(job.step.to_owned()).or_default();
         let ok = *left == 0;
         *left = left.saturating_sub(1);
-        Ok(Outcome { ok, summary: format!("{} ran", job.step) })
+        Ok(Outcome {
+            ok,
+            summary: format!("{} ran", job.step),
+        })
     }
 }
 
@@ -45,13 +48,20 @@ fn root() -> PathBuf {
 /// The sheet and the rules pages that come with the project.
 fn sheet() -> (Graph, PathBuf) {
     let roles = root().join("roles");
-    (Graph::load(&root().join("graph.yaml"), &roles).unwrap(), roles)
+    (
+        Graph::load(&root().join("graph.yaml"), &roles).unwrap(),
+        roles,
+    )
 }
 
 /// A new empty folder for one test run.
 fn folder() -> PathBuf {
     static NEXT: AtomicU32 = AtomicU32::new(0);
-    let name = format!("codeumbrella-test-{}-{}", process::id(), NEXT.fetch_add(1, Ordering::SeqCst));
+    let name = format!(
+        "codeumbrella-test-{}-{}",
+        process::id(),
+        NEXT.fetch_add(1, Ordering::SeqCst)
+    );
     env::temp_dir().join(name)
 }
 
@@ -87,32 +97,55 @@ fn a_good_run_stops_two_times_for_the_person_and_then_ends() {
     run.answer(true, "").unwrap();
     run.go(&graph, &roles, &worker).unwrap();
     assert_eq!(run.state.status, Status::Done);
-    assert_eq!(*worker.calls.borrow(), ["plan", "build", "check", "publish"]);
+    assert_eq!(
+        *worker.calls.borrow(),
+        ["plan", "build", "check", "publish"]
+    );
 }
 
 #[test]
 fn a_bad_check_goes_to_repair_and_back() {
     let (graph, roles) = sheet();
-    let worker = Script { bad: bad("check", 2), ..Script::default() };
+    let worker = Script {
+        bad: bad("check", 2),
+        ..Script::default()
+    };
     let mut run = Run::start(folder(), "a task", &graph).unwrap();
     run.go(&graph, &roles, &worker).unwrap();
     run.answer(true, "").unwrap();
     run.go(&graph, &roles, &worker).unwrap();
     assert_eq!(run.state.at.as_deref(), Some("approval"));
-    assert_eq!(*worker.calls.borrow(), ["plan", "build", "check", "repair", "check", "repair", "check"]);
+    assert_eq!(
+        *worker.calls.borrow(),
+        [
+            "plan", "build", "check", "repair", "check", "repair", "check"
+        ]
+    );
 }
 
 #[test]
 fn the_repair_stops_at_its_maximum() {
     let (graph, roles) = sheet();
-    let worker = Script { bad: bad("check", 99), ..Script::default() };
+    let worker = Script {
+        bad: bad("check", 99),
+        ..Script::default()
+    };
     let mut run = Run::start(folder(), "a task", &graph).unwrap();
     run.go(&graph, &roles, &worker).unwrap();
     run.answer(true, "").unwrap();
     run.go(&graph, &roles, &worker).unwrap();
     assert_eq!(run.state.status, Status::Stopped);
-    assert!(run.state.note.contains("maximum of 3"), "{}", run.state.note);
-    let repairs = worker.calls.borrow().iter().filter(|c| *c == "repair").count();
+    assert!(
+        run.state.note.contains("maximum of 3"),
+        "{}",
+        run.state.note
+    );
+    let repairs = worker
+        .calls
+        .borrow()
+        .iter()
+        .filter(|c| *c == "repair")
+        .count();
     assert_eq!(repairs, 3);
 }
 
@@ -145,7 +178,10 @@ fn a_no_at_the_approval_stops_the_run_before_publish() {
 #[test]
 fn a_worker_that_changes_the_tests_stops_the_run() {
     let (graph, roles) = sheet();
-    let worker = Script { cheat: Some("build".to_owned()), ..Script::default() };
+    let worker = Script {
+        cheat: Some("build".to_owned()),
+        ..Script::default()
+    };
     let mut run = Run::start(folder(), "a task", &graph).unwrap();
     run.go(&graph, &roles, &worker).unwrap();
     run.answer(true, "").unwrap();

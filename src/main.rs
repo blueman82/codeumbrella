@@ -35,7 +35,12 @@ enum Cmd {
     /// Show where a run is. Without an id: the newest run.
     Status { run: Option<String> },
     /// Answer the open question of a run, then continue.
-    Answer { run: String, answer: YesNo, #[arg(default_value = "")] text: String },
+    Answer {
+        run: String,
+        answer: YesNo,
+        #[arg(default_value = "")]
+        text: String,
+    },
     /// Try the stopped step of a run again.
     Resume { run: String },
 }
@@ -69,10 +74,18 @@ fn main() -> Result<()> {
     }
     if !matches!(cli.command, Cmd::Status { .. }) {
         let graph = Graph::load(&cli.sheet, &cli.roles)?;
-        let worker = Claude { time_limit: Duration::from_secs(cli.step_minutes * 60) };
+        let worker = Claude {
+            time_limit: Duration::from_secs(cli.step_minutes * 60),
+        };
         run.go(&graph, &cli.roles, &worker)?;
     }
-    let id = run.dir.file_name().map_or_else(String::new, |n| n.to_string_lossy().into_owned());
-    println!("Run: {id}\nStatus: {:?}\n{}", run.state.status, run.state.note);
+    let id = run
+        .dir
+        .file_name()
+        .map_or_else(String::new, |n| n.to_string_lossy().into_owned());
+    println!(
+        "Run: {id}\nStatus: {:?}\n{}",
+        run.state.status, run.state.note
+    );
     Ok(())
 }

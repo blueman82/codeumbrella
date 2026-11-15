@@ -37,7 +37,12 @@ impl Worker for Claude {
         command
             .args(["-p", &prompt(job), "--append-system-prompt", &rules])
             .args(["--output-format", "json", "--json-schema", SCHEMA])
-            .args(["--permission-mode", "dontAsk", "--setting-sources", "project"])
+            .args([
+                "--permission-mode",
+                "dontAsk",
+                "--setting-sources",
+                "project",
+            ])
             .stdin(Stdio::null())
             .stdout(File::create(&out)?)
             .stderr(File::create(&err)?);
@@ -50,7 +55,10 @@ impl Worker for Claude {
             if Instant::now() > end {
                 child.kill()?;
                 child.wait()?;
-                bail!("the worker did not end in {} minutes", self.time_limit.as_secs() / 60);
+                bail!(
+                    "the worker did not end in {} minutes",
+                    self.time_limit.as_secs() / 60
+                );
             }
             thread::sleep(Duration::from_millis(500));
         }
@@ -60,13 +68,18 @@ impl Worker for Claude {
         if reply.is_error {
             bail!("claude reported an error: {}", reply.result);
         }
-        reply.structured_output.context("claude gave no result in the correct format")
+        reply
+            .structured_output
+            .context("claude gave no result in the correct format")
     }
 }
 
 /// Writes the instructions for one worker.
 fn prompt(job: &Job) -> String {
-    let run = job.dir.file_name().map_or_else(String::new, |n| n.to_string_lossy().into_owned());
+    let run = job
+        .dir
+        .file_name()
+        .map_or_else(String::new, |n| n.to_string_lossy().into_owned());
     let papers = job.dir.join("papers");
     let mut text = format!(
         "Task: {}\n\nYou do the step \"{}\" of the run with the id {run}.\n\
@@ -79,7 +92,11 @@ fn prompt(job: &Job) -> String {
     let _ = writeln!(text, "Papers that you write: {}", list(job.writes));
     if let Some(before) = job.before {
         let word = if before.ok { "good" } else { "bad" };
-        let _ = writeln!(text, "Result of the step before ({word}): {}", before.summary);
+        let _ = writeln!(
+            text,
+            "Result of the step before ({word}): {}",
+            before.summary
+        );
     }
     text.push_str("When you end, give ok and a short summary, as your rules page says.");
     text
@@ -87,5 +104,9 @@ fn prompt(job: &Job) -> String {
 
 /// Makes a list of paper names, or the word "none".
 fn list(papers: &[String]) -> String {
-    if papers.is_empty() { "none".to_owned() } else { papers.join(", ") }
+    if papers.is_empty() {
+        "none".to_owned()
+    } else {
+        papers.join(", ")
+    }
 }

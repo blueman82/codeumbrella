@@ -1,0 +1,33 @@
+# The instruction sheet: the steps of the factory and the rules between them.
+start: plan
+steps:
+  plan:
+    role: planner
+    writes: [spec, tests]
+    max_tries: 3
+    next: look_at_tests
+  look_at_tests:
+    type: person
+    on_bad: plan
+    next: build
+  build:
+    role: builder
+    reads: [spec]
+    next: check
+  check:
+    role: checker
+    reads: [spec, tests]
+    writes: [check_result]
+    on_bad: repair
+    next: approval
+  repair:
+    role: builder
+    reads: [spec, check_result]
+    max_tries: 3
+    on_limit: stop_for_person
+    next: check
+  approval:
+    type: person
+    next: publish
+  publish:
+    role: publisher

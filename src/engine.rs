@@ -155,7 +155,10 @@ impl Run {
     pub fn go(&mut self, graph: &Graph, roles: &Path, worker: &dyn Worker) -> Result<()> {
         self.state.status = Status::Running;
         while let Some(name) = self.state.at.clone() {
-            let outcome = match graph.step(&name).and_then(|s| self.step(&name, s, roles, worker)) {
+            let outcome = match graph
+                .step(&name)
+                .and_then(|s| self.step(&name, s, roles, worker))
+            {
                 Ok(Some(outcome)) => outcome,
                 Ok(None) => return self.save(),
                 Err(error) => return self.halt(Status::Stopped, format!("Step {name}: {error:#}")),
@@ -175,14 +178,28 @@ impl Run {
     }
 
     /// Does one step. `None` means that the run waits or stopped.
-    fn step(&mut self, name: &str, step: &Step, roles: &Path, worker: &dyn Worker) -> Result<Option<Outcome>> {
-        let before = self.state.last.as_ref().and_then(|l| self.state.results.get(l)).cloned();
+    fn step(
+        &mut self,
+        name: &str,
+        step: &Step,
+        roles: &Path,
+        worker: &dyn Worker,
+    ) -> Result<Option<Outcome>> {
+        let before = self
+            .state
+            .last
+            .as_ref()
+            .and_then(|l| self.state.results.get(l))
+            .cloned();
         if step.kind == Kind::Person {
             let answer = self.state.answer.take();
             if answer.is_none() {
                 let last = before.map_or_else(String::new, |o| o.summary);
                 let papers = self.dir.join("papers");
-                let note = format!("Step {name} is for you. Look at {} and answer yes or no. Result before: {last}", papers.display());
+                let note = format!(
+                    "Step {name} is for you. Look at {} and answer yes or no. Result before: {last}",
+                    papers.display()
+                );
                 self.halt(Status::Waiting, note)?;
             }
             return Ok(answer);
@@ -196,14 +213,19 @@ impl Run {
             *tries += 1;
         }
         for paper in &step.reads {
-            if self.state.prints.get(paper) != Some(&fingerprint(&self.dir.join("papers").join(paper))?) {
+            if self.state.prints.get(paper)
+                != Some(&fingerprint(&self.dir.join("papers").join(paper))?)
+            {
                 bail!("the paper {paper} is not as its writer left it");
             }
         }
         for paper in &step.writes {
             fs::create_dir_all(self.dir.join("papers").join(paper))?;
         }
-        let role = step.role.as_deref().context("a worker step must have a role")?;
+        let role = step
+            .role
+            .as_deref()
+            .context("a worker step must have a role")?;
         let outcome = worker.run(&Job {
             task: &self.state.task,
             step: name,
@@ -238,7 +260,11 @@ fn fingerprint(dir: &Path) -> Result<u64> {
             .with_context(|| format!("there is no paper folder {}", folder.display()))?;
         for entry in entries {
             let path = entry?.path();
-            if path.is_dir() { folders.push(path) } else { files.push(path) }
+            if path.is_dir() {
+                folders.push(path);
+            } else {
+                files.push(path);
+            }
         }
     }
     files.sort();
