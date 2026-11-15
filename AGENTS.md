@@ -17,7 +17,7 @@ The supervisor knows nothing about software work. All knowledge of the steps is 
 | Sheet | `graph.yaml`: the steps and the rules between them. |
 | Step | One piece of the work. A worker does it, a person does it, or the supervisor runs its commands. |
 | Supervisor | The code in `src/graph.rs`, `src/engine.rs` and `src/main.rs`. |
-| Tool part | The code that starts one type of worker. `src/claude.rs` is the part for Claude. |
+| Tool part | The code that starts one type of worker. `src/claude.rs` is the part for Claude. `src/codex.rs` is the part for Codex. |
 | Notebook | `.codeumbrella/runs/<run-id>/state.json`: where the run is. |
 | Paper | A folder in `.codeumbrella/runs/<run-id>/papers/` that one step writes and other steps read. |
 | Role | The type of a worker. Its rules page is `roles/<role>.md`. |
@@ -30,7 +30,8 @@ cargo clippy --all-targets -- -D warnings      # usual errors, and a warning sto
 cargo test                                     # tests, with a simulated worker
 cargo build --locked                           # build
 
-codeumbrella run "<task>"                      # start a run
+codeumbrella run "<task>"                      # start a run with Claude workers
+codeumbrella --tool codex run "<task>"         # start a run with Codex workers
 codeumbrella status [run-id]                   # show where a run is
 codeumbrella answer <run-id> yes|no ["text"]   # answer the open question, then continue
 codeumbrella resume <run-id>                   # try a stopped step again, with its count of tries at 0
@@ -48,7 +49,9 @@ Run all four `cargo` commands before you say that work is complete.
 | `src/graph.rs` | Reads the sheet and finds its errors before a run. |
 | `src/engine.rs` | Does one step at a time, keeps the notebook, keeps the papers safe. |
 | `src/main.rs` | The `codeumbrella` command. |
+| `roles/<role>.codex.txt` | The Codex sandbox settings of each role. In this file, `{run}` is the id of the run. |
 | `src/claude.rs` | Starts one `claude -p` worker. |
+| `src/codex.rs` | Starts one `codex exec` worker. |
 | `tests/engine.rs` | Tests of the supervisor with a simulated worker. |
 
 ## The sheet
@@ -70,6 +73,8 @@ A step can have only these lines: `role`, `type`, `run`, `reads`, `writes`, `nex
 - The builder and the checker run in the Claude sandbox. They cannot write to `.codeumbrella`, `roles`, `graph.yaml`, `.claude`, `.github`, `.git/hooks` or `.git/config`. They cannot write to a folder that is not in the project.
 - A deny rule such as `Edit(roles/**)` is what makes the sandbox lock a path. The tests of 15 November 2026 showed this. The setting `sandbox.filesystem.denyWrite` with a relative path did nothing in those tests.
 - A deny rule without the sandbox is not sufficient. A script that a permitted command starts can go around it.
+- Each Codex role runs in the Codex sandbox with the settings in `roles/<role>.codex.txt`. The locked paths are the same as for Claude. The planner can write only to its two papers. The Codex sandbox has no network, so a Codex worker cannot push.
+- Codex has no list of permitted commands. The sandbox is its only wall.
 - The permitted test commands are for a Rust project (`cargo`). A different project must change the lists of the builder and the checker.
 - The command steps were not tested with a GitHub project.
 - Each role has one rules page.
@@ -130,7 +135,6 @@ A new package gets into this list only when all of these are correct:
 - Pieces of a task that run at the same time.
 - A different worker that writes the tests.
 - A step that writes lessons after each run.
-- Codex workers. They come immediately after version 1.
 - Custom hooks.
 
 ## How to write for the person

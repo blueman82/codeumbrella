@@ -3,7 +3,8 @@
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand, ValueEnum};
 use codeumbrella::claude::Claude;
-use codeumbrella::engine::Run;
+use codeumbrella::codex::Codex;
+use codeumbrella::engine::{Run, Worker};
 use codeumbrella::graph::Graph;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use std::{fs, path::PathBuf};
@@ -24,8 +25,17 @@ struct Cli {
     /// The maximum number of minutes for one step.
     #[arg(long, default_value_t = 30)]
     step_minutes: u64,
+    /// The tool that does the worker steps.
+    #[arg(long, value_enum, default_value = "claude")]
+    tool: Tool,
     #[command(subcommand)]
     command: Cmd,
+}
+
+#[derive(Clone, Copy, ValueEnum)]
+enum Tool {
+    Claude,
+    Codex,
 }
 
 #[derive(Subcommand)]
@@ -77,10 +87,12 @@ fn main() -> Result<()> {
     }
     if !matches!(cli.command, Cmd::Status { .. }) {
         let graph = Graph::load(&cli.sheet, &cli.roles)?;
-        let worker = Claude {
-            time_limit: Duration::from_secs(cli.step_minutes * 60),
+        let time_limit = Duration::from_secs(cli.step_minutes * 60);
+        let worker: &dyn Worker = match cli.tool {
+            Tool::Claude => &Claude { time_limit },
+            Tool::Codex => &Codex { time_limit },
         };
-        run.go(&graph, &cli.roles, &worker)?;
+        run.go(&graph, &cli.roles, worker)?;
     }
     let id = run
         .dir

@@ -1,0 +1,1 @@
+{extends=":read-only", filesystem={":workspace_roots"={".codeumbrella/runs/{run}/papers/spec"="write", ".codeumbrella/runs/{run}/papers/tests"="write"}}}

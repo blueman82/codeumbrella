@@ -3,12 +3,12 @@
 use crate::engine::{Job, Outcome, Worker};
 use anyhow::{Context, Result, bail};
 use serde::Deserialize;
-use std::process::{Command, Stdio};
+use std::process::{Child, Command, Stdio};
 use std::time::{Duration, Instant};
 use std::{fmt::Write as _, fs, fs::File, thread};
 
 /// The format of the result that each worker must give.
-const SCHEMA: &str = r#"{"type":"object","properties":{"ok":{"type":"boolean"},"summary":{"type":"string"}},"required":["ok","summary"]}"#;
+pub(crate) const SCHEMA: &str = r#"{"type":"object","properties":{"ok":{"type":"boolean"},"summary":{"type":"string"}},"required":["ok","summary"],"additionalProperties":false}"#;
 
 /// Starts Claude workers.
 #[derive(Debug)]
@@ -49,19 +49,8 @@ impl Worker for Claude {
         if settings.is_file() {
             command.arg("--settings").arg(&settings);
         }
-        let mut child = command.spawn().context("cannot start the claude command")?;
-        let end = Instant::now() + self.time_limit;
-        while child.try_wait()?.is_none() {
-            if Instant::now() > end {
-                child.kill()?;
-                child.wait()?;
-                bail!(
-                    "the worker did not end in {} minutes",
-                    self.time_limit.as_secs() / 60
-                );
-            }
-            thread::sleep(Duration::from_millis(500));
-        }
+        let child = command.spawn().context("cannot start the claude command")?;
+        wait(child, self.time_limit)?;
         let text = fs::read_to_string(&out)?;
         let reply: Reply = serde_json::from_str(&text)
             .with_context(|| format!("claude gave no result; see {}", err.display()))?;
@@ -74,8 +63,22 @@ impl Worker for Claude {
     }
 }
 
+/// Waits until a worker ends. Stops the worker at the time limit.
+pub(crate) fn wait(mut child: Child, limit: Duration) -> Result<()> {
+    let end = Instant::now() + limit;
+    while child.try_wait()?.is_none() {
+        if Instant::now() > end {
+            child.kill()?;
+            child.wait()?;
+            bail!("the worker did not end in {} minutes", limit.as_secs() / 60);
+        }
+        thread::sleep(Duration::from_millis(500));
+    }
+    Ok(())
+}
+
 /// Writes the instructions for one worker.
-fn prompt(job: &Job) -> String {
+pub(crate) fn prompt(job: &Job) -> String {
     let run = job
         .dir
         .file_name()
