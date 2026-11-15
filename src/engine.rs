@@ -60,7 +60,7 @@ pub enum Status {
 }
 
 /// The notebook of one run. The supervisor saves it after each step.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct State {
     /// The task of the run.
     pub task: String,
