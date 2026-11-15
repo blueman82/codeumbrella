@@ -13,6 +13,8 @@ pub enum Kind {
     Worker,
     /// A person does the step: the supervisor stops and waits for an answer.
     Person,
+    /// The supervisor runs the set commands of the step.
+    Command,
 }
 
 /// What the supervisor does when a step reaches `max_tries`.
@@ -32,6 +34,9 @@ pub struct Step {
     /// Who does the step.
     #[serde(rename = "type", default)]
     pub kind: Kind,
+    /// The commands of a command step. Each command is a list of words.
+    #[serde(default)]
+    pub run: Vec<Vec<String>>,
     /// The papers that the step reads.
     #[serde(default)]
     pub reads: Vec<String>,
@@ -77,7 +82,7 @@ impl Graph {
     ///
     /// # Errors
     /// Gives an error for a step that does not exist, a worker step with no
-    /// rules page, a way back with no maximum, or `next` lines with no end.
+    /// rules page, a command step with no commands, a way back with no maximum, or `next` lines with no end.
     pub fn check(&self, roles: &Path) -> Result<()> {
         self.step(&self.start).context("the start line")?;
         for (name, step) in &self.steps {
@@ -94,8 +99,13 @@ impl Graph {
                     bail!("step {name}: there is no rules page for the role {role}")
                 }
                 (Kind::Worker, None) => bail!("step {name}: a worker step must have a role"),
-                (Kind::Person, Some(_)) => bail!("step {name}: a person step has no role"),
+                (Kind::Person | Kind::Command, Some(_)) => {
+                    bail!("step {name}: only a worker step has a role")
+                }
                 _ => {}
+            }
+            if (step.kind == Kind::Command) == step.run.is_empty() {
+                bail!("step {name}: a command step, and only a command step, has run lines");
             }
             let (mut at, mut hops) = (Some(name), 0);
             while let Some(here) = at {

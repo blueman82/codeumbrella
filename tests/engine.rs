@@ -46,12 +46,14 @@ fn root() -> PathBuf {
 }
 
 /// The sheet and the rules pages that come with the project.
+/// Each command step gets a command that does nothing, so no test can push.
 fn sheet() -> (Graph, PathBuf) {
     let roles = root().join("roles");
-    (
-        Graph::load(&root().join("graph.yaml"), &roles).unwrap(),
-        roles,
-    )
+    let mut graph = Graph::load(&root().join("graph.yaml"), &roles).unwrap();
+    for step in graph.steps.values_mut().filter(|s| !s.run.is_empty()) {
+        step.run = vec![vec!["true".to_owned()]];
+    }
+    (graph, roles)
 }
 
 /// A new empty folder for one test run.
@@ -97,10 +99,10 @@ fn a_good_run_stops_two_times_for_the_person_and_then_ends() {
     run.answer(true, "").unwrap();
     run.go(&graph, &roles, &worker).unwrap();
     assert_eq!(run.state.status, Status::Done);
-    assert_eq!(
-        *worker.calls.borrow(),
-        ["plan", "build", "check", "publish"]
-    );
+    assert_eq!(*worker.calls.borrow(), ["plan", "build", "check"]);
+    // The PR opens before the approval. The merge comes after it.
+    assert!(run.state.results.contains_key("open_pr"));
+    assert!(run.state.results.contains_key("merge"));
 }
 
 #[test]
@@ -162,7 +164,7 @@ fn a_no_from_the_person_goes_back_to_the_plan() {
 }
 
 #[test]
-fn a_no_at_the_approval_stops_the_run_before_publish() {
+fn a_no_at_the_approval_stops_the_run_before_the_merge() {
     let (graph, roles) = sheet();
     let worker = Script::default();
     let mut run = Run::start(folder(), "a task", &graph).unwrap();
@@ -172,7 +174,32 @@ fn a_no_at_the_approval_stops_the_run_before_publish() {
     run.answer(false, "Not good.").unwrap();
     run.go(&graph, &roles, &worker).unwrap();
     assert_eq!(run.state.status, Status::Stopped);
-    assert!(!worker.calls.borrow().contains(&"publish".to_owned()));
+    assert!(run.state.results.contains_key("open_pr"));
+    assert!(!run.state.results.contains_key("merge"));
+}
+
+/// Does a sheet with one command step, and gives back the run.
+fn command_run(words: &str) -> Run {
+    let text = format!("start: a\nsteps:\n  a: {{type: command, run: [[{words}]]}}\n");
+    let graph: Graph = yaml_serde::from_str(&text).unwrap();
+    let mut run = Run::start(folder(), "a task", &graph).unwrap();
+    run.go(&graph, &root().join("roles"), &Script::default())
+        .unwrap();
+    run
+}
+
+#[test]
+fn a_command_step_runs_its_commands_and_a_bad_command_stops_the_run() {
+    let run = command_run("echo, \"id {run}\"");
+    assert_eq!(run.state.status, Status::Done);
+    let id = run.dir.file_name().unwrap().to_string_lossy();
+    assert_eq!(run.state.results["a"].summary, format!("id {id}"));
+
+    assert_eq!(command_run("false").state.status, Status::Stopped);
+    assert_eq!(
+        command_run("no-such-command-here").state.status,
+        Status::Stopped
+    );
 }
 
 #[test]
@@ -211,6 +238,10 @@ fn the_sheet_check_finds_errors() {
     let way_back_with_no_maximum =
         "start: a\nsteps:\n  a: {role: planner, next: b}\n  b: {role: checker, on_bad: a}\n";
     assert!(check(way_back_with_no_maximum).is_err());
+    let command_with_no_run = "start: a\nsteps:\n  a: {type: command}\n";
+    assert!(check(command_with_no_run).is_err());
+    let worker_with_run = "start: a\nsteps:\n  a: {role: planner, run: [[ls]]}\n";
+    assert!(check(worker_with_run).is_err());
     let circle = "start: a\nsteps:\n  a: {role: planner, next: b}\n  b: {role: checker, next: a}\n";
     assert!(check(circle).is_err());
     let good = "start: a\nsteps:\n  a: {role: planner, max_tries: 2, next: b}\n  b: {role: checker, on_bad: a}\n";
@@ -220,6 +251,6 @@ fn the_sheet_check_finds_errors() {
 #[test]
 fn the_sheet_of_the_project_is_correct() {
     let (graph, _) = sheet();
-    assert_eq!(graph.steps.len(), 7);
+    assert_eq!(graph.steps.len(), 8);
     assert!(Path::new(&root().join("roles/planner.md")).is_file());
 }

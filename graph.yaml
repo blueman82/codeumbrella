@@ -18,7 +18,7 @@ steps:
     role: checker
     reads: [spec, tests]
     on_bad: repair
-    next: approval
+    next: open_pr
   repair:
     role: builder
     reads: [spec]
@@ -27,8 +27,20 @@ steps:
     # with or without this line. The line only tells the reader what occurs.
     on_limit: stop_for_person
     next: check
+  # The supervisor runs these commands itself. No worker can push or merge.
+  # In a word, {run} is the id of the run.
+  open_pr:
+    type: command
+    run:
+      - [git, push, --set-upstream, origin, "codeumbrella/{run}"]
+      - [gh, pr, create, --head, "codeumbrella/{run}", --fill]
+    next: approval
+  # The person looks at the PR on GitHub and answers yes or no.
   approval:
     type: person
-    next: publish
-  publish:
-    role: publisher
+    next: merge
+  # GitHub refuses the merge if a necessary check of the PR is not good.
+  merge:
+    type: command
+    run:
+      - [gh, pr, merge, "codeumbrella/{run}", --squash]

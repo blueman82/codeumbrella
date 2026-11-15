@@ -5,7 +5,7 @@ use anyhow::{Context, Result, bail};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::hash::{DefaultHasher, Hash, Hasher};
-use std::{fs, path::Path, path::PathBuf};
+use std::{fs, path::Path, path::PathBuf, process::Command};
 
 /// What one step gives back.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -185,11 +185,14 @@ impl Run {
                 let last = before.map_or_else(String::new, |o| o.summary);
                 let papers = self.paper("").display().to_string();
                 let note = format!(
-                    "Step {name} is for you. Look at {papers} and answer yes or no. Result before: {last}"
+                    "Step {name} is for you. Look at {papers} and at the result before. Answer yes or no. Result before: {last}"
                 );
                 self.halt(Status::Waiting, note)?;
             }
             return Ok(answer);
+        }
+        if step.kind == Kind::Command {
+            return self.commands(&step.run).map(Some);
         }
         if let Some(max) = step.max_tries {
             let tries = self.state.tries.entry(name.to_owned()).or_default();
@@ -225,6 +228,29 @@ impl Run {
             self.state.prints.insert(paper.clone(), print);
         }
         Ok(Some(outcome))
+    }
+
+    /// Runs the commands of a command step, with no shell. It stops at the
+    /// first command that gives an error. `{run}` in a word is the run id.
+    // ponytail: a command has no time limit. Add one if a command hangs.
+    fn commands(&self, run: &[Vec<String>]) -> Result<Outcome> {
+        let id = self.dir.file_name().unwrap_or_default().to_string_lossy();
+        let mut summary = String::new();
+        for words in run {
+            let words: Vec<String> = words.iter().map(|w| w.replace("{run}", &id)).collect();
+            let (first, others) = words.split_first().context("a command has no words")?;
+            let out = Command::new(first)
+                .args(others)
+                .output()
+                .with_context(|| format!("cannot start the command {first}"))?;
+            if !out.status.success() {
+                let error = String::from_utf8_lossy(&out.stderr);
+                let summary = format!("The command `{}` gave an error: {error}", words.join(" "));
+                return Ok(Outcome { ok: false, summary });
+            }
+            String::from_utf8_lossy(&out.stdout).trim().clone_into(&mut summary);
+        }
+        Ok(Outcome { ok: true, summary })
     }
 
     /// The folder of one paper.

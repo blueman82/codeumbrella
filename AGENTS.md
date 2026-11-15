@@ -15,7 +15,7 @@ The supervisor knows nothing about software work. All knowledge of the steps is 
 | Word | Meaning |
 |---|---|
 | Sheet | `graph.yaml`: the steps and the rules between them. |
-| Step | One piece of the work. A worker does it, or a person does it. |
+| Step | One piece of the work. A worker does it, a person does it, or the supervisor runs its commands. |
 | Supervisor | The code in `src/graph.rs`, `src/engine.rs` and `src/main.rs`. |
 | Tool part | The code that starts one type of worker. `src/claude.rs` is the part for Claude. |
 | Notebook | `.codeumbrella/runs/<run-id>/state.json`: where the run is. |
@@ -42,7 +42,7 @@ Run all four `cargo` commands before you say that work is complete.
 
 | Path | Contents |
 |---|---|
-| `graph.yaml` | The first sheet: plan, look at tests, build, check, repair, approval, publish. |
+| `graph.yaml` | The first sheet: plan, look at tests, build, check, repair, open the PR, approval, merge. |
 | `roles/<role>.md` | The rules page of each role, written by hand. |
 | `roles/<role>.claude.json` | The Claude permissions and the sandbox settings of each role. |
 | `src/graph.rs` | Reads the sheet and finds its errors before a run. |
@@ -53,24 +53,25 @@ Run all four `cargo` commands before you say that work is complete.
 
 ## The sheet
 
-A step can have only these lines: `role`, `type`, `reads`, `writes`, `next`, `on_bad`, `max_tries`, `on_limit`. The sheet also has one `start` line.
+A step can have only these lines: `role`, `type`, `run`, `reads`, `writes`, `next`, `on_bad`, `max_tries`, `on_limit`. The sheet also has one `start` line.
 
 - A step with `type: person` stops the run until the person answers yes or no.
+- A step with `type: command` has a `run` line: a list of commands. The supervisor runs them itself, with no shell and no worker. In a word, `{run}` is the id of the run. If a command gives an error, the result is bad.
 - `next` is the step after a good result. `on_bad` is the step after a bad result.
 - A step that an `on_bad` line goes to must have `max_tries`.
 - A line that the supervisor does not know is an error.
 
 ## Safety rules
 
-- The run always stops for the approval of the person before the publish step.
-- Only the publish step can push, open a PR or merge.
+- The supervisor opens the PR. Then the run always stops for the approval of the person. The merge comes only after a yes.
+- No worker can push, open a PR or merge. Only the command steps `open_pr` and `merge` can, with the set commands in the sheet.
 - A paper can change only in a step that lists it in `writes`. The supervisor keeps a fingerprint of each paper. If a paper is different when a step reads it, the run stops.
 - Each Claude role has a short list of permitted commands in `roles/<role>.claude.json`. The mode `dontAsk` refuses all other commands.
 - The builder and the checker run in the Claude sandbox. They cannot write to `.codeumbrella`, `roles`, `graph.yaml`, `.claude`, `.git/hooks` or `.git/config`. They cannot write to a folder that is not in the project.
 - A deny rule such as `Edit(roles/**)` is what makes the sandbox lock a path. The tests of 15 November 2026 showed this. The setting `sandbox.filesystem.denyWrite` with a relative path did nothing in those tests.
 - A deny rule without the sandbox is not sufficient. A script that a permitted command starts can go around it.
 - The permitted test commands are for a Rust project (`cargo`). A different project must change the lists of the builder and the checker.
-- The publisher has a short list of commands but no sandbox. It was not tested with a GitHub project.
+- The command steps were not tested with a GitHub project.
 - Each role has one rules page.
 
 ## Rust rules
