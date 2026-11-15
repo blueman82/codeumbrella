@@ -99,7 +99,11 @@ impl Run {
     pub fn start(dir: PathBuf, task: &str, graph: &Graph) -> Result<Self> {
         fs::create_dir_all(dir.join("papers"))?;
         let (task, at) = (task.to_owned(), Some(graph.start.clone()));
-        let state = State { task, at, ..State::default() };
+        let state = State {
+            task,
+            at,
+            ..State::default()
+        };
         let run = Self { dir, state };
         run.save()?;
         Ok(run)
@@ -180,7 +184,9 @@ impl Run {
             if answer.is_none() {
                 let last = before.map_or_else(String::new, |o| o.summary);
                 let papers = self.paper("").display().to_string();
-                let note = format!("Step {name} is for you. Look at {papers} and answer yes or no. Result before: {last}");
+                let note = format!(
+                    "Step {name} is for you. Look at {papers} and answer yes or no. Result before: {last}"
+                );
                 self.halt(Status::Waiting, note)?;
             }
             return Ok(answer);
@@ -201,7 +207,10 @@ impl Run {
         for paper in &step.writes {
             fs::create_dir_all(self.paper(paper))?;
         }
-        let role = step.role.as_deref().context("a worker step must have a role")?;
+        let role = step
+            .role
+            .as_deref()
+            .context("a worker step must have a role")?;
         let outcome = worker.run(&Job {
             task: &self.state.task,
             step: name,
