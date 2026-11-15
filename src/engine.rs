@@ -248,7 +248,9 @@ impl Run {
                 let summary = format!("The command `{}` gave an error: {error}", words.join(" "));
                 return Ok(Outcome { ok: false, summary });
             }
-            String::from_utf8_lossy(&out.stdout).trim().clone_into(&mut summary);
+            String::from_utf8_lossy(&out.stdout)
+                .trim()
+                .clone_into(&mut summary);
         }
         Ok(Outcome { ok: true, summary })
     }
