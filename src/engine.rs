@@ -78,8 +78,8 @@ pub struct State {
     pub results: BTreeMap<String, Outcome>,
     /// The fingerprint of each paper when its writer ended.
     pub prints: BTreeMap<String, u64>,
-    /// The name of the last step that ended.
-    pub last: Option<String>,
+    /// The result of the last step that ended.
+    pub last: Option<Outcome>,
 }
 
 /// One run: its folder and its notebook.
