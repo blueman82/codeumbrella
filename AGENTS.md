@@ -67,7 +67,7 @@ A step can have only these lines: `role`, `type`, `run`, `reads`, `writes`, `nex
 - No worker can push, open a PR or merge. Only the command steps `open_pr` and `merge` can, with the set commands in the sheet.
 - A paper can change only in a step that lists it in `writes`. The supervisor keeps a fingerprint of each paper. If a paper is different when a step reads it, the run stops.
 - Each Claude role has a short list of permitted commands in `roles/<role>.claude.json`. The mode `dontAsk` refuses all other commands.
-- The builder and the checker run in the Claude sandbox. They cannot write to `.codeumbrella`, `roles`, `graph.yaml`, `.claude`, `.git/hooks` or `.git/config`. They cannot write to a folder that is not in the project.
+- The builder and the checker run in the Claude sandbox. They cannot write to `.codeumbrella`, `roles`, `graph.yaml`, `.claude`, `.github`, `.git/hooks` or `.git/config`. They cannot write to a folder that is not in the project.
 - A deny rule such as `Edit(roles/**)` is what makes the sandbox lock a path. The tests of 15 November 2026 showed this. The setting `sandbox.filesystem.denyWrite` with a relative path did nothing in those tests.
 - A deny rule without the sandbox is not sufficient. A script that a permitted command starts can go around it.
 - The permitted test commands are for a Rust project (`cargo`). A different project must change the lists of the builder and the checker.

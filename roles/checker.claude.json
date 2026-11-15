@@ -22,6 +22,7 @@
       "Edit(roles/**)",
       "Edit(graph.yaml)",
       "Edit(.claude/**)",
+      "Edit(.github/**)",
       "Edit(.git/hooks/**)",
       "Edit(.git/config)"
     ]
