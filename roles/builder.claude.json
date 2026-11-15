@@ -1,1 +1,37 @@
-{"permissions": {"allow": ["Read", "Glob", "Grep", "Edit", "Write", "Bash"], "deny": ["Bash(git push *)", "Bash(gh *)", "Edit(.codeumbrella/**)"]}}
+{
+  "permissions": {
+    "allow": [
+      "Read",
+      "Glob",
+      "Grep",
+      "Edit",
+      "Write",
+      "Bash(git status *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git switch *)",
+      "Bash(git checkout *)",
+      "Bash(git branch *)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(cargo build *)",
+      "Bash(cargo check *)",
+      "Bash(cargo test *)",
+      "Bash(cargo fmt *)",
+      "Bash(cargo clippy *)"
+    ],
+    "deny": [
+      "Edit(.codeumbrella/**)",
+      "Edit(roles/**)",
+      "Edit(graph.yaml)",
+      "Edit(.claude/**)",
+      "Edit(.git/hooks/**)",
+      "Edit(.git/config)"
+    ]
+  },
+  "sandbox": {
+    "enabled": true,
+    "allowUnsandboxedCommands": false,
+    "failIfUnavailable": true
+  }
+}

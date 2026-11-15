@@ -44,7 +44,7 @@ Run all four `cargo` commands before you say that work is complete.
 |---|---|
 | `graph.yaml` | The first sheet: plan, look at tests, build, check, repair, approval, publish. |
 | `roles/<role>.md` | The rules page of each role, written by hand. |
-| `roles/<role>.claude.json` | The Claude permissions of each role. |
+| `roles/<role>.claude.json` | The Claude permissions and the sandbox settings of each role. |
 | `src/graph.rs` | Reads the sheet and finds its errors before a run. |
 | `src/engine.rs` | Does one step at a time, keeps the notebook, keeps the papers safe. |
 | `src/main.rs` | The `codeumbrella` command. |
@@ -65,7 +65,12 @@ A step can have only these lines: `role`, `type`, `reads`, `writes`, `next`, `on
 - The run always stops for the approval of the person before the publish step.
 - Only the publish step can push, open a PR or merge.
 - A paper can change only in a step that lists it in `writes`. The supervisor keeps a fingerprint of each paper. If a paper is different when a step reads it, the run stops.
-- The rules of Claude and Codex cannot lock a folder. A test on 15 November 2026 showed this. Do not use tool rules as the only protection.
+- Each Claude role has a short list of permitted commands in `roles/<role>.claude.json`. The mode `dontAsk` refuses all other commands.
+- The builder and the checker run in the Claude sandbox. They cannot write to `.codeumbrella`, `roles`, `graph.yaml`, `.claude`, `.git/hooks` or `.git/config`. They cannot write to a folder that is not in the project.
+- A deny rule such as `Edit(roles/**)` is what makes the sandbox lock a path. The tests of 15 November 2026 showed this. The setting `sandbox.filesystem.denyWrite` with a relative path did nothing in those tests.
+- A deny rule without the sandbox is not sufficient. A script that a permitted command starts can go around it.
+- The permitted test commands are for a Rust project (`cargo`). A different project must change the lists of the builder and the checker.
+- The publisher has a short list of commands but no sandbox. It was not tested with a GitHub project.
 - Each role has one rules page.
 
 ## Rust rules

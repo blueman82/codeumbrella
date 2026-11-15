@@ -17,12 +17,11 @@ steps:
   check:
     role: checker
     reads: [spec, tests]
-    writes: [check_result]
     on_bad: repair
     next: approval
   repair:
     role: builder
-    reads: [spec, check_result]
+    reads: [spec]
     max_tries: 3
     # on_limit has one possible value. The run always stops at max_tries,
     # with or without this line. The line only tells the reader what occurs.

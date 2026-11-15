@@ -1,1 +1,11 @@
-{"permissions": {"allow": ["Read", "Glob", "Grep", "Edit", "Write"], "deny": ["Bash"]}}
+{
+  "permissions": {
+    "allow": [
+      "Read",
+      "Glob",
+      "Grep",
+      "Edit(.codeumbrella/runs/*/papers/spec/**)",
+      "Edit(.codeumbrella/runs/*/papers/tests/**)"
+    ]
+  }
+}
