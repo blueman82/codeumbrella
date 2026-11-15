@@ -32,7 +32,8 @@ steps:
   open_pr:
     type: command
     run:
-      - [git, push, --set-upstream, origin, "codeumbrella/{run}"]
+      # core.hooksPath: the push runs no script from the project folder.
+      - [git, -c, core.hooksPath=/dev/null, push, --set-upstream, origin, "codeumbrella/{run}"]
       - [gh, pr, create, --head, "codeumbrella/{run}", --fill]
     next: approval
   # The person looks at the PR on GitHub and answers yes or no.
