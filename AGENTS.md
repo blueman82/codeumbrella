@@ -39,6 +39,14 @@ codeumbrella resume <run-id>                   # try a stopped step again, with 
 
 Run all four `cargo` commands before you say that work is complete.
 
+To install the command and the chat command on a computer:
+
+```sh
+cargo install --path . --locked
+ln -s "$PWD/skill" ~/.claude/skills/codeumbrella
+ln -s "$PWD/skill" ~/.codex/skills/codeumbrella
+```
+
 ## Structure
 
 | Path | Contents |
@@ -53,6 +61,7 @@ Run all four `cargo` commands before you say that work is complete.
 | `src/claude.rs` | Starts one `claude -p` worker. |
 | `src/codex.rs` | Starts one `codex exec` worker. |
 | `tests/engine.rs` | Tests of the supervisor with a simulated worker. |
+| `skill/SKILL.md` | The chat command `/codeumbrella`. Claude and Codex use the same file. |
 
 ## The sheet
 
