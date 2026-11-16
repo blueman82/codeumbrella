@@ -37,6 +37,7 @@ Before you start a run, you must put all that the task uses into the project fol
 - For a new project with no code, get the language and the packages from the person.
 - Install the packages with the usual install command of the project. Put them in the project folder when the language permits it, for example `node_modules` or `.venv`.
 - Run the test command of the project one time. This shows that the tools start with no download.
+- Put that test command at the end of the task text, for example: `Test command: <command>`. The workers then use the same command.
 
 If a run stops because a package is not on the computer, install that package. Then run `codeumbrella resume <run id>`.
 
