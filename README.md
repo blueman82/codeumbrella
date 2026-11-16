@@ -6,29 +6,29 @@ The factory stops two times for you. First, you look at the tests. Second, you a
 
 ## Requirements: what the computer must have
 
-- Rust with `cargo`, to build the `codeumbrella` command.
-- `git`, to keep the versions of the code.
-- `gh`, the GitHub command, to open the PR.
-- `claude` (Claude Code) or `codex` (Codex). These start the workers.
+- Rust with `cargo`, to build the `codeumbrella` command. Check: `cargo --version`
+- `git`, to keep the versions of the code. Check: `git --version`
+- `gh`, the GitHub command, to open the PR. Check: `gh --version`
+- `claude` (Claude Code) or `codex` (Codex). These start the workers. Check: `claude --version` or `codex --version`
 
 ## Install
 
 The plugin brings only the chat command `/codeumbrella`. The `codeumbrella` command is a different part. Install it in step 1.
 
 1. Install the command. In this folder, run one of these:
-   - `./install.sh` (it also links the chat command into `~/.claude` and `~/.codex`)
+   - `./install.sh` (it already links the chat command into `~/.claude` and `~/.codex`, so the plugin is for people who do not run `./install.sh`)
    - `cargo install --path . --locked`
 2. Install the plugin for the chat command.
    - Claude Code:
      ```
      /plugin marketplace add <path or GitHub name of this folder>
-     /plugin install codeumbrella
+     /plugin install codeumbrella@codeumbrella
      ```
    - Codex:
      ```
      codex plugin marketplace add <path or GitHub name of this folder>
      ```
-     Then add the `codeumbrella` plugin from that marketplace.
+     Then open Codex, type `/plugins`, and install `codeumbrella`.
 
 ## First run
 

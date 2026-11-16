@@ -25,9 +25,15 @@ fn source_path(plugin: &Value) -> String {
         .to_string()
 }
 
+fn entries(marketplace: &str) -> Vec<Value> {
+    json(marketplace)["plugins"]
+        .as_array()
+        .expect("plugins is a list")
+        .clone()
+}
+
 fn plugin_dir(marketplace: &str) -> PathBuf {
-    let m = json(marketplace);
-    let list = m["plugins"].as_array().expect("plugins is a list");
+    let list = entries(marketplace);
     let p = list
         .iter()
         .find(|p| p["name"] == "codeumbrella")
@@ -90,6 +96,51 @@ fn codex_marketplace_leads_to_a_plugin_folder() {
     assert!(dir.join(".codex-plugin/plugin.json").is_file());
 }
 
+#[test]
+fn claude_marketplace_has_an_owner() {
+    let m = json(".claude-plugin/marketplace.json");
+    assert!(
+        m["owner"]["name"].as_str().is_some_and(|n| !n.is_empty()),
+        "owner.name must be a non-empty text"
+    );
+}
+
+#[test]
+fn marketplace_entry_names_equal_the_plugin_json_names() {
+    for (market, manifest) in [
+        (
+            ".claude-plugin/marketplace.json",
+            ".claude-plugin/plugin.json",
+        ),
+        (
+            ".agents/plugins/marketplace.json",
+            ".codex-plugin/plugin.json",
+        ),
+    ] {
+        let list = entries(market);
+        assert!(!list.is_empty(), "{market} has no entries");
+        for p in &list {
+            let file = root().join(source_path(p)).join(manifest);
+            let content = std::fs::read_to_string(&file)
+                .unwrap_or_else(|e| panic!("cannot read {}: {e}", file.display()));
+            let m: Value = serde_json::from_str(&content)
+                .unwrap_or_else(|e| panic!("{} is not JSON: {e}", file.display()));
+            assert_eq!(p["name"], m["name"], "{market}");
+        }
+    }
+}
+
+#[test]
+fn codex_marketplace_entry_has_policy_and_category() {
+    let list = entries(".agents/plugins/marketplace.json");
+    assert!(!list.is_empty());
+    for p in &list {
+        assert_eq!(p["policy"]["installation"], "AVAILABLE", "{p}");
+        assert_eq!(p["policy"]["authentication"], "ON_INSTALL", "{p}");
+        assert_eq!(p["category"], "Productivity", "{p}");
+    }
+}
+
 fn find_skill_files(dir: &Path, out: &mut Vec<PathBuf>) {
     let Ok(rd) = std::fs::read_dir(dir) else {
         return;
@@ -149,31 +200,48 @@ fn readme_has_the_four_parts_for_a_new_person() {
 #[test]
 fn readme_lists_what_the_computer_must_have() {
     let r = text("README.md");
-    for tool in ["cargo", "git", "gh"] {
-        assert!(r.contains(tool), "README.md does not name {tool}");
+    for cmd in [
+        "cargo --version",
+        "git --version",
+        "gh --version",
+        "claude --version",
+        "codex --version",
+    ] {
+        assert!(r.contains(cmd), "README.md lacks the command line: {cmd}");
     }
-    assert!(
-        r.contains("claude") && r.contains("codex"),
-        "README.md must name claude and codex"
-    );
 }
 
 #[test]
 fn readme_shows_the_install_commands() {
     let r = text("README.md");
+    for cmd in [
+        "/plugin marketplace add",
+        "/plugin install codeumbrella@codeumbrella",
+        "codex plugin marketplace add",
+        "./install.sh",
+        "cargo install --path . --locked",
+    ] {
+        assert!(r.contains(cmd), "README.md lacks the command line: {cmd}");
+    }
+}
+
+#[test]
+fn readme_codex_steps_use_the_plugins_menu() {
+    let r = text("README.md");
     assert!(
-        r.contains("/plugin marketplace add"),
-        "Claude marketplace command"
+        r.contains("`/plugins`"),
+        "README.md must tell Codex users to type /plugins"
     );
+}
+
+#[test]
+fn readme_says_install_sh_links_the_chat_command() {
+    let r = text("README.md").to_lowercase();
+    assert!(r.contains("already links the chat command"));
     assert!(
-        r.contains("/plugin install codeumbrella"),
-        "Claude install command"
+        r.contains("do not run `./install.sh`"),
+        "README.md must say the plugin is for people who do not run ./install.sh"
     );
-    assert!(
-        r.contains("codex plugin marketplace add"),
-        "Codex marketplace command"
-    );
-    assert!(r.contains("./install.sh") || r.contains("cargo install --path . --locked"));
 }
 
 #[test]
@@ -192,4 +260,22 @@ fn readme_shows_how_to_start_a_first_run() {
     assert!(r.contains("codeumbrella init"));
     assert!(r.contains("/codeumbrella"));
     assert!(r.contains("codeumbrella run"));
+}
+
+#[test]
+fn agents_structure_table_lists_the_packaging_files() {
+    let a = text("AGENTS.md");
+    for path in [
+        "`README.md`",
+        "`.claude-plugin/`",
+        "`.codex-plugin/`",
+        "`.agents/plugins/`",
+        "`tests/packaging.rs`",
+    ] {
+        let start = format!("| {path} |");
+        assert!(
+            a.lines().any(|l| l.starts_with(&start)),
+            "AGENTS.md Structure table has no row for {path}"
+        );
+    }
 }

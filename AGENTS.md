@@ -65,6 +65,11 @@ To install the command and the chat command on a computer, run `./install.sh`.
 | `src/codex.rs` | Starts one `codex exec` worker. |
 | `tests/engine.rs` | Tests of the supervisor with a simulated worker. |
 | `skills/codeumbrella/SKILL.md` | The chat command `/codeumbrella`. Claude and Codex use the same file. |
+| `README.md` | The guide for a new person: what it is, what it needs, how to install, first run. |
+| `.claude-plugin/` | The Claude Code plugin files: `plugin.json` and `marketplace.json`. |
+| `.codex-plugin/` | The Codex plugin file: `plugin.json`. |
+| `.agents/plugins/` | The Codex marketplace file `marketplace.json`. |
+| `tests/packaging.rs` | Tests of the plugin files and the README. |
 | `install.sh` | Installs the command and the chat command. |
 
 ## The sheet
