@@ -133,7 +133,7 @@ fn marketplace_entry_names_equal_the_plugin_json_names() {
 #[test]
 fn codex_marketplace_entry_has_policy_and_category() {
     let list = entries(".agents/plugins/marketplace.json");
-    assert!(!list.is_empty());
+    assert!(!list.is_empty(), "marketplace has no entries");
     for p in &list {
         assert_eq!(p["policy"]["installation"], "AVAILABLE", "{p}");
         assert_eq!(p["policy"]["authentication"], "ON_INSTALL", "{p}");
