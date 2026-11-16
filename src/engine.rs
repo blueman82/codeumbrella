@@ -210,9 +210,6 @@ impl Run {
             }
             return Ok(answer);
         }
-        if step.kind == Kind::Command {
-            return self.commands(&step.run).map(Some);
-        }
         if let Some(max) = step.max_tries {
             let tries = self.state.tries.entry(name.to_owned()).or_default();
             if *tries >= max {
@@ -220,6 +217,9 @@ impl Run {
                 return self.halt(Status::Stopped, note).map(|()| None);
             }
             *tries += 1;
+        }
+        if step.kind == Kind::Command {
+            return self.commands(&step.run).map(Some);
         }
         for paper in &step.writes {
             fs::create_dir_all(self.paper(paper))?;

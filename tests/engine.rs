@@ -189,6 +189,21 @@ fn a_no_at_the_approval_sends_the_work_back_to_the_builder() {
 }
 
 #[test]
+fn a_command_step_obeys_its_maximum() {
+    let text = "start: a\nsteps:\n  a: {type: command, run: [[false]], on_bad: a, max_tries: 2}\n";
+    let graph: Graph = yaml_serde::from_str(text).unwrap();
+    let mut run = Run::start(folder(), "a task", &graph).unwrap();
+    run.go(&graph, &root().join("roles"), &Script::default())
+        .unwrap();
+    assert_eq!(run.state.status, Status::Stopped);
+    assert!(
+        run.state.note.contains("maximum of 2"),
+        "{}",
+        run.state.note
+    );
+}
+
+#[test]
 fn a_bad_command_goes_to_its_on_bad_step() {
     let text = "start: a\nsteps:\n  a: {type: command, run: [[false]], on_bad: b}\n  b: {type: command, run: [[true]], max_tries: 1}\n";
     let graph: Graph = yaml_serde::from_str(text).unwrap();

@@ -10,17 +10,24 @@
 #              command: the supervisor runs the commands in `run`. No AI.
 #   role       Only for a worker step. The rules page of the worker is
 #              `.codeumbrella/roles/<role>.md`. You can add your own roles.
+#              A new role must also have its two settings files in that
+#              folder: `<role>.claude.json` and `<role>.codex.txt`.
 #   run        Only for a command step. A list of commands. Each command is a
 #              list of words. In a word, {run} is the id of the run.
 #              If a command gives an error, the result of the step is bad.
 #   reads      The papers that the step reads. A paper is a folder of files
 #              that one step writes for other steps.
-#   writes     The papers that the step writes. No other step can change them.
+#   writes     The papers that the step writes. No other worker can change them.
+#              You can change a paper while the run waits for your answer.
 #   next       The step after a good result. With no `next`, the run ends.
+#              The next worker gets the short result of the step before.
 #   on_bad     The step after a bad result. With no `on_bad`, a bad result
 #              stops the run. The step that `on_bad` goes to must have `max_tries`.
+#              For a person step, a no is a bad result. The text that you give
+#              with the no goes to the next worker.
 #   max_tries  The maximum number of times that the run does this step.
-#              At the maximum, the run stops and tells you.
+#              At the maximum, the run stops and tells you. The count is for
+#              the full run. The command `resume` sets it to 0 for that step.
 #   on_limit   What occurs at `max_tries`. The only value is `stop_for_person`.
 #              The run stops at the maximum with or without this line.
 
@@ -57,6 +64,7 @@ steps:
 
   # A builder repairs the code. Then the checker looks again.
   # The builder gets the report of the checker, or your text after a no.
+  # The 3 tries are for bad checks and for your no answers together.
   repair:
     role: builder
     reads: [spec]
