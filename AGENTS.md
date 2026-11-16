@@ -131,6 +131,7 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - Each role has one rules page.
 - The default check step is a fan of two checkers. One runs the tests. One reads the change for safety problems, and it cannot write a file.
 - The two checkers work in the same project folder. Only the tests checker writes there.
+- The safety checker does not read the commit that the tests checker makes at the same time. The person sees that commit in the PR.
 
 ## Rust rules
 

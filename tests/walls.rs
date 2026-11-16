@@ -445,6 +445,9 @@ fn the_safety_checker_cannot_write_a_file() {
     assert_eq!(file["sandbox"]["enabled"], true);
     assert_eq!(file["sandbox"]["allowUnsandboxedCommands"], false);
     assert_eq!(file["sandbox"]["failIfUnavailable"], true);
+    let network = file["sandbox"]["network"].as_object().expect("network");
+    assert_eq!(network.keys().collect::<Vec<_>>(), ["allowLocalBinding"]);
+    assert_eq!(list(&file["sandbox"]["filesystem"]["denyRead"]), KEYS);
     let codex = text("roles/safety.codex.txt");
     assert!(codex.starts_with("{extends=\":read-only\""), "{codex}");
     assert!(!codex.contains("\"write\""), "{codex}");
