@@ -62,15 +62,14 @@ fn no_claude_role_runs_hooks_uses_the_web_or_reads_the_keys_of_the_person() {
         let file = json(&format!("roles/{role}.claude.json"));
         assert_eq!(file["disableAllHooks"], true, "{role}");
         let deny = list(&file["permissions"]["deny"]);
-        for rule in [
-            "WebFetch",
-            "WebSearch",
-            "Read(~/.ssh/**)",
-            "Read(~/Library/Keychains/**)",
-        ] {
+        for rule in ["WebFetch", "WebSearch"] {
             assert!(deny.contains(&rule), "{role} {rule}");
         }
-        assert!(deny.contains(&"Read(~/.config/gh/**)"), "{role}");
+        for key in KEYS {
+            let folder = deny.contains(&format!("Read({key}/**)").as_str());
+            let file = deny.contains(&format!("Read({key})").as_str());
+            assert!(folder || file, "{role} {key}");
+        }
     }
     let planner = json("roles/planner.claude.json");
     assert!(list(&planner["permissions"]["deny"]).contains(&"Bash"));
@@ -162,10 +161,13 @@ fn the_push_sends_only_the_checked_commit_to_the_branch_of_the_run() {
         ["fetch", "--quiet", "--recurse-submodules=no", "origin"]
     );
     assert_eq!(guard[4].last().unwrap(), &format!("+{both}"));
-    let diff = guard[5].join(" ");
-    assert!(diff.contains("--no-replace-objects diff --quiet"), "{diff}");
-    assert!(diff.contains(&format!("refs/remotes/origin/HEAD...{name}")));
-    assert!(diff.ends_with("-- .github .claude .codeumbrella"), "{diff}");
+    assert_eq!(
+        guard[5][3..].join(" "),
+        format!(
+            "--no-replace-objects diff --quiet --no-ext-diff --no-textconv \
+             refs/remotes/origin/HEAD...{name} -- .github .claude .codeumbrella"
+        )
+    );
     // No command of the sheet uses a word that goes around a check.
     let words = graph.steps.values().flat_map(|s| s.run.iter().flatten());
     for word in words {
@@ -359,5 +361,31 @@ fn a_second_command_cannot_work_on_a_run_that_has_a_lock() {
     let again = cu(&dir, &["answer", &id(&run), "look_at_tests", "yes"]);
     assert!(!again.status.success());
     assert!(out(&again).contains("a different command works on this run"));
+    // The refused command did not write its answer into the notebook.
+    let notebook = fs::read_to_string(folder.join("state.json")).unwrap();
+    let notebook: Value = serde_json::from_str(&notebook).unwrap();
+    assert!(notebook["answer"].is_null(), "{notebook}");
     assert!(!dir.join("bin/args.txt").exists(), "a worker started");
+}
+
+/// A sheet with one worker step, and `lines` added to that step.
+fn sheet_error(lines: &str) -> String {
+    let text = format!("start: a\nsteps:\n  a:\n    role: planner\n{lines}");
+    let graph: Graph = yaml_serde::from_str(&text).unwrap();
+    let error = graph.check(&root().join("roles")).unwrap_err();
+    format!("{error:#}")
+}
+
+#[test]
+fn the_sheet_check_refuses_a_maximum_of_0_and_a_name_that_is_a_path() {
+    assert!(sheet_error("    max_tries: 0\n").contains("max_tries must be 1 or more"));
+    for name in ["../../outside", "/tmp/outside", ".hidden", "a/b"] {
+        let error = sheet_error(&format!("    writes: [\"{name}\"]\n"));
+        assert!(error.contains("must not have a `/`"), "{name}: {error}");
+        let error = sheet_error(&format!("    reads: [\"{name}\"]\n"));
+        assert!(error.contains("must not have a `/`"), "{name}: {error}");
+    }
+    let text = "start: a\nsteps:\n  a:\n    type: command\n    run: [[]]\n";
+    let graph: Graph = yaml_serde::from_str(text).unwrap();
+    assert!(graph.check(&root().join("roles")).is_err());
 }

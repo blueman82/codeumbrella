@@ -95,6 +95,8 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - The push gives the full name of the run `branch` two times. Thus it cannot go to a different `branch`. Tests on 16 November 2026 showed these attacks with git.
 - An answer names its step. An answer for a different step is an error. Thus a yes for the tests cannot become a yes for the merge.
 - Only one command can work on a run at a time. The file `lock` in the run folder shows this. After a kill, a person removes that file.
+- An answer and a resume get the lock before they read the notebook. Thus a second command cannot write an answer into a run that is active.
+- The clean copy reads the `origin` settings from `.git/config` of the project. Thus the factory does not work in a linked git worktree.
 - A worker that ends with an error code gives no good result.
 - A worker does not get the values `GH_TOKEN` and `GITHUB_TOKEN` of the person.
 - For a Claude worker, only the settings file of its role counts. The worker uses no settings, hooks or tool servers of the project or of the person.

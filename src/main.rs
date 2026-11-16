@@ -4,7 +4,7 @@ use anyhow::{Context, Result, ensure};
 use clap::{Parser, Subcommand, ValueEnum};
 use codeumbrella::claude::Claude;
 use codeumbrella::codex::Codex;
-use codeumbrella::engine::{Run, Worker};
+use codeumbrella::engine::{Lock, Run, Worker};
 use codeumbrella::graph::Graph;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use std::{fs, path::Path, path::PathBuf};
@@ -94,6 +94,11 @@ enum YesNo {
 fn main() -> Result<()> {
     let cli = Cli::parse();
     let runs = Path::new(HOME).join("runs");
+    // An answer and a resume take the lock before they read the notebook.
+    let lock = match &cli.command {
+        Cmd::Answer { run, .. } | Cmd::Resume { run } => Some(Lock::take(&runs.join(run))?),
+        _ => None,
+    };
     let mut run = match &cli.command {
         Cmd::Init { update } => return init(*update),
         Cmd::Run { task } => {
@@ -109,6 +114,10 @@ fn main() -> Result<()> {
             let newest = newest.filter_map(|e| e.ok().map(|e| e.path())).max();
             Run::open(newest.context("there are no runs in this folder")?)?
         }
+    };
+    let _lock = match lock {
+        None if matches!(cli.command, Cmd::Run { .. }) => Some(Lock::take(&run.dir)?),
+        lock => lock,
     };
     if let Cmd::Answer {
         step, answer, text, ..

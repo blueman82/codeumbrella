@@ -83,6 +83,33 @@ pub struct State {
     pub last: Option<Outcome>,
 }
 
+/// The lock of one run: the file `lock` in the run folder. Only one command
+/// can work on a run at a time. The lock goes when the command ends.
+#[derive(Debug)]
+pub struct Lock(PathBuf);
+
+impl Lock {
+    /// Takes the lock of the run in the folder `dir`.
+    ///
+    /// # Errors
+    /// Gives an error if a different command has the lock, or if there is no
+    /// such run folder.
+    pub fn take(dir: &Path) -> Result<Self> {
+        let path = dir.join("lock");
+        fs::File::create_new(&path).with_context(|| {
+            let path = path.display();
+            format!("a different command works on this run. If not, remove the file {path}")
+        })?;
+        Ok(Self(path))
+    }
+}
+
+impl Drop for Lock {
+    fn drop(&mut self) {
+        let _ = fs::remove_file(&self.0);
+    }
+}
+
 /// One run: its folder and its notebook.
 #[derive(Debug)]
 pub struct Run {
@@ -156,23 +183,10 @@ impl Run {
     /// Does steps until the run ends, stops, or waits for the person.
     ///
     /// # Errors
-    /// Gives an error if a different command works on this run, or if the
-    /// notebook cannot be written. A problem in a step stops the run and goes
-    /// into the notebook.
+    /// Gives an error only if the notebook cannot be written. A problem in a
+    /// step stops the run and goes into the notebook.
     pub fn go(&mut self, graph: &Graph, roles: &Path, worker: &dyn Worker) -> Result<()> {
-        // Only one command can work on a run at a time.
-        let lock = self.dir.join("lock");
-        fs::File::create_new(&lock).with_context(|| {
-            let lock = lock.display();
-            format!("a different command works on this run. If not, remove the file {lock}")
-        })?;
-        let result = self.steps(graph, roles, worker);
-        fs::remove_file(&lock)?;
-        result
-    }
-
-    /// Does the steps. The notebook shows `Running` from the start.
-    fn steps(&mut self, graph: &Graph, roles: &Path, worker: &dyn Worker) -> Result<()> {
+        // The notebook shows `Running` from the start.
         self.halt(Status::Running, String::new())?;
         while let Some(name) = self.state.at.clone() {
             let step = graph.step(&name)?;
