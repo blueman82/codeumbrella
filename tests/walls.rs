@@ -389,3 +389,24 @@ fn the_sheet_check_refuses_a_maximum_of_0_and_a_name_that_is_a_path() {
     let graph: Graph = yaml_serde::from_str(text).unwrap();
     assert!(graph.check(&root().join("roles")).is_err());
 }
+
+#[test]
+fn a_codex_worker_does_not_start_with_no_home_folder() {
+    let dir = project();
+    tool(&dir, "codex", "touch \"$PWD/bin/started\"");
+    // With no home folder, the read locks for the keys point at no folder.
+    let path = format!(
+        "{}:{}",
+        dir.join("bin").display(),
+        env::var("PATH").unwrap()
+    );
+    let mut command = Command::new(env!("CARGO_BIN_EXE_codeumbrella"));
+    command.args(["--tool", "codex", "run", "a task"]);
+    command
+        .current_dir(&dir)
+        .env("PATH", path)
+        .env_remove("HOME");
+    let run = command.output().unwrap();
+    assert!(out(&run).contains("HOME is not set"), "{}", out(&run));
+    assert!(!dir.join("bin/started").exists(), "the worker started");
+}

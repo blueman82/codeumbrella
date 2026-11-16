@@ -23,7 +23,13 @@ impl Worker for Codex {
         let settings = fs::read_to_string(&settings)
             .with_context(|| format!("cannot read the settings {}", settings.display()))?;
         let run = job.dir.file_name().unwrap_or_default().to_string_lossy();
-        let home = env::var("HOME").unwrap_or_default();
+        // With no correct home folder, the read locks point at no folder.
+        let home = env::var("HOME").context("the value HOME is not set")?;
+        let bad = |c| ['"', '\\', '{', '}', '\n'].contains(&c);
+        ensure!(
+            home.starts_with('/') && !home.contains(bad),
+            "the value HOME is not a path"
+        );
         let settings = settings.trim().replace("{run}", &run);
         let settings = settings.replace("{home}", &home);
         let schema = job.dir.join("schema.json");
