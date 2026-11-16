@@ -36,6 +36,7 @@ cargo build --locked                           # build
 cargo deny check && cargo audit                # look for bad packages, after a package change
 
 codeumbrella init                              # put the default sheet and rules pages into a project
+codeumbrella init --update                     # replace changed factory files with the new defaults, keep the old ones as `.before`
 codeumbrella run "<task>"                      # start a run with Claude workers
 codeumbrella --tool codex run "<task>"         # start a run with Codex workers
 codeumbrella status [run-id]                   # show where a run is
@@ -97,6 +98,7 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - A deny rule without the sandbox is not sufficient. A script that a permitted command starts can go around it.
 - Each Codex role runs in the Codex sandbox with the settings in `roles/<role>.codex.txt`. The locked paths are the same as for Claude. The planner can write only to its two papers. The Codex sandbox has no network, so a Codex worker cannot push.
 - The sandbox is the only wall for the commands of a worker, for Claude and for Codex.
+- `init --update` copies each changed factory file to `<name>.before`, then writes the default. It does not touch `runs` or the `.gitignore` of the project folder.
 - The command steps were not tested with a GitHub project.
 - Each role has one rules page.
 
