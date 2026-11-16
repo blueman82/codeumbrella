@@ -15,6 +15,8 @@
       "Edit(.github/**)",
       "Edit(.git/hooks/**)",
       "Edit(.git/config)",
+      "Edit(.git/commondir)",
+      "Edit(.git/config.worktree)",
       "WebFetch",
       "WebSearch",
       "Read(~/.ssh/**)",

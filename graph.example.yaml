@@ -100,18 +100,20 @@ steps:
       - [git, -C, ".codeumbrella/runs/{run}/clean", push, --quiet, --no-follow-tags, origin, "refs/heads/codeumbrella/{run}:refs/heads/codeumbrella/{run}"]
     next: find_pr
 
+  # The word GIT_DIR makes `gh` read the clean copy, not the `.git` folder
+  # of the project. A worker can write to that folder.
   # Is there a PR for this run? Yes: go to your approval. No: open one.
   find_pr:
     type: command
     run:
-      - [gh, pr, view, "codeumbrella/{run}", --json, url, --jq, .url]
+      - [env, "GIT_DIR=.codeumbrella/runs/{run}/clean/.git", gh, pr, view, "codeumbrella/{run}", --json, url, --jq, .url]
     on_bad: open_pr
     next: approval
 
   open_pr:
     type: command
     run:
-      - [gh, pr, create, --head, "codeumbrella/{run}", --fill]
+      - [env, "GIT_DIR=.codeumbrella/runs/{run}/clean/.git", gh, pr, create, --head, "codeumbrella/{run}", --fill]
     max_tries: 2
     next: approval
 
@@ -128,4 +130,4 @@ steps:
   merge:
     type: command
     run:
-      - [gh, pr, merge, "codeumbrella/{run}", --squash]
+      - [env, "GIT_DIR=.codeumbrella/runs/{run}/clean/.git", gh, pr, merge, "codeumbrella/{run}", --squash]

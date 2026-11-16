@@ -41,8 +41,12 @@ fn the_builder_and_the_checker_run_in_the_claude_sandbox_with_the_locks() {
         for lock in [".codeumbrella/**", ".claude/**", ".github/**"] {
             assert!(deny.contains(&format!("Edit({lock})").as_str()), "{role}");
         }
-        assert!(deny.contains(&"Edit(.git/hooks/**)"), "{role}");
-        assert!(deny.contains(&"Edit(.git/config)"), "{role}");
+        for lock in ["hooks/**", "config", "commondir", "config.worktree"] {
+            assert!(
+                deny.contains(&format!("Edit(.git/{lock})").as_str()),
+                "{role}"
+            );
+        }
         assert_eq!(list(&sandbox["filesystem"]["denyRead"]), KEYS, "{role}");
     }
 }
@@ -107,6 +111,8 @@ fn each_codex_role_has_its_sandbox_and_its_locks() {
             ".github",
             ".git/hooks",
             ".git/config",
+            ".git/commondir",
+            ".git/config.worktree",
         ] {
             assert!(
                 file.contains(&format!("\"{lock}\"=\"read\"")),
@@ -131,7 +137,15 @@ fn only_the_approval_of_the_person_goes_to_the_merge() {
     let merge = graph.step("merge").unwrap();
     assert_eq!(
         merge.run,
-        [["gh", "pr", "merge", "codeumbrella/{run}", "--squash"]]
+        [[
+            "env",
+            "GIT_DIR=.codeumbrella/runs/{run}/clean/.git",
+            "gh",
+            "pr",
+            "merge",
+            "codeumbrella/{run}",
+            "--squash"
+        ]]
     );
     for (name, step) in &graph.steps {
         let to_merge = [&step.next, &step.on_bad].contains(&&Some("merge".to_owned()));
