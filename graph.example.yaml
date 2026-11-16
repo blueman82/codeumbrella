@@ -99,11 +99,11 @@ steps:
     next: approval
 
   # You look at the PR on GitHub and answer yes or no.
-  # A no with your text sends the work back to the builder. Then the checker
-  # looks again, the PR gets the new code, and the run comes back to you.
+  # A no with your text sends the work to the planner. The planner corrects
+  # the spec and the tests. You then see the tests again.
   approval:
     type: person
-    on_bad: repair
+    on_bad: plan
     next: merge
 
   # GitHub refuses the merge if a necessary check of the PR is not good.
