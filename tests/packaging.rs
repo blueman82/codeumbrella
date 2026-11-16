@@ -237,7 +237,7 @@ fn readme_codex_steps_use_the_plugins_menu() {
 #[test]
 fn readme_says_install_sh_links_the_chat_command() {
     let r = text("README.md").to_lowercase();
-    assert!(r.contains("also links the chat command"));
+    assert!(r.contains("also puts the chat command"));
     assert!(
         r.contains("does not run `./install.sh`"),
         "README.md must say the plugin is for people who do not run ./install.sh"

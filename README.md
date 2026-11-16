@@ -1,6 +1,8 @@
 # Codeumbrella
 
-Codeumbrella is a software factory. You give it a task. It gives the task to workers (AI sessions). They plan, write and check the code. Code goes into `main` only after two things. First, the code agrees with the tests that you gave approval for. Second, you gave approval for the PR.
+Codeumbrella is a software factory. You give it a task. It gives the task to workers (AI sessions). They plan, write and check the code.
+
+Code goes into `main` only after two things. First, the code agrees with the tests that you gave approval for. Second, you gave approval for the PR.
 
 The factory stops two times for you. First, you look at the tests. Second, you give approval for the `pull request` (PR). A PR is a proposal to add code to `main`. You answer yes or no each time.
 
@@ -19,7 +21,7 @@ The factory stops two times for you. First, you look at the tests. Second, you g
 The plugin brings only the chat command `/codeumbrella`. The `codeumbrella` command is a different part. Install it in step 1.
 
 1. Install the command. In this folder, run one of these:
-   - `./install.sh`. It also links the chat command into `~/.claude` and `~/.codex`. The plugin is for a person who does not run `./install.sh`.
+   - `./install.sh`. It also puts the chat command into `~/.claude` and `~/.codex`. The plugin is for a person who does not run `./install.sh`.
    - `cargo install --path . --locked`
 2. Install the plugin for the chat command.
    - Claude Code:
