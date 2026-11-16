@@ -1,6 +1,8 @@
 # The instruction sheet of codeumbrella: the steps of the factory and the
 # rules between them. `codeumbrella init` copies this file to
 # `.codeumbrella/graph.yaml` in your project. Change that copy for your project.
+# `codeumbrella init --update` replaces that copy with this file. It keeps the
+# old one as `graph.yaml.before`, so move your changes back by hand.
 #
 # The lines that a step can have:
 #

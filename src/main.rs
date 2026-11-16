@@ -12,32 +12,22 @@ use std::{fs, path::Path, path::PathBuf};
 /// The folder in a project that holds the sheet, the rules pages and the runs.
 const HOME: &str = ".codeumbrella";
 
-/// One default rules file: its name in the project, and its text.
-macro_rules! role {
-    ($name:literal) => {
-        (
-            concat!("roles/", $name),
-            include_str!(concat!("../roles/", $name)),
-        )
+/// The default files that `init` writes into the folder of the factory.
+#[rustfmt::skip]
+macro_rules! defaults {
+    ($($name:literal),*) => {
+        &[(".gitignore", "*\n"), ("graph.yaml", include_str!("../graph.example.yaml")),
+          // For a project that has no ignore file. The path goes up to the project folder.
+          ("../.gitignore", include_str!("../default.gitignore")),
+          $((concat!("roles/", $name), include_str!(concat!("../roles/", $name)))),*]
     };
 }
 
-/// The default files that `init` writes into the folder of the factory.
-const DEFAULTS: &[(&str, &str)] = &[
-    (".gitignore", "*\n"),
-    // For a project that has no ignore file. The path goes up to the project folder.
-    ("../.gitignore", include_str!("../default.gitignore")),
-    ("graph.yaml", include_str!("../graph.example.yaml")),
-    role!("planner.md"),
-    role!("planner.claude.json"),
-    role!("planner.codex.txt"),
-    role!("builder.md"),
-    role!("builder.claude.json"),
-    role!("builder.codex.txt"),
-    role!("checker.md"),
-    role!("checker.claude.json"),
-    role!("checker.codex.txt"),
-];
+#[rustfmt::skip]
+const DEFAULTS: &[(&str, &str)] = defaults!(
+    "planner.md", "planner.claude.json", "planner.codex.txt", "builder.md", "builder.claude.json",
+    "builder.codex.txt", "checker.md", "checker.claude.json", "checker.codex.txt"
+);
 
 /// A software factory: it puts code into main after the tests and your approval.
 #[derive(Parser)]
@@ -68,7 +58,11 @@ enum Tool {
 #[derive(Subcommand)]
 enum Cmd {
     /// Put the default sheet and rules pages into this project.
-    Init,
+    Init {
+        /// Replace changed files with the defaults. The old file is kept as `.before`.
+        #[arg(long)]
+        update: bool,
+    },
     /// Start a new run for a task.
     Run { task: String },
     /// Show where a run is. Without an id: the newest run.
@@ -94,7 +88,7 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
     let runs = Path::new(HOME).join("runs");
     let mut run = match &cli.command {
-        Cmd::Init => return init(),
+        Cmd::Init { update } => return init(*update),
         Cmd::Run { task } => {
             let graph = Graph::load(&cli.sheet, &cli.roles)?;
             let seconds = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
@@ -132,14 +126,22 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-/// Writes each default file that the project does not have.
-fn init() -> Result<()> {
-    for (name, text) in DEFAULTS {
+/// Writes each default file that the project does not have. With `update`, it
+/// also replaces a changed file and keeps the old one as `<name>.before`.
+#[rustfmt::skip]
+fn init(update: bool) -> Result<()> {
+    for (name, text) in DEFAULTS.iter().filter(|(n, _)| !update || !n.starts_with("..")) {
         let path = Path::new(HOME).join(name);
-        if !path.exists() {
-            fs::create_dir_all(path.parent().context("the path has no folder")?)?;
-            fs::write(&path, text).with_context(|| format!("cannot write {}", path.display()))?;
+        let old = fs::read_to_string(&path).ok();
+        if old.as_deref() == Some(text) || (!update && path.exists()) {
+            continue;
         }
+        fs::create_dir_all(path.parent().context("the path has no folder")?)?;
+        if old.is_some() {
+            fs::copy(&path, format!("{}.before", path.display())).with_context(|| format!("cannot keep {} as .before", path.display()))?;
+        }
+        fs::write(&path, text).with_context(|| format!("cannot write {}", path.display()))?;
+        if update { println!("Updated {}", path.display()); }
     }
     println!("The factory files are in {HOME}/. Change them for this project.");
     Ok(())
