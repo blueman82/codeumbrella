@@ -13,7 +13,6 @@ use std::{fs, path::Path, path::PathBuf};
 const HOME: &str = ".codeumbrella";
 
 /// The default files that `init` writes into the folder of the factory.
-#[rustfmt::skip]
 macro_rules! defaults {
     ($($name:literal),*) => {
         &[(".gitignore", "*\n"), ("graph.yaml", include_str!("../graph.example.yaml")),
@@ -23,10 +22,16 @@ macro_rules! defaults {
     };
 }
 
-#[rustfmt::skip]
 const DEFAULTS: &[(&str, &str)] = defaults!(
-    "planner.md", "planner.claude.json", "planner.codex.txt", "builder.md", "builder.claude.json",
-    "builder.codex.txt", "checker.md", "checker.claude.json", "checker.codex.txt"
+    "planner.md",
+    "planner.claude.json",
+    "planner.codex.txt",
+    "builder.md",
+    "builder.claude.json",
+    "builder.codex.txt",
+    "checker.md",
+    "checker.claude.json",
+    "checker.codex.txt"
 );
 
 /// A software factory: it puts code into main after the tests and your approval.
@@ -128,9 +133,11 @@ fn main() -> Result<()> {
 
 /// Writes each default file that the project does not have. With `update`, it
 /// also replaces a changed file and keeps the old one as `<name>.before`.
-#[rustfmt::skip]
 fn init(update: bool) -> Result<()> {
-    for (name, text) in DEFAULTS.iter().filter(|(n, _)| !update || !n.starts_with("..")) {
+    for (name, text) in DEFAULTS
+        .iter()
+        .filter(|(n, _)| !update || !n.starts_with(".."))
+    {
         let path = Path::new(HOME).join(name);
         let old = fs::read_to_string(&path).ok();
         if old.as_deref() == Some(text) || (!update && path.exists()) {
@@ -138,10 +145,13 @@ fn init(update: bool) -> Result<()> {
         }
         fs::create_dir_all(path.parent().context("the path has no folder")?)?;
         if old.is_some() {
-            fs::copy(&path, format!("{}.before", path.display())).with_context(|| format!("cannot keep {} as .before", path.display()))?;
+            fs::copy(&path, format!("{}.before", path.display()))
+                .with_context(|| format!("cannot keep {} as .before", path.display()))?;
         }
         fs::write(&path, text).with_context(|| format!("cannot write {}", path.display()))?;
-        if update { println!("Updated {}", path.display()); }
+        if update {
+            println!("Updated {}", path.display());
+        }
     }
     println!("The factory files are in {HOME}/. Change them for this project.");
     Ok(())
