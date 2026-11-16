@@ -114,6 +114,9 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - The Codex part always turns on the Codex network proxy. Without the proxy, a Codex role that has network settings gets the full internet.
 - Workers have no internet. The packages of a project must be on the computer before a run. A test on 16 November 2026 showed the cause. With internet, a worker can use the GitHub key of the person.
 - The builder and the checker run in the Claude sandbox. They cannot write to `.codeumbrella`, `.claude`, `.github`, `.git/hooks` or `.git/config`. They cannot write to a folder that is not in the project.
+- They also cannot write the files `.git/commondir` and `.git/config.worktree`. With such a file, a worker can give git its own settings. Then git runs a script of the worker with no sandbox.
+- The steps with `gh` read the clean copy, not the `.git` folder of the project. The word `GIT_DIR` in the sheet does this.
+- A known limit: a worker can put a second git folder with its own settings into the project. A git command of the person in the project can then run a script of the worker. A test on 16 November 2026 showed this.
 - A deny rule such as `Edit(.codeumbrella/**)` is what makes the sandbox lock a path. The tests of 15 November 2026 showed this. The setting `sandbox.filesystem.denyWrite` with a relative path did nothing in those tests.
 - A deny rule without the sandbox is not sufficient. A script that a permitted command starts can go around it.
 - Each Codex role runs in the Codex sandbox with the settings in `roles/<role>.codex.txt`. The locked paths are the same as for Claude. The planner can write only to the two papers of its run. The Codex sandbox has no internet, so a Codex worker cannot push.
