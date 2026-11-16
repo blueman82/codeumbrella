@@ -22,7 +22,7 @@ The supervisor knows nothing about software work. All knowledge of the steps is 
 | Tool part | The code that starts one type of worker. `src/claude.rs` is the part for Claude. `src/codex.rs` is the part for Codex. |
 | Notebook | `.codeumbrella/runs/<run-id>/state.json`: where the run is. |
 | Log | `log.jsonl` in the run folder: one line for each step that ended. |
-| Trace | `<step>.<number>.trace.jsonl` in the run folder: all that one worker did in one try. |
+| `trace` | `<step>.<number>.trace.jsonl` in the run folder: all that one worker did in one try. |
 | Paper | A folder in `.codeumbrella/runs/<run-id>/papers/` that one step writes and other steps read. |
 | Role | The type of a worker. Its rules page is `.codeumbrella/roles/<role>.md` in a project. The folder `roles` holds the defaults. |
 
@@ -119,7 +119,7 @@ A package is code from other persons. Each package is a risk, so the list is sho
 | `yaml_serde` | Reads the sheet. |
 | `clap` | Reads the words after the command, and shows the help text. |
 | `anyhow` | Makes clear error messages. |
-| `time` | Writes the date and the time in the log. It brings 5 small packages of the same makers. |
+| `time` | Writes the date and the time in the log. It comes with 5 small packages of the same makers. |
 
 A new package gets into this list only when all of these are correct:
 
@@ -137,7 +137,7 @@ A new package gets into this list only when all of these are correct:
 
 ## Output for a chat
 
-An AI in a chat runs the command most of the time. Keep the output of the command short, so the chat keeps its context. The command prints one short line for each step and a note of 300 characters maximum. The full text goes into the log and the trace files.
+An AI in a chat runs the command most of the time. Keep the output of the command short, so the chat keeps its context. The command prints one short line for each step and a note of 300 characters maximum. The full text goes into the log and the `trace` files.
 
 ## Rules for growth
 
