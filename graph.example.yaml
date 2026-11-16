@@ -62,11 +62,11 @@ steps:
     role: checker
     reads: [spec, tests]
     on_bad: repair
-    next: push
+    next: no_locked_files
 
   # A builder repairs the code. Then the checker looks again.
-  # The builder gets the report of the checker, or your text after a no.
-  # The 3 tries are for bad checks and for your no answers together.
+  # The builder gets the report of the checker.
+  # The 3 tries are for all the bad checks of one run.
   repair:
     role: builder
     reads: [spec]
@@ -74,13 +74,24 @@ steps:
     on_limit: stop_for_person
     next: check
 
+  # The run stops here if the work changes a file in a locked folder.
+  # A worker cannot write to these folders, but git can put such a file
+  # into a commit. `origin/HEAD` is the default branch of the GitHub project.
+  # Remove a folder from the list if your task must change it.
+  no_locked_files:
+    type: command
+    run:
+      - [git, diff, --quiet, "origin/HEAD...codeumbrella/{run}", --, .github, .claude, .codeumbrella]
+    next: push
+
   # The supervisor sends the code to GitHub. No worker can push or merge.
   # Change the three steps below if your project does not use GitHub.
   # core.hooksPath: the push runs no script from the project folder.
+  # The two full names make the push go only to the branch of the run.
   push:
     type: command
     run:
-      - [git, -c, core.hooksPath=/dev/null, push, --set-upstream, origin, "codeumbrella/{run}"]
+      - [git, -c, core.hooksPath=/dev/null, push, --set-upstream, origin, "refs/heads/codeumbrella/{run}:refs/heads/codeumbrella/{run}"]
     next: find_pr
 
   # Is there a PR for this run? Yes: go to your approval. No: open one.

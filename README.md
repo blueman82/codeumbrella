@@ -6,6 +6,8 @@ Code goes into `main` only after two things. First, the code agrees with the tes
 
 The factory stops two times for you. First, you look at the tests. Second, you give approval for the `pull request` (PR). A PR is a proposal to add code to `main`. You answer yes or no each time.
 
+The page [ARCHITECTURE.md](ARCHITECTURE.md) shows the parts and the path of a task in two pictures.
+
 ## Requirements: what the computer must have
 
 - Rust with `cargo`, to build the `codeumbrella` command. Check: `cargo --version`

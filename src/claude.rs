@@ -30,27 +30,31 @@ impl Worker for Claude {
     fn run(&self, job: &Job) -> Result<Outcome> {
         let rules = fs::read_to_string(job.rules)
             .with_context(|| format!("cannot read the rules page {}", job.rules.display()))?;
-        // `{project}` in the settings is the full path of the project folder.
-        let settings = fs::read_to_string(job.rules.with_extension("claude.json"));
-        let project = env::current_dir()?;
+        // In the settings, `{project}` is the full path of the project folder
+        // and `{run}` is the run id. A role with no settings file is an error.
+        let path = job.rules.with_extension("claude.json");
+        let settings = fs::read_to_string(&path)
+            .with_context(|| format!("cannot read the settings {}", path.display()))?;
+        let run = job.dir.file_name().unwrap_or_default().to_string_lossy();
         let settings = settings
-            .unwrap_or_default()
-            .replace("{project}", &project.to_string_lossy());
+            .replace("{project}", &env::current_dir()?.to_string_lossy())
+            .replace("{run}", &run);
         let (out, err) = files(job);
-        let mut command = Command::new("claude");
-        command
+        let child = Command::new("claude")
             .args(["-p", &prompt(job), "--append-system-prompt", &rules])
             .args(["--output-format", "stream-json", "--verbose"])
             .args(["--json-schema", SCHEMA])
             .args(["--permission-mode", "dontAsk"])
             .args(["--setting-sources", "project"])
+            .args(["--settings", &settings])
+            // The worker does not get the GitHub token of the person.
+            .env_remove("GH_TOKEN")
+            .env_remove("GITHUB_TOKEN")
             .stdin(Stdio::null())
             .stdout(File::create(&out)?)
-            .stderr(File::create(&err)?);
-        if !settings.is_empty() {
-            command.args(["--settings", &settings]);
-        }
-        let child = command.spawn().context("cannot start the claude command")?;
+            .stderr(File::create(&err)?)
+            .spawn()
+            .context("cannot start the claude command")?;
         wait(child, self.time_limit)?;
         // The last line of the trace is the result.
         let text = fs::read_to_string(&out)?;
@@ -90,10 +94,7 @@ pub(crate) fn wait(mut child: Child, limit: Duration) -> Result<()> {
 
 /// Writes the instructions for one worker.
 pub(crate) fn prompt(job: &Job) -> String {
-    let run = job
-        .dir
-        .file_name()
-        .map_or_else(String::new, |n| n.to_string_lossy().into_owned());
+    let run = job.dir.file_name().unwrap_or_default().to_string_lossy();
     let papers = job.dir.join("papers");
     let mut text = format!(
         "Task: {}\n\nYou do the step \"{}\" of the run with the id {run}.\n\

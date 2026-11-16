@@ -18,7 +18,7 @@ The supervisor knows nothing about software work. All knowledge of the steps is 
 |---|---|
 | Sheet | `.codeumbrella/graph.yaml` in a project: the steps and the rules between them. `graph.example.yaml` is the default. |
 | Step | One piece of the work. A worker does it, a person does it, or the supervisor runs its commands. |
-| Supervisor | The code in `src/graph.rs`, `src/engine.rs` and `src/main.rs`. |
+| Supervisor | The code in `src/graph.rs`, `src/engine.rs`, `src/main.rs`, `src/log.rs` and `src/lib.rs`. |
 | Tool part | The code that starts one type of worker. `src/claude.rs` is the part for Claude. `src/codex.rs` is the part for Codex. |
 | Notebook | `.codeumbrella/runs/<run-id>/state.json`: where the run is. |
 | Log | `log.jsonl` in the run folder: one line for each step that ended. |
@@ -55,7 +55,7 @@ To install the command and the chat command on a computer, run `./install.sh`.
 | `graph.example.yaml` | The default sheet, with a comment for each option. `init` copies it into a project. |
 | `default.gitignore` | The default ignore file. `init` gives it to a project that has no `.gitignore`. |
 | `roles/<role>.md` | The default rules page of each role, written by hand. |
-| `roles/<role>.claude.json` | The Claude permissions and the sandbox settings of each role. In this file, `{project}` is the full path of the project folder. |
+| `roles/<role>.claude.json` | The Claude permissions and the sandbox settings of each role. In this file, `{project}` is the full path of the project folder and `{run}` is the id of the run. |
 | `src/graph.rs` | Reads the sheet and finds its errors before a run. |
 | `src/engine.rs` | Does one step at a time, keeps the notebook, keeps the papers safe. |
 | `src/main.rs` | The `codeumbrella` command. |
@@ -88,19 +88,25 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 
 - The supervisor opens the PR. Then the run always stops for the approval of the person. The merge comes only after a yes. A no with a text sends the work back to the planner. The person then sees the tests again.
 - No worker can push, open a PR or merge. Only the command steps `push`, `open_pr` and `merge` can, with the set commands in the sheet.
+- The push command gives the full name of the run `branch` two times. Thus a push cannot go to a different `branch`. A test on 16 November 2026 showed that the short name can send worker code to `main`.
+- The step `no_locked_files` stops the run if the work changes `.github`, `.claude` or `.codeumbrella`. A worker cannot write to these folders, but git can put such a file into a commit.
+- A worker does not get the values `GH_TOKEN` and `GITHUB_TOKEN` of the person.
+- A role with no settings file is an error. A worker does not start with no settings.
 - A paper can change only in a step that lists it in `writes`. The supervisor keeps a fingerprint of each paper. Before each step, the supervisor compares all the papers with their fingerprints. If a paper is different, the run stops. The person can change a paper while the run waits for an answer. The answer makes the fingerprints again.
 - All factory files of a project are in the folder `.codeumbrella`: the sheet, the rules pages and the runs. The folder has its own `.gitignore`, so git does not see it.
-- The planner has no shell. The builder and the checker can run all commands, but only in the sandbox.
+- The Claude planner has no shell. The builder and the checker can run all commands, but only in the sandbox.
 - The builder and the checker can connect to a server on the same computer, for example a test database. A test on 16 November 2026 showed that the internet and GitHub stay closed with this setting. A worker can thus talk to each server that runs on the computer of the person.
 - The Codex part always turns on the Codex network proxy. Without the proxy, a Codex role that has network settings gets the full internet.
 - Workers have no internet. The packages of a project must be on the computer before a run. A test on 16 November 2026 showed the cause. With internet, a worker can use the GitHub key of the person.
 - The builder and the checker run in the Claude sandbox. They cannot write to `.codeumbrella`, `.claude`, `.github`, `.git/hooks` or `.git/config`. They cannot write to a folder that is not in the project.
 - A deny rule such as `Edit(.codeumbrella/**)` is what makes the sandbox lock a path. The tests of 15 November 2026 showed this. The setting `sandbox.filesystem.denyWrite` with a relative path did nothing in those tests.
 - A deny rule without the sandbox is not sufficient. A script that a permitted command starts can go around it.
-- Each Codex role runs in the Codex sandbox with the settings in `roles/<role>.codex.txt`. The locked paths are the same as for Claude. The planner can write only to its two papers. The Codex sandbox has no network, so a Codex worker cannot push.
+- Each Codex role runs in the Codex sandbox with the settings in `roles/<role>.codex.txt`. The locked paths are the same as for Claude. The planner can write only to the two papers of its run. The Codex sandbox has no internet, so a Codex worker cannot push.
 - The sandbox is the only wall for the commands of a worker, for Claude and for Codex.
 - `init --update` copies each changed factory file to `<name>.before`, then writes the default. It does not touch `runs` or the `.gitignore` of the project folder.
-- The command steps were not tested with a GitHub project.
+- A paper that a step writes is not compared before that step. Thus a writer can run again after a try that broke its paper.
+- After a stop for a changed paper, `resume` stops again. A person must put the paper back first.
+- The plan step has 3 tries for one run. The first plan uses one. Thus 2 no answers are possible before a stop.
 - Each role has one rules page.
 
 ## Rust rules
@@ -157,7 +163,7 @@ An AI in a chat runs the command most of the time. Keep the output of the comman
 3. Each time you add a part, look for a part to remove.
 4. If a rule is too complex for the sheet, the worker makes that decision, not the supervisor.
 5. Copy no part from a different project until a run shows that it is necessary.
-6. One source for Claude and Codex. Only the tool parts and the `roles/<role>.<tool>.json` files are different for each tool.
+6. One source for Claude and Codex. Only the tool parts and the settings files of the roles are different for each tool.
 
 ## Not in version 1
 

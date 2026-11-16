@@ -193,7 +193,9 @@ impl Run {
     ) -> Result<Option<Outcome>> {
         let before = self.state.last.clone();
         // Before each step, also a step for the person: no paper changed.
-        for paper in step.reads.iter().chain(self.state.prints.keys()) {
+        // A paper that this step writes is not compared: the step writes it again.
+        let papers = step.reads.iter().chain(self.state.prints.keys());
+        for paper in papers.filter(|p| !step.writes.contains(p)) {
             if self.state.prints.get(paper) != Some(&fingerprint(&self.paper(paper))?) {
                 bail!("the paper {paper} is not as its writer left it");
             }

@@ -26,6 +26,8 @@ impl Worker for Codex {
         let schema = job.dir.join("schema.json");
         fs::write(&schema, SCHEMA)?;
         let out = job.dir.join(format!("{}.out.json", job.step));
+        // A new try must write its own result.
+        let _ = fs::remove_file(&out);
         let (trace, err) = files(job);
         let child = Command::new("codex")
             .args(["exec", "--json", "--ephemeral", "--ignore-user-config"])
@@ -38,6 +40,9 @@ impl Worker for Codex {
             .arg("--output-last-message")
             .arg(&out)
             .arg(format!("{rules}\n\n{}", prompt(job)))
+            // The worker does not get the GitHub token of the person.
+            .env_remove("GH_TOKEN")
+            .env_remove("GITHUB_TOKEN")
             .stdin(Stdio::null())
             .stdout(File::create(trace)?)
             .stderr(File::create(err)?)

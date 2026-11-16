@@ -313,7 +313,38 @@ fn the_sheet_check_finds_errors() {
 
 #[test]
 fn the_sheet_of_the_project_is_correct() {
-    let (graph, _) = sheet();
-    assert_eq!(graph.steps.len(), 10);
+    let graph = Graph::load(&root().join("graph.example.yaml"), &root().join("roles")).unwrap();
     assert!(Path::new(&root().join("roles/planner.md")).is_file());
+    // The push names the branch of the run in full on the two sides.
+    let name = "refs/heads/codeumbrella/{run}";
+    let push = &graph.step("push").unwrap().run;
+    assert_eq!(push.len(), 1);
+    assert_eq!(push[0].last().unwrap(), &format!("{name}:{name}"));
+    assert!(!push[0].iter().any(|w| w.contains("force") || w == "-f"));
+    // The check for locked folders comes after each good check and before the push.
+    assert_eq!(
+        graph.step("check").unwrap().next.as_deref(),
+        Some("no_locked_files")
+    );
+    let guard = graph.step("no_locked_files").unwrap();
+    assert_eq!(guard.next.as_deref(), Some("push"));
+    assert_eq!(
+        guard.run[0].join(" "),
+        "git diff --quiet origin/HEAD...codeumbrella/{run} -- .github .claude .codeumbrella"
+    );
+}
+
+#[test]
+fn a_step_can_run_again_after_its_own_try_broke_its_papers() {
+    let (graph, roles) = sheet();
+    let worker = Script::default();
+    let mut run = Run::start(folder(), "a task", &graph).unwrap();
+    run.go(&graph, &roles, &worker).unwrap();
+    // A second planner try wrote a part of its papers and then gave an error.
+    // The run stopped at the plan step, and the person runs `resume`.
+    run.state.at = Some("plan".to_owned());
+    fs::write(run.dir.join("papers/spec/file.md"), "half a plan").unwrap();
+    run.go(&graph, &roles, &worker).unwrap();
+    assert_eq!(run.state.status, Status::Waiting);
+    assert_eq!(*worker.calls.borrow(), ["plan", "plan"]);
 }
