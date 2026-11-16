@@ -53,9 +53,10 @@ steps:
     role: checker
     reads: [spec, tests]
     on_bad: repair
-    next: open_pr
+    next: push
 
   # A builder repairs the code. Then the checker looks again.
+  # The builder gets the report of the checker, or your text after a no.
   repair:
     role: builder
     reads: [spec]
@@ -63,19 +64,36 @@ steps:
     on_limit: stop_for_person
     next: check
 
-  # The supervisor sends the code to GitHub and opens the PR. No worker can
-  # push or merge. Change these commands if your project does not use GitHub.
+  # The supervisor sends the code to GitHub. No worker can push or merge.
+  # Change the three steps below if your project does not use GitHub.
   # core.hooksPath: the push runs no script from the project folder.
-  open_pr:
+  push:
     type: command
     run:
       - [git, -c, core.hooksPath=/dev/null, push, --set-upstream, origin, "codeumbrella/{run}"]
+    next: find_pr
+
+  # Is there a PR for this run? Yes: go to your approval. No: open one.
+  find_pr:
+    type: command
+    run:
+      - [gh, pr, view, "codeumbrella/{run}", --json, url, --jq, .url]
+    on_bad: open_pr
+    next: approval
+
+  open_pr:
+    type: command
+    run:
       - [gh, pr, create, --head, "codeumbrella/{run}", --fill]
+    max_tries: 2
     next: approval
 
   # You look at the PR on GitHub and answer yes or no.
+  # A no with your text sends the work back to the builder. Then the checker
+  # looks again, the PR gets the new code, and the run comes back to you.
   approval:
     type: person
+    on_bad: repair
     next: merge
 
   # GitHub refuses the merge if a necessary check of the PR is not good.

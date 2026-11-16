@@ -39,7 +39,7 @@ const DEFAULTS: &[(&str, &str)] = &[
     role!("checker.codex.txt"),
 ];
 
-/// A software factory: give it a task, get good code.
+/// A software factory: it puts code into main after the tests and your approval.
 #[derive(Parser)]
 #[command(version, about)]
 struct Cli {

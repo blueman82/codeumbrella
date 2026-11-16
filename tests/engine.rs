@@ -101,7 +101,7 @@ fn a_good_run_stops_two_times_for_the_person_and_then_ends() {
     assert_eq!(run.state.status, Status::Done);
     assert_eq!(*worker.calls.borrow(), ["plan", "build", "check"]);
     // The PR opens before the approval. The merge comes after it.
-    assert!(run.state.results.contains_key("open_pr"));
+    assert!(run.state.results.contains_key("find_pr"));
     assert!(run.state.results.contains_key("merge"));
 }
 
@@ -169,18 +169,34 @@ fn a_no_from_the_person_goes_back_to_the_plan() {
 }
 
 #[test]
-fn a_no_at_the_approval_stops_the_run_before_the_merge() {
+fn a_no_at_the_approval_sends_the_work_back_to_the_builder() {
     let (graph, roles) = sheet();
     let worker = Script::default();
     let mut run = Run::start(folder(), "a task", &graph).unwrap();
     run.go(&graph, &roles, &worker).unwrap();
     run.answer(true, "").unwrap();
     run.go(&graph, &roles, &worker).unwrap();
-    run.answer(false, "Not good.").unwrap();
+    run.answer(false, "Change the heading.").unwrap();
     run.go(&graph, &roles, &worker).unwrap();
-    assert_eq!(run.state.status, Status::Stopped);
-    assert!(run.state.results.contains_key("open_pr"));
+    // The builder repairs, the checker looks again, and the run comes back to the person.
+    assert_eq!(run.state.status, Status::Waiting);
+    assert_eq!(run.state.at.as_deref(), Some("approval"));
+    assert_eq!(
+        *worker.calls.borrow(),
+        ["plan", "build", "check", "repair", "check"]
+    );
     assert!(!run.state.results.contains_key("merge"));
+}
+
+#[test]
+fn a_bad_command_goes_to_its_on_bad_step() {
+    let text = "start: a\nsteps:\n  a: {type: command, run: [[false]], on_bad: b}\n  b: {type: command, run: [[true]], max_tries: 1}\n";
+    let graph: Graph = yaml_serde::from_str(text).unwrap();
+    let mut run = Run::start(folder(), "a task", &graph).unwrap();
+    run.go(&graph, &root().join("roles"), &Script::default())
+        .unwrap();
+    assert_eq!(run.state.status, Status::Done);
+    assert!(run.state.results.contains_key("b"));
 }
 
 /// Does a sheet with one command step, and gives back the run.
@@ -250,7 +266,7 @@ fn a_worker_change_to_a_paper_stops_the_run_before_the_question_for_the_person()
     // The run does not get to the approval step, where an answer makes new fingerprints.
     assert_eq!(run.state.status, Status::Stopped);
     assert!(run.state.note.contains("paper tests"), "{}", run.state.note);
-    assert!(!run.state.results.contains_key("open_pr"));
+    assert!(!run.state.results.contains_key("find_pr"));
 }
 
 #[test]
@@ -286,6 +302,6 @@ fn the_sheet_check_finds_errors() {
 #[test]
 fn the_sheet_of_the_project_is_correct() {
     let (graph, _) = sheet();
-    assert_eq!(graph.steps.len(), 8);
+    assert_eq!(graph.steps.len(), 10);
     assert!(Path::new(&root().join("roles/planner.md")).is_file());
 }
