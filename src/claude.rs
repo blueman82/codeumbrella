@@ -1,9 +1,9 @@
 //! The tool part for Claude: it starts one `claude -p` worker for one step.
 
 use crate::engine::{Job, Outcome, Worker};
-use anyhow::{Context, Result, bail};
+use anyhow::{Context, Result, bail, ensure};
 use serde::Deserialize;
-use std::process::{Child, Command, Stdio};
+use std::process::{Child, Command, ExitStatus, Stdio};
 use std::time::{Duration, Instant};
 use std::{env, fmt::Write as _, fs, fs::File, path::PathBuf, thread};
 
@@ -44,8 +44,10 @@ impl Worker for Claude {
             .args(["-p", &prompt(job), "--append-system-prompt", &rules])
             .args(["--output-format", "stream-json", "--verbose"])
             .args(["--json-schema", SCHEMA])
-            .args(["--permission-mode", "dontAsk"])
-            .args(["--setting-sources", "project"])
+            // Only the settings of the role count. The worker loads no settings,
+            // hooks or tool servers of the project or of the person.
+            .args(["--permission-mode", "dontAsk", "--strict-mcp-config"])
+            .args(["--setting-sources", ""])
             .args(["--settings", &settings])
             // The worker does not get the GitHub token of the person.
             .env_remove("GH_TOKEN")
@@ -55,7 +57,7 @@ impl Worker for Claude {
             .stderr(File::create(&err)?)
             .spawn()
             .context("cannot start the claude command")?;
-        wait(child, self.time_limit)?;
+        let status = wait(child, self.time_limit)?;
         // The last line of the trace is the result.
         let text = fs::read_to_string(&out)?;
         let reply: Reply = serde_json::from_str(text.lines().last().unwrap_or_default())
@@ -63,6 +65,7 @@ impl Worker for Claude {
         if reply.is_error {
             bail!("claude reported an error: {}", reply.result);
         }
+        ensure!(status.success(), "claude ended with an error: {status}");
         reply
             .structured_output
             .context("claude gave no result in the correct format")
@@ -78,10 +81,14 @@ pub(crate) fn files(job: &Job) -> (PathBuf, PathBuf) {
     (name(n, "trace.jsonl"), name(n, "err.txt"))
 }
 
-/// Waits until a worker ends. Stops the worker at the time limit.
-pub(crate) fn wait(mut child: Child, limit: Duration) -> Result<()> {
+/// Waits until a worker ends, and gives its exit status. Stops the worker at
+/// the time limit.
+pub(crate) fn wait(mut child: Child, limit: Duration) -> Result<ExitStatus> {
     let end = Instant::now() + limit;
-    while child.try_wait()?.is_none() {
+    loop {
+        if let Some(status) = child.try_wait()? {
+            return Ok(status);
+        }
         if Instant::now() > end {
             child.kill()?;
             child.wait()?;
@@ -89,7 +96,6 @@ pub(crate) fn wait(mut child: Child, limit: Duration) -> Result<()> {
         }
         thread::sleep(Duration::from_millis(500));
     }
-    Ok(())
 }
 
 /// Writes the instructions for one worker.
@@ -106,12 +112,8 @@ pub(crate) fn prompt(job: &Job) -> String {
     let _ = writeln!(text, "Papers that you read: {}", job.reads.join(", "));
     let _ = writeln!(text, "Papers that you write: {}", job.writes.join(", "));
     if let Some(before) = job.before {
-        let word = if before.ok { "good" } else { "bad" };
-        let _ = writeln!(
-            text,
-            "Result of the step before ({word}): {}",
-            before.summary
-        );
+        let (word, sum) = (if before.ok { "good" } else { "bad" }, &before.summary);
+        let _ = writeln!(text, "Result of the step before ({word}): {sum}");
     }
     text.push_str("When you end, give ok and a short summary, as your rules page says.");
     text

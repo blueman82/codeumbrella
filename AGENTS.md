@@ -40,7 +40,7 @@ codeumbrella init --update                     # replace changed factory files w
 codeumbrella run "<task>"                      # start a run with Claude workers
 codeumbrella --tool codex run "<task>"         # start a run with Codex workers
 codeumbrella status [run-id]                   # show where a run is
-codeumbrella answer <run-id> yes|no ["text"]   # answer the open question, then continue
+codeumbrella answer <run-id> <step> yes|no ["text"]   # answer the question of that step, then continue
 codeumbrella resume <run-id>                   # try a stopped step again, with its count of tries at 0
 ```
 
@@ -72,11 +72,12 @@ To install the command and the chat command on a computer, run `./install.sh`.
 | `.codex-plugin/` | The Codex plugin file: `plugin.json`. |
 | `.agents/plugins/` | The Codex marketplace file `marketplace.json`. |
 | `tests/packaging.rs` | Tests of the plugin files and the README. |
+| `tests/walls.rs` | Tests of the safety settings and the safety checks. Each one becomes bad if a wall goes. |
 | `install.sh` | Installs the command and the chat command. |
 
 ## The sheet
 
-The file `graph.example.yaml` tells what each line does. A step can have only these lines: `role`, `type`, `run`, `reads`, `writes`, `next`, `on_bad`, `max_tries`, `on_limit`. The sheet also has one `start` line.
+The file `graph.example.yaml` tells what each line does. A step can have only these lines: `role`, `type`, `run`, `reads`, `writes`, `next`, `on_bad`, `max_tries`. The sheet also has one `start` line.
 
 - A step with `type: person` stops the run until the person answers yes or no.
 - A step with `type: command` has a `run` line: a list of commands. The supervisor runs them itself, with no shell and no worker. In a word, `{run}` is the id of the run. If a command gives an error, the result is bad.
@@ -88,10 +89,18 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 
 - The supervisor opens the PR. Then the run always stops for the approval of the person. The merge comes only after a yes. A no with a text sends the work back to the planner. The person then sees the tests again.
 - No worker can push, open a PR or merge. Only the command steps `push`, `open_pr` and `merge` can, with the set commands in the sheet.
-- The push command gives the full name of the run `branch` two times. Thus a push cannot go to a different `branch`. A test on 16 November 2026 showed that the short name can send worker code to `main`.
 - The step `no_locked_files` stops the run if the work changes `.github`, `.claude` or `.codeumbrella`. A worker cannot write to these folders, but git can put such a file into a commit.
-- That step first gets the default `branch` from GitHub again, and it uses full names. A worker can write to `.git`, so a local name or a tag is not safe to compare with.
+- A worker can write to the `.git` folder of the project. Thus that step and the push do not use it. They use a clean copy in the run folder, which no worker can write to.
+- The clean copy gets the code of GitHub from GitHub. It gets only the `branch` of the run from the project. The push sends the commit that the step compared.
+- The push gives the full name of the run `branch` two times. Thus it cannot go to a different `branch`. Tests on 16 November 2026 showed these attacks with git.
+- An answer names its step. An answer for a different step is an error. Thus a yes for the tests cannot become a yes for the merge.
+- Only one command can work on a run at a time. The file `lock` in the run folder shows this. After a kill, a person removes that file.
+- A worker that ends with an error code gives no good result.
 - A worker does not get the values `GH_TOKEN` and `GITHUB_TOKEN` of the person.
+- For a Claude worker, only the settings file of its role counts. The worker loads no settings, hooks or tool servers of the project or of the person.
+- A live test on 16 November 2026 showed the cause. With the project settings, a hook of the project ran in a worker, with no sandbox.
+- Thus Claude does not load `AGENTS.md` and `CLAUDE.md` of a project by itself. Each rules page tells the worker to read them.
+- A Claude worker cannot read `~/.ssh`, `~/.config/gh`, `~/.netrc` and `~/.git-credentials`. It has no web tools. The Codex roles do not have this read lock.
 - A role with no settings file is an error. A worker does not start with no settings.
 - A paper can change only in a step that lists it in `writes`. The supervisor keeps a fingerprint of each paper. Before each step, the supervisor compares all the papers with their fingerprints. If a paper is different, the run stops. The person can change a paper while the run waits for an answer. The answer makes the fingerprints again.
 - All factory files of a project are in the folder `.codeumbrella`: the sheet, the rules pages and the runs. The folder has its own `.gitignore`, so git does not see it.
@@ -148,7 +157,7 @@ A new package gets into this list only when all of these are correct:
 
 ## Limits for lines of code
 
-- The supervisor (`src/graph.rs`, `src/engine.rs`, `src/main.rs`, `src/log.rs`, `src/lib.rs`): 460 lines of code.
+- The supervisor (`src/graph.rs`, `src/engine.rs`, `src/main.rs`, `src/log.rs`, `src/lib.rs`): 520 lines of code.
 - Each tool part: 100 lines of code.
 - Empty lines, comment lines and tests do not count.
 - Count with: `grep -v -E '^\s*(//|$)' <file> | wc -l`

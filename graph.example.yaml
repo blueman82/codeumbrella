@@ -30,8 +30,6 @@
 #   max_tries  The maximum number of times that the run does this step.
 #              At the maximum, the run stops and tells you. The count is for
 #              the full run. The command `resume` sets it to 0 for that step.
-#   on_limit   What occurs at `max_tries`. The only value is `stop_for_person`.
-#              The run stops at the maximum with or without this line.
 
 # The name of the first step.
 start: plan
@@ -71,31 +69,35 @@ steps:
     role: builder
     reads: [spec]
     max_tries: 3
-    on_limit: stop_for_person
     next: check
 
   # The run stops here if the work changes a file in a locked folder.
   # A worker cannot write to these folders, but git can put such a file
-  # into a commit. Remove a folder from the list if your task must change it.
-  # The first two commands get the default branch from GitHub again.
-  # A worker can change the local copy of that name, and a tag can hide a branch.
-  # Thus the third command uses full names only.
+  # into a commit. Remove a folder from the last command if your task must
+  # change it.
+  # A worker can write to the `.git` folder of the project. Thus this step
+  # and the push use a clean copy in the run folder, which no worker can
+  # write to. The copy gets the code of GitHub from GitHub, and only the
+  # branch of the run from the project.
   no_locked_files:
     type: command
     run:
-      - [git, -c, core.hooksPath=/dev/null, fetch, origin]
-      - [git, remote, set-head, origin, --auto]
-      - [git, -c, core.hooksPath=/dev/null, diff, --quiet, --no-ext-diff, --no-textconv, "refs/remotes/origin/HEAD...refs/heads/codeumbrella/{run}", --, .github, .claude, .codeumbrella]
+      - [git, init, --quiet, ".codeumbrella/runs/{run}/clean"]
+      - [git, -C, ".codeumbrella/runs/{run}/clean", config, include.path, ../../../../../.git/config]
+      - [git, -C, ".codeumbrella/runs/{run}/clean", fetch, --quiet, --recurse-submodules=no, origin]
+      - [git, -C, ".codeumbrella/runs/{run}/clean", remote, set-head, origin, --auto]
+      - [git, -C, ".codeumbrella/runs/{run}/clean", fetch, --quiet, --recurse-submodules=no, ../../../.., "+refs/heads/codeumbrella/{run}:refs/heads/codeumbrella/{run}"]
+      - [git, -C, ".codeumbrella/runs/{run}/clean", --no-replace-objects, diff, --quiet, --no-ext-diff, --no-textconv, --ignore-submodules=all, "refs/remotes/origin/HEAD...refs/heads/codeumbrella/{run}", --, .github, .claude, .codeumbrella]
     next: push
 
   # The supervisor sends the code to GitHub. No worker can push or merge.
   # Change the three steps below if your project does not use GitHub.
-  # core.hooksPath: the push runs no script from the project folder.
-  # The two full names make the push go only to the branch of the run.
+  # The push sends the commit that the step before looked at, from the
+  # clean copy. The two full names make it go only to the branch of the run.
   push:
     type: command
     run:
-      - [git, -c, core.hooksPath=/dev/null, push, --set-upstream, origin, "refs/heads/codeumbrella/{run}:refs/heads/codeumbrella/{run}"]
+      - [git, -C, ".codeumbrella/runs/{run}/clean", push, --quiet, origin, "refs/heads/codeumbrella/{run}:refs/heads/codeumbrella/{run}"]
     next: find_pr
 
   # Is there a PR for this run? Yes: go to your approval. No: open one.

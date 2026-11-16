@@ -1,6 +1,6 @@
 //! The `codeumbrella` command.
 
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, ensure};
 use clap::{Parser, Subcommand, ValueEnum};
 use codeumbrella::claude::Claude;
 use codeumbrella::codex::Codex;
@@ -75,6 +75,8 @@ enum Cmd {
     /// Answer the open question of a run, then continue.
     Answer {
         run: String,
+        /// The step that has the question: `look_at_tests` or `approval`.
+        step: String,
         answer: YesNo,
         #[arg(default_value = "")]
         text: String,
@@ -108,7 +110,13 @@ fn main() -> Result<()> {
             Run::open(newest.context("there are no runs in this folder")?)?
         }
     };
-    if let Cmd::Answer { answer, text, .. } = &cli.command {
+    if let Cmd::Answer {
+        step, answer, text, ..
+    } = &cli.command
+    {
+        // An answer is for one question only. A second send does not answer the next one.
+        let at = run.state.at.as_deref().unwrap_or("no step");
+        ensure!(at == step, "the run is at {at}, not at {step}");
         run.answer(*answer == YesNo::Yes, text)?;
     }
     if let (Cmd::Resume { .. }, Some(at)) = (&cli.command, &run.state.at) {

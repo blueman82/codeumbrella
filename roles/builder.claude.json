@@ -14,7 +14,13 @@
       "Edit(.claude/**)",
       "Edit(.github/**)",
       "Edit(.git/hooks/**)",
-      "Edit(.git/config)"
+      "Edit(.git/config)",
+      "WebFetch",
+      "WebSearch",
+      "Read(~/.ssh/**)",
+      "Read(~/.config/gh/**)",
+      "Read(~/.netrc)",
+      "Read(~/.git-credentials)"
     ]
   },
   "sandbox": {
@@ -23,6 +29,15 @@
     "failIfUnavailable": true,
     "network": {
       "allowLocalBinding": true
+    },
+    "filesystem": {
+      "denyRead": [
+        "~/.ssh",
+        "~/.config/gh",
+        "~/.netrc",
+        "~/.git-credentials"
+      ]
     }
-  }
+  },
+  "disableAllHooks": true
 }

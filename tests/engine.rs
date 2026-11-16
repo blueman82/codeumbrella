@@ -315,26 +315,15 @@ fn the_sheet_check_finds_errors() {
 fn the_sheet_of_the_project_is_correct() {
     let graph = Graph::load(&root().join("graph.example.yaml"), &root().join("roles")).unwrap();
     assert!(Path::new(&root().join("roles/planner.md")).is_file());
-    // The push names the branch of the run in full on the two sides.
-    let name = "refs/heads/codeumbrella/{run}";
-    let push = &graph.step("push").unwrap().run;
-    assert_eq!(push.len(), 1);
-    assert_eq!(push[0].last().unwrap(), &format!("{name}:{name}"));
-    assert!(!push[0].iter().any(|w| w.contains("force") || w == "-f"));
     // The check for locked folders comes after each good check and before the push.
     assert_eq!(
         graph.step("check").unwrap().next.as_deref(),
         Some("no_locked_files")
     );
-    let guard = graph.step("no_locked_files").unwrap();
-    assert_eq!(guard.next.as_deref(), Some("push"));
-    // It gets the default branch from GitHub first, and it uses full names.
-    assert_eq!(guard.run.len(), 3);
-    assert_eq!(guard.run[0].last().unwrap(), "origin");
-    assert_eq!(guard.run[1].join(" "), "git remote set-head origin --auto");
-    let diff = guard.run[2].join(" ");
-    assert!(diff.contains("refs/remotes/origin/HEAD...refs/heads/codeumbrella/{run}"));
-    assert!(diff.ends_with("-- .github .claude .codeumbrella"));
+    assert_eq!(
+        graph.step("no_locked_files").unwrap().next.as_deref(),
+        Some("push")
+    );
 }
 
 #[test]

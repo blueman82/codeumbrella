@@ -2,7 +2,7 @@
 
 use crate::claude::{SCHEMA, files, prompt, wait};
 use crate::engine::{Job, Outcome, Worker};
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, ensure};
 use std::process::{Command, Stdio};
 use std::{fs, fs::File, time::Duration};
 
@@ -48,7 +48,8 @@ impl Worker for Codex {
             .stderr(File::create(err)?)
             .spawn()
             .context("cannot start the codex command")?;
-        wait(child, self.time_limit)?;
+        let status = wait(child, self.time_limit)?;
+        ensure!(status.success(), "codex ended with an error: {status}");
         let text = fs::read_to_string(&out).with_context(|| {
             format!(
                 "codex gave no result; see the files of the step {}",

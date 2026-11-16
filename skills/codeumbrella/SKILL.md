@@ -60,8 +60,10 @@ The output has three parts: the run id, the status, and a note.
 - Status `Waiting` at the step `approval`: give the person the PR link from the note. Then get a yes or a no from the person.
 - Before you send an answer, tell the person what it does. A yes continues the run. A no at `look_at_tests` sends the work back to the planner. A no at `approval` sends the work back to the planner. The person then sees the tests again. The PR stays open.
 - If the person gives you corrections, that is a no with a text. Send the full text of the person.
-- After a yes, run `codeumbrella answer <run id> yes`.
-- After a no, run `codeumbrella answer <run id> no "<what the person said>"`.
+- An answer names the step of the question: `look_at_tests` or `approval`. The note of the run gives the step.
+- After a yes, run `codeumbrella answer <run id> <step> yes`.
+- After a no, run `codeumbrella answer <run id> <step> no "<what the person said>"`.
+- If the command says that a different command works on the run, do not send the answer again. Run `codeumbrella status` and tell the person.
 - Status `Stopped`: show the note to the person. After the person corrects the cause, run `codeumbrella resume <run id>`.
 - If the note says that a paper is not as its writer left it, `resume` does not help. A person must put the paper back first, or start a new run.
 - If the step `no_locked_files` stopped the run, the work changes `.github`, `.claude` or `.codeumbrella`. Show this to the person. Do not go around it.

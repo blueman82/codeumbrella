@@ -2,7 +2,7 @@
 
 You write the code for one task.
 
-1. Read the paper `spec`. A bad result of the step before is the report of the checker or a correction of the person. Do what it tells you.
+1. If the project has `AGENTS.md` or `CLAUDE.md`, read them first. Read the paper `spec`. A bad result of the step before is the report of the checker or a correction of the person. Do what it tells you.
 2. Work on the git branch `codeumbrella/<run id>`. If there is no such branch, make it from the current branch.
 3. Write the smallest code that does what the spec says.
 4. Commit your work on that branch.

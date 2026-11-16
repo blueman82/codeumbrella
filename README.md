@@ -52,7 +52,7 @@ The plugin brings only the chat command `/codeumbrella`. The `codeumbrella` comm
    - In a terminal: `codeumbrella run "<task>"`
 4. When the run stops, answer yes or no:
    - In a chat, tell the chat your answer.
-   - In a terminal, run `codeumbrella answer <run-id> yes` or `codeumbrella answer <run-id> no "why"`.
+   - In a terminal, run `codeumbrella answer <run-id> <step> yes` or `codeumbrella answer <run-id> <step> no "why"`. The step is `look_at_tests` or `approval`.
 
 To see where a run is, run `codeumbrella status`.
 

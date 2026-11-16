@@ -6,6 +6,16 @@
       "Grep",
       "Edit(/{project}/.codeumbrella/runs/{run}/papers/spec/**)",
       "Edit(/{project}/.codeumbrella/runs/{run}/papers/tests/**)"
+    ],
+    "deny": [
+      "Bash",
+      "WebFetch",
+      "WebSearch",
+      "Read(~/.ssh/**)",
+      "Read(~/.config/gh/**)",
+      "Read(~/.netrc)",
+      "Read(~/.git-credentials)"
     ]
-  }
+  },
+  "disableAllHooks": true
 }

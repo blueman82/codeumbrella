@@ -17,14 +17,6 @@ pub enum Kind {
     Command,
 }
 
-/// What the supervisor does when a step reaches `max_tries`.
-#[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "snake_case")]
-pub enum OnLimit {
-    /// Stop the run and tell the person.
-    StopForPerson,
-}
-
 /// One step of the work.
 #[derive(Debug, Clone, Default, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -49,8 +41,6 @@ pub struct Step {
     pub on_bad: Option<String>,
     /// The maximum number of times that the run can do this step.
     pub max_tries: Option<u32>,
-    /// What to do at the maximum.
-    pub on_limit: Option<OnLimit>,
 }
 
 /// The full instruction sheet.
@@ -82,7 +72,8 @@ impl Graph {
     ///
     /// # Errors
     /// Gives an error for a step that does not exist, a worker step with no
-    /// rules page, a command step with no commands, a way back with no maximum, or `next` lines with no end.
+    /// rules page, a command step with no commands, a way back with no maximum,
+    /// a maximum of 0, a name that is a path, or `next` lines with no end.
     pub fn check(&self, roles: &Path) -> Result<()> {
         self.step(&self.start).context("the start line")?;
         for (name, step) in &self.steps {
@@ -106,6 +97,14 @@ impl Graph {
             }
             if (step.kind == Kind::Command) == step.run.is_empty() {
                 bail!("step {name}: a command step, and only a command step, has run lines");
+            }
+            if step.max_tries == Some(0) || step.run.iter().any(Vec::is_empty) {
+                bail!("step {name}: max_tries must be 1 or more, and a command must have words");
+            }
+            // A paper or a role is one folder or file name, not a path.
+            let mut names = step.reads.iter().chain(&step.writes).chain(&step.role);
+            if let Some(bad) = names.find(|n| n.contains(['/', '\\']) || n.starts_with('.')) {
+                bail!("step {name}: the name {bad} must not have a `/` or start with a `.`");
             }
             let (mut at, mut hops) = (Some(name), 0);
             while let Some(here) = at {

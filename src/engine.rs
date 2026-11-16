@@ -127,7 +127,10 @@ impl Run {
     /// Gives an error if the file cannot be written.
     pub fn save(&self) -> Result<()> {
         let text = serde_json::to_string_pretty(&self.state)?;
-        fs::write(self.dir.join("state.json"), text).context("cannot write the notebook")
+        // First a second file, then a rename. Thus a kill cannot break the notebook.
+        let tmp = self.dir.join("state.json.tmp");
+        fs::write(&tmp, text).context("cannot write the notebook")?;
+        fs::rename(tmp, self.dir.join("state.json")).context("cannot write the notebook")
     }
 
     /// Records the answer of the person to the open question, and makes the
@@ -153,10 +156,24 @@ impl Run {
     /// Does steps until the run ends, stops, or waits for the person.
     ///
     /// # Errors
-    /// Gives an error only if the notebook cannot be written. A problem in a
-    /// step stops the run and goes into the notebook.
+    /// Gives an error if a different command works on this run, or if the
+    /// notebook cannot be written. A problem in a step stops the run and goes
+    /// into the notebook.
     pub fn go(&mut self, graph: &Graph, roles: &Path, worker: &dyn Worker) -> Result<()> {
-        self.state.status = Status::Running;
+        // Only one command can work on a run at a time.
+        let lock = self.dir.join("lock");
+        fs::File::create_new(&lock).with_context(|| {
+            let lock = lock.display();
+            format!("a different command works on this run. If not, remove the file {lock}")
+        })?;
+        let result = self.steps(graph, roles, worker);
+        fs::remove_file(&lock)?;
+        result
+    }
+
+    /// Does the steps. The notebook shows `Running` from the start.
+    fn steps(&mut self, graph: &Graph, roles: &Path, worker: &dyn Worker) -> Result<()> {
+        self.halt(Status::Running, String::new())?;
         while let Some(name) = self.state.at.clone() {
             let step = graph.step(&name)?;
             let start = Instant::now();
