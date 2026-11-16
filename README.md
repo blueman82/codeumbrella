@@ -4,7 +4,7 @@ Codeumbrella is a software factory. You give it a task. It gives the task to wor
 
 The factory stops two times for you. First, you look at the tests. Second, you approve the pull request (PR, a request to add code to `main`). You answer yes or no each time.
 
-## What the computer must have
+## Requirements: what the computer must have
 
 - Rust with `cargo`, to build the `codeumbrella` command.
 - `git`, to keep the versions of the code.
