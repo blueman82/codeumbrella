@@ -303,6 +303,10 @@ echo '{"ok":true,"summary":"try 1"}' > "$2""#,
         "{args}"
     );
     assert!(
+        !args.contains("{home}") && !args.contains("{run}"),
+        "{args}"
+    );
+    assert!(
         !fs::read_to_string(dir.join("bin/env.txt"))
             .unwrap()
             .contains("a-secret")

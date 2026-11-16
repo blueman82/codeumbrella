@@ -61,7 +61,7 @@ To install the command and the chat command on a computer, run `./install.sh`.
 | `src/main.rs` | The `codeumbrella` command. |
 | `src/log.rs` | Writes one line in the log of a run for each step. |
 | `deny.toml` | The settings of the package check `cargo deny`. |
-| `roles/<role>.codex.txt` | The Codex sandbox settings of each role. In this file, `{run}` is the id of the run. |
+| `roles/<role>.codex.txt` | The Codex sandbox settings of each role. In this file, `{run}` is the id of the run and `{home}` is the home folder of the person. |
 | `src/claude.rs` | Starts one `claude -p` worker. |
 | `src/codex.rs` | Starts one `codex exec` worker. |
 | `tests/engine.rs` | Tests of the supervisor with a simulated worker. |
@@ -100,8 +100,8 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - For a Claude worker, only the settings file of its role counts. The worker uses no settings, hooks or tool servers of the project or of the person.
 - A live test on 16 November 2026 showed the cause. With the project settings, a hook of the project ran in a worker, with no sandbox.
 - Thus Claude does not read `AGENTS.md` and `CLAUDE.md` of a project by itself. Each rules page tells the worker to read them.
-- A Claude worker cannot read `~/.ssh`, `~/.config/gh`, `~/.netrc`, `~/.git-credentials` and `~/Library/Keychains`. It has no web tools.
-- A live test on 16 November 2026 showed that a worker in the sandbox got the GitHub key from the macOS key store. The lock on `~/Library/Keychains` stopped it.
+- No worker can read `~/.ssh`, `~/.config/gh`, `~/.netrc`, `~/.git-credentials` and `~/Library/Keychains`. A Claude worker has no web tools.
+- A live test on 16 November 2026 showed that a worker in the sandbox got the GitHub key from the macOS key store. The lock on `~/Library/Keychains` stopped it, for Claude and for Codex.
 - A role with no settings file is an error. A worker does not start with no settings.
 - A paper can change only in a step that lists it in `writes`. The supervisor keeps a fingerprint of each paper. Before each step, the supervisor compares all the papers with their fingerprints. If a paper is different, the run stops. The person can change a paper while the run waits for an answer. The answer makes the fingerprints again.
 - All factory files of a project are in the folder `.codeumbrella`: the sheet, the rules pages and the runs. The folder has its own `.gitignore`, so git does not see it.
