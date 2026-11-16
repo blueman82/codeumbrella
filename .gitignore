@@ -1,4 +1,31 @@
+# Build output of Rust
 /target
+**/*.rs.bk
+
+# Codeumbrella runs in this project
 /.codeumbrella
+
+# Files of AI tools that are only for one computer
 /.remember
+.claude/settings.local.json
+
+# Secrets. Do not commit them.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Files of the operating system
 .DS_Store
+Thumbs.db
+
+# Files of editors
+.idea/
+.vscode/
+*.swp
+*~
+
+# Logs and temporary files
+*.log
+*.tmp
