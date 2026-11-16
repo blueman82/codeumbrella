@@ -56,7 +56,7 @@ To see where a run is, run `codeumbrella status`.
 
 ## After you install a new version
 
-Run `codeumbrella init --update` in your project. It replaces each factory file that is different from the new default. It keeps your old file with `.before` at the end, for example `graph.yaml.before`. Move your changes back by hand. It prints one line for each file that it changed. It does not touch your runs or the `.gitignore` of your project.
+Run `codeumbrella init --update` in your project. It replaces each factory file that is different from the new default. It keeps a copy of your file with `.before` at the end, for example `graph.yaml.before`. Move your changes back by hand. It prints one line for each file that it changed. It does not touch your runs or the `.gitignore` of your project.
 
 ## Your two answers
 
