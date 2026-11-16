@@ -80,6 +80,16 @@ Add `--tool codex` after the word `codeumbrella` in each command:
 | `.codeumbrella/runs/<run-id>/<step>.<number>.trace.jsonl` | All that one worker did. |
 | `codeumbrella resume <run-id>` | Tries the stopped step again. |
 
+Three stops have their own cause:
+
+| The note says | What you do |
+|---|---|
+| A paper is not as its writer left it | A worker changed a paper. Put the paper back, or start a new run. `resume` does not help. |
+| The step `no_locked_files` gave a bad result | The work changes `.github`, `.claude` or `.codeumbrella`. If the task must do that, remove the folder from that step in `graph.yaml`. |
+| A different command works on this run | Wait until that command ends. After a kill, remove the file `lock` in the run folder. |
+
+The factory does not work in a linked git worktree.
+
 ## Change the factory
 
 | File in `.codeumbrella/` | What you change |
@@ -94,5 +104,7 @@ Add `--tool codex` after the word `codeumbrella` in each command:
 |---|---|
 | Write code in the project, and commit | Push, open a PR, or merge |
 | Run commands in a sandbox | Use the internet or GitHub |
-| Connect to a server on your computer | Write to `.codeumbrella`, `.github` or the git settings |
+| Connect to a server on your computer | Write to `.codeumbrella`, `.claude`, `.github` or the git settings |
 | | Write to a folder that is not the project |
+| | Read your key folders, for example `~/.ssh` and the macOS key store |
+| | Use the settings or the hooks of the project (Claude workers) |

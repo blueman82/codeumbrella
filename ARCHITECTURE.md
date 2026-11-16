@@ -10,19 +10,22 @@ YOU ── in a terminal, or through an AI in a chat
  ▼
 SUPERVISOR ── uses your GitHub key ──► GITHUB: push · PR · merge (merge only after your yes)
  │  reads the sheet · keeps the notebook, the log, a fingerprint of each paper
- │  starts one worker at a time
+ │  compares and pushes the work from a CLEAN COPY that no worker can write to
+ │  starts one worker at a time · one command for each run at a time (the lock)
  ▼
-┌─ WORKERS: no internet, thus no use of your GitHub key · no write to the factory files ─┐
-│ planner   writes the PAPERS: plan + tests. Claude: no shell. Codex: a sandbox.         │
-│ builder   in a sandbox · gets the plan             ──►  writes code on the run branch  │
-│ checker   in a sandbox · gets the plan + the tests ──►  copies the tests, runs them    │
-└────────────────────────────────────────────────────────────────────────────────────────┘
+┌─ WORKERS: no internet · no read of your key folders · no write to the factory files ──┐
+│ planner   writes the PAPERS: plan + tests. Claude: no shell. Codex: a sandbox.        │
+│ builder   in a sandbox · gets the plan             ──►  writes code on the run branch │
+│ checker   in a sandbox · gets the plan + the tests ──►  copies the tests, runs them   │
+└───────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 - The plan paper has the name `spec`.
 - The builder and the checker can connect to a server on the same computer, for example a database.
 - A worker can read the tests paper, but it cannot change it. The papers folder is locked for the builder and the checker.
 - The supervisor compares each paper with its fingerprint before each step.
+- A worker can write to the `.git` folder of the project. Thus the supervisor gets the work into a clean copy before the push.
+- A Claude worker uses only the settings of its role, not the settings of the project.
 
 ## The path of a task
 
@@ -35,7 +38,7 @@ build                                     │
   ▼                                       │
 check ──bad──► repair (3 tries) ──► check │
   ▼ good                                  │
-no change in a locked folder?             │
+no change in a locked folder? (clean copy)│
   ▼ yes                                   │
 push ──► find the PR, or open one         │
   ▼                                       │
