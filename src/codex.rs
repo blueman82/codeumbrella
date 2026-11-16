@@ -29,6 +29,8 @@ impl Worker for Codex {
         let (trace, err) = files(job);
         let child = Command::new("codex")
             .args(["exec", "--json", "--ephemeral", "--ignore-user-config"])
+            // With no proxy, a role with network settings gets the full internet.
+            .args(["--enable", "network_proxy"])
             .args(["-c", "default_permissions=\"role\""])
             .args(["-c", &format!("permissions.role={settings}")])
             .arg("--output-schema")

@@ -20,6 +20,9 @@
   "sandbox": {
     "enabled": true,
     "allowUnsandboxedCommands": false,
-    "failIfUnavailable": true
+    "failIfUnavailable": true,
+    "network": {
+      "allowLocalBinding": true
+    }
   }
 }
