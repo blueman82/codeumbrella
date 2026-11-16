@@ -110,3 +110,7 @@ The factory does not work in a linked git worktree.
 | | Write to a folder that is not the project |
 | | Read your key folders, for example `~/.ssh` and the macOS key store |
 | | Use the settings or the hooks of the project (Claude workers) |
+
+## Licence
+
+The licence is MIT. The file `LICENSE` has the full text.

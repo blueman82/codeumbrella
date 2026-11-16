@@ -9,7 +9,7 @@ yanked = "deny"
 allow = ["MIT", "Apache-2.0", "Unicode-3.0"]
 
 [licenses.private]
-# Codeumbrella has no license. It is private, so the check ignores it.
+# Codeumbrella is not on crates.io, so the check ignores it.
 ignore = true
 
 [bans]

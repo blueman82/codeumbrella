@@ -75,6 +75,7 @@ To install the command and the chat command on a computer, run `./install.sh`.
 | `tests/packaging.rs` | Tests of the plugin files and the README. |
 | `tests/walls.rs` | Tests of the safety settings and the safety checks. Each one becomes bad if a wall goes. |
 | `install.sh` | Installs the command and the chat command. |
+| `LICENSE` | The MIT licence. Do not change its text. |
 
 ## The sheet
 
