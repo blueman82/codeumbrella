@@ -1,6 +1,6 @@
 [package]
 name = "codeumbrella"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 # Not for crates.io. The owner did not select a license.
 publish = false
