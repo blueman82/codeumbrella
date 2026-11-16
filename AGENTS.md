@@ -90,6 +90,7 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - No worker can push, open a PR or merge. Only the command steps `push`, `open_pr` and `merge` can, with the set commands in the sheet.
 - The push command gives the full name of the run `branch` two times. Thus a push cannot go to a different `branch`. A test on 16 November 2026 showed that the short name can send worker code to `main`.
 - The step `no_locked_files` stops the run if the work changes `.github`, `.claude` or `.codeumbrella`. A worker cannot write to these folders, but git can put such a file into a commit.
+- That step first gets the default `branch` from GitHub again, and it uses full names. A worker can write to `.git`, so a local name or a tag is not safe to compare with.
 - A worker does not get the values `GH_TOKEN` and `GITHUB_TOKEN` of the person.
 - A role with no settings file is an error. A worker does not start with no settings.
 - A paper can change only in a step that lists it in `writes`. The supervisor keeps a fingerprint of each paper. Before each step, the supervisor compares all the papers with their fingerprints. If a paper is different, the run stops. The person can change a paper while the run waits for an answer. The answer makes the fingerprints again.

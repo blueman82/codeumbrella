@@ -25,9 +25,8 @@ Do these steps in sequence.
 2. If the project has no file `.codeumbrella/graph.yaml`, run `codeumbrella init`. Tell the person that the factory files are in `.codeumbrella/` and that the person can change them. Then run `git status --short`. If it shows a new file `.gitignore`, tell the person and commit that file.
 3. Run `git status --short`. If it shows changes, stop. Tell the person to commit the changes or to put them away. If not, the changes get into the work of the run.
 4. Run `git remote get-url origin`. If it gives an error, stop. Tell the person that the default sheet sends the work to GitHub, and that the project has no GitHub connection. Offer to make a private GitHub project. After a yes from the person, run `gh repo create <name of the project folder> --private --source . --remote origin --push`. Do not make a public project.
-5. Run `git remote set-head origin --auto`. The step `no_locked_files` of the default sheet uses the result.
-6. Run `git branch --show-current` and keep the name. If the name starts with `codeumbrella/`, stop. The project is on the work of an earlier run. Tell the person, and switch to the usual `branch` of the person first.
-7. Make sure that the packages of the project are on the computer. See "Packages".
+5. Run `git branch --show-current` and keep the name. If the name starts with `codeumbrella/`, stop. The project is on the work of an earlier run. Tell the person, and switch to the usual `branch` of the person first.
+6. Make sure that the packages of the project are on the computer. See "Packages".
 
 ## Packages
 

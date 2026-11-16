@@ -328,10 +328,13 @@ fn the_sheet_of_the_project_is_correct() {
     );
     let guard = graph.step("no_locked_files").unwrap();
     assert_eq!(guard.next.as_deref(), Some("push"));
-    assert_eq!(
-        guard.run[0].join(" "),
-        "git diff --quiet origin/HEAD...codeumbrella/{run} -- .github .claude .codeumbrella"
-    );
+    // It gets the default branch from GitHub first, and it uses full names.
+    assert_eq!(guard.run.len(), 3);
+    assert_eq!(guard.run[0].last().unwrap(), "origin");
+    assert_eq!(guard.run[1].join(" "), "git remote set-head origin --auto");
+    let diff = guard.run[2].join(" ");
+    assert!(diff.contains("refs/remotes/origin/HEAD...refs/heads/codeumbrella/{run}"));
+    assert!(diff.ends_with("-- .github .claude .codeumbrella"));
 }
 
 #[test]

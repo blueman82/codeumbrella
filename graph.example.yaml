@@ -76,12 +76,16 @@ steps:
 
   # The run stops here if the work changes a file in a locked folder.
   # A worker cannot write to these folders, but git can put such a file
-  # into a commit. `origin/HEAD` is the default branch of the GitHub project.
-  # Remove a folder from the list if your task must change it.
+  # into a commit. Remove a folder from the list if your task must change it.
+  # The first two commands get the default branch from GitHub again.
+  # A worker can change the local copy of that name, and a tag can hide a branch.
+  # Thus the third command uses full names only.
   no_locked_files:
     type: command
     run:
-      - [git, diff, --quiet, "origin/HEAD...codeumbrella/{run}", --, .github, .claude, .codeumbrella]
+      - [git, -c, core.hooksPath=/dev/null, fetch, origin]
+      - [git, remote, set-head, origin, --auto]
+      - [git, -c, core.hooksPath=/dev/null, diff, --quiet, --no-ext-diff, --no-textconv, "refs/remotes/origin/HEAD...refs/heads/codeumbrella/{run}", --, .github, .claude, .codeumbrella]
     next: push
 
   # The supervisor sends the code to GitHub. No worker can push or merge.
