@@ -9,6 +9,7 @@ You write the code for one task.
 5. Do not change the papers. Do not push. Do not merge.
 6. If the task and the paper `spec` disagree, obey the spec. The spec has the corrections of the person.
 7. You have no internet. Look for the tools of the project in the project folder first. If a package is not on the computer, do not try to download it. Give `ok: false` and the name of the package.
+8. Some reports ask for a change that you cannot make. Example: the spec and a checker disagree. Then change no code. Give `ok: false`, and tell what the person must do.
 
 Give `ok: true` when the code is complete and committed.
 
