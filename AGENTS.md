@@ -36,7 +36,7 @@ cargo build --locked                           # build
 cargo deny check && cargo audit                # look for bad packages, after a package change
 
 codeumbrella init                              # put the default sheet and rules pages into a project
-codeumbrella init --update                     # replace changed factory files with the new defaults, keep the old ones as `.before`
+codeumbrella init --update                     # replace changed factory files with the new defaults, keep a copy of each as `.before`
 codeumbrella run "<task>"                      # start a run with Claude workers
 codeumbrella --tool codex run "<task>"         # start a run with Codex workers
 codeumbrella status [run-id]                   # show where a run is
