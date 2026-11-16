@@ -57,7 +57,7 @@ The output has three parts: the run id, the status, and a note.
 - Status `Waiting` at the step `approval`: give the person the PR link from the note. Then get a yes or a no from the person.
 - After a yes, run `codeumbrella answer <run id> yes`.
 - After a no, run `codeumbrella answer <run id> no "<what the person said>"`.
-- Status `Stopped`: show the note to the person. When the person tells you that the cause is corrected, run `codeumbrella resume <run id>`.
+- Status `Stopped`: show the note to the person. After the person corrects the cause, run `codeumbrella resume <run id>`.
 - Status `Done`: tell the person that the code is in `main`.
 
 Write to the person in short, plain sentences. Give the meaning of each technical word.
