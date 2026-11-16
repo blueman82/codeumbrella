@@ -4,7 +4,7 @@ This file is the one source of the project rules for all agents. `CLAUDE.md` imp
 
 ## What this project is
 
-Codeumbrella is a software factory. A person gives it a task. It puts code into `main` only after two things: the code agrees with the tests that the person gave approval for, and the person gave approval for the PR.
+Codeumbrella is a software factory. A person gives it a task. It puts code into `main` only after two things. First, the code agrees with the tests that the person gave approval for. Second, the person gave approval for the PR.
 
 The factory is written in Rust. The projects that go through it can be in each language. Put no knowledge of one language into the supervisor, the default sheet or the default rules pages.
 
@@ -65,7 +65,7 @@ To install the command and the chat command on a computer, run `./install.sh`.
 | `src/codex.rs` | Starts one `codex exec` worker. |
 | `tests/engine.rs` | Tests of the supervisor with a simulated worker. |
 | `skills/codeumbrella/SKILL.md` | The chat command `/codeumbrella`. Claude and Codex use the same file. |
-| `README.md` | The guide for a new person: what it is, what it needs, how to install, first run. |
+| `README.md` | The guide for a new person: what it is, what a computer must have, how to install, first run. |
 | `.claude-plugin/` | The Claude Code plugin files: `plugin.json` and `marketplace.json`. |
 | `.codex-plugin/` | The Codex plugin file: `plugin.json`. |
 | `.agents/plugins/` | The Codex marketplace file `marketplace.json`. |
