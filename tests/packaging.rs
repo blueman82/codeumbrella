@@ -9,8 +9,7 @@ fn root() -> PathBuf {
 }
 
 fn text(rel: &str) -> String {
-    std::fs::read_to_string(root().join(rel))
-        .unwrap_or_else(|e| panic!("cannot read {rel}: {e}"))
+    std::fs::read_to_string(root().join(rel)).unwrap_or_else(|e| panic!("cannot read {rel}: {e}"))
 }
 
 fn json(rel: &str) -> Value {
@@ -92,7 +91,9 @@ fn codex_marketplace_leads_to_a_plugin_folder() {
 }
 
 fn find_skill_files(dir: &Path, out: &mut Vec<PathBuf>) {
-    let Ok(rd) = std::fs::read_dir(dir) else { return };
+    let Ok(rd) = std::fs::read_dir(dir) else {
+        return;
+    };
     for e in rd.flatten() {
         let p = e.path();
         let name = e.file_name();
@@ -134,7 +135,13 @@ fn install_script_still_installs_the_command() {
 fn readme_has_the_four_parts_for_a_new_person() {
     let r = text("README.md").to_lowercase();
     // What it is, what a computer must have, how to install, first run.
-    for needle in ["codeumbrella", "software factory", "requirements", "install", "first run"] {
+    for needle in [
+        "codeumbrella",
+        "software factory",
+        "requirements",
+        "install",
+        "first run",
+    ] {
         assert!(r.contains(needle), "README.md lacks: {needle}");
     }
 }
@@ -145,15 +152,27 @@ fn readme_lists_what_the_computer_must_have() {
     for tool in ["cargo", "git", "gh"] {
         assert!(r.contains(tool), "README.md does not name {tool}");
     }
-    assert!(r.contains("claude") && r.contains("codex"), "README.md must name claude and codex");
+    assert!(
+        r.contains("claude") && r.contains("codex"),
+        "README.md must name claude and codex"
+    );
 }
 
 #[test]
 fn readme_shows_the_install_commands() {
     let r = text("README.md");
-    assert!(r.contains("/plugin marketplace add"), "Claude marketplace command");
-    assert!(r.contains("/plugin install codeumbrella"), "Claude install command");
-    assert!(r.contains("codex plugin marketplace add"), "Codex marketplace command");
+    assert!(
+        r.contains("/plugin marketplace add"),
+        "Claude marketplace command"
+    );
+    assert!(
+        r.contains("/plugin install codeumbrella"),
+        "Claude install command"
+    );
+    assert!(
+        r.contains("codex plugin marketplace add"),
+        "Codex marketplace command"
+    );
     assert!(r.contains("./install.sh") || r.contains("cargo install --path . --locked"));
 }
 
@@ -161,7 +180,10 @@ fn readme_shows_the_install_commands() {
 fn readme_tells_that_the_plugin_needs_the_command() {
     // The plugin brings only the chat command. The binary comes from cargo.
     let r = text("README.md").to_lowercase();
-    assert!(r.contains("cargo install"), "README.md must tell how to get the binary");
+    assert!(
+        r.contains("cargo install"),
+        "README.md must tell how to get the binary"
+    );
 }
 
 #[test]
