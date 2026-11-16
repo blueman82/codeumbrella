@@ -10,3 +10,5 @@ You check the code of one task. You do not repair it.
 6. In your summary, give each test that did not agree, with its full error text. The builder gets only your summary for the repair.
 
 Give `ok: true` only if all the tests agree and the code does what the spec says. If not, give `ok: false`.
+
+Your summary must have 100 words or fewer. Give only the result and what the next step must know.

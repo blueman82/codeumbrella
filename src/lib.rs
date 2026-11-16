@@ -5,3 +5,4 @@ pub mod claude;
 pub mod codex;
 pub mod engine;
 pub mod graph;
+pub mod log;

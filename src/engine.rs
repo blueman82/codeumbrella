@@ -1,11 +1,12 @@
 //! The supervisor: it does the sheet one step at a time and keeps the notebook.
 
 use crate::graph::{Graph, Kind, Step};
+use crate::log;
 use anyhow::{Context, Result, bail};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::hash::{DefaultHasher, Hash, Hasher};
-use std::{fs, path::Path, path::PathBuf, process::Command};
+use std::{fs, path::Path, path::PathBuf, process::Command, time::Instant};
 
 /// What one step gives back.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -158,11 +159,17 @@ impl Run {
         self.state.status = Status::Running;
         while let Some(name) = self.state.at.clone() {
             let step = graph.step(&name)?;
+            let start = Instant::now();
             let outcome = match self.step(&name, step, roles, worker) {
                 Ok(Some(outcome)) => outcome,
                 Ok(None) => return self.save(),
-                Err(error) => return self.halt(Status::Stopped, format!("Step {name}: {error:#}")),
+                Err(error) => {
+                    let note = format!("Step {name}: {error:#}");
+                    log::record(&self.dir, &name, false, &note, start)?;
+                    return self.halt(Status::Stopped, note);
+                }
             };
+            log::record(&self.dir, &name, outcome.ok, &outcome.summary, start)?;
             let target = if outcome.ok { &step.next } else { &step.on_bad };
             if !outcome.ok && target.is_none() {
                 let note = format!("Step {name} gave a bad result: {}", outcome.summary);

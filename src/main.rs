@@ -123,12 +123,13 @@ fn main() -> Result<()> {
         run.go(&graph, &cli.roles, worker)?;
     }
     let (id, state) = (run.dir.file_name().unwrap_or_default(), &run.state);
-    println!(
-        "Run: {}\nStatus: {:?}\n{}",
+    // The screen gets a short note. The full text is in the log.
+    let (id, note) = (
         id.to_string_lossy(),
-        state.status,
-        state.note
+        state.note.chars().take(300).collect::<String>(),
     );
+    println!("Run: {id}\nStatus: {:?}\n{note}", state.status);
+    println!("More: {}", run.dir.join("log.jsonl").display());
     Ok(())
 }
 

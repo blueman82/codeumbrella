@@ -1,6 +1,6 @@
 //! The tool part for Codex: it starts one `codex exec` worker for one step.
 
-use crate::claude::{SCHEMA, prompt, wait};
+use crate::claude::{SCHEMA, files, prompt, wait};
 use crate::engine::{Job, Outcome, Worker};
 use anyhow::{Context, Result};
 use std::process::{Command, Stdio};
@@ -26,9 +26,9 @@ impl Worker for Codex {
         let schema = job.dir.join("schema.json");
         fs::write(&schema, SCHEMA)?;
         let out = job.dir.join(format!("{}.out.json", job.step));
-        let log = File::create(job.dir.join(format!("{}.err.txt", job.step)))?;
+        let (trace, err) = files(job);
         let child = Command::new("codex")
-            .args(["exec", "--ephemeral", "--ignore-user-config"])
+            .args(["exec", "--json", "--ephemeral", "--ignore-user-config"])
             .args(["-c", "default_permissions=\"role\""])
             .args(["-c", &format!("permissions.role={settings}")])
             .arg("--output-schema")
@@ -37,13 +37,17 @@ impl Worker for Codex {
             .arg(&out)
             .arg(format!("{rules}\n\n{}", prompt(job)))
             .stdin(Stdio::null())
-            .stdout(log.try_clone()?)
-            .stderr(log)
+            .stdout(File::create(trace)?)
+            .stderr(File::create(err)?)
             .spawn()
             .context("cannot start the codex command")?;
         wait(child, self.time_limit)?;
-        let text = fs::read_to_string(&out)
-            .with_context(|| format!("codex gave no result; see {}.err.txt", job.step))?;
+        let text = fs::read_to_string(&out).with_context(|| {
+            format!(
+                "codex gave no result; see the files of the step {}",
+                job.step
+            )
+        })?;
         serde_json::from_str(&text).context("codex gave no result in the correct format")
     }
 }

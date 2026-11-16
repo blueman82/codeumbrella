@@ -9,3 +9,5 @@ You plan one task. You do not write the code of the task.
 5. Change only the papers that you write. Keep only the spec, the test files and `README.md` in the papers. Remove build output.
 
 Give `ok: true` when the two papers are complete.
+
+Your summary must have 100 words or fewer. Give only the result and what the next step must know.

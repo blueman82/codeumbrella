@@ -21,6 +21,8 @@ The supervisor knows nothing about software work. All knowledge of the steps is 
 | Supervisor | The code in `src/graph.rs`, `src/engine.rs` and `src/main.rs`. |
 | Tool part | The code that starts one type of worker. `src/claude.rs` is the part for Claude. `src/codex.rs` is the part for Codex. |
 | Notebook | `.codeumbrella/runs/<run-id>/state.json`: where the run is. |
+| Log | `log.jsonl` in the run folder: one line for each step that ended. |
+| Trace | `<step>.<number>.trace.jsonl` in the run folder: all that one worker did in one try. |
 | Paper | A folder in `.codeumbrella/runs/<run-id>/papers/` that one step writes and other steps read. |
 | Role | The type of a worker. Its rules page is `.codeumbrella/roles/<role>.md` in a project. The folder `roles` holds the defaults. |
 
@@ -31,6 +33,7 @@ cargo fmt --check                              # layout
 cargo clippy --all-targets -- -D warnings      # usual errors, and a warning stops the code
 cargo test                                     # tests, with a simulated worker
 cargo build --locked                           # build
+cargo deny check && cargo audit                # look for bad packages, after a package change
 
 codeumbrella init                              # put the default sheet and rules pages into a project
 codeumbrella run "<task>"                      # start a run with Claude workers
@@ -54,6 +57,8 @@ To install the command and the chat command on a computer, run `./install.sh`.
 | `src/graph.rs` | Reads the sheet and finds its errors before a run. |
 | `src/engine.rs` | Does one step at a time, keeps the notebook, keeps the papers safe. |
 | `src/main.rs` | The `codeumbrella` command. |
+| `src/log.rs` | Writes one line in the log of a run for each step. |
+| `deny.toml` | The settings of the package check `cargo deny`. |
 | `roles/<role>.codex.txt` | The Codex sandbox settings of each role. In this file, `{run}` is the id of the run. |
 | `src/claude.rs` | Starts one `claude -p` worker. |
 | `src/codex.rs` | Starts one `codex exec` worker. |
@@ -114,6 +119,7 @@ A package is code from other persons. Each package is a risk, so the list is sho
 | `yaml_serde` | Reads the sheet. |
 | `clap` | Reads the words after the command, and shows the help text. |
 | `anyhow` | Makes clear error messages. |
+| `time` | Writes the date and the time in the log. It brings 5 small packages of the same makers. |
 
 A new package gets into this list only when all of these are correct:
 
@@ -124,10 +130,14 @@ A new package gets into this list only when all of these are correct:
 
 ## Limits for lines of code
 
-- The supervisor (`src/graph.rs`, `src/engine.rs`, `src/main.rs`, `src/lib.rs`): 430 lines of code.
+- The supervisor (`src/graph.rs`, `src/engine.rs`, `src/main.rs`, `src/log.rs`, `src/lib.rs`): 450 lines of code.
 - Each tool part: 100 lines of code.
 - Empty lines, comment lines and tests do not count.
 - Count with: `grep -v -E '^\s*(//|$)' <file> | wc -l`
+
+## Output for a chat
+
+An AI in a chat runs the command most of the time. Keep the output of the command short, so the chat keeps its context. The command prints one short line for each step and a note of 300 characters maximum. The full text goes into the log and the trace files.
 
 ## Rules for growth
 

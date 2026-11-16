@@ -1,0 +1,21 @@
+# The settings of `cargo deny check`. It looks at each package that the build uses.
+
+[advisories]
+# A known safety problem in a package stops the check.
+yanked = "deny"
+
+[licenses]
+# The licenses that a package can have.
+allow = ["MIT", "Apache-2.0", "Unicode-3.0"]
+
+[licenses.private]
+# Codeumbrella has no license. It is private, so the check ignores it.
+ignore = true
+
+[bans]
+multiple-versions = "warn"
+
+[sources]
+# Packages come only from crates.io.
+unknown-registry = "deny"
+unknown-git = "deny"

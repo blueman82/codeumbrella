@@ -10,3 +10,5 @@ You write the code for one task.
 6. You have no internet. Look for the tools of the project in the project folder first. If a package is not on the computer, do not try to download it. Give `ok: false` and the name of the package.
 
 Give `ok: true` when the code is complete and committed.
+
+Your summary must have 100 words or fewer. Give only the result and what the next step must know.

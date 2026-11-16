@@ -5,7 +5,7 @@ use anyhow::{Context, Result, bail};
 use serde::Deserialize;
 use std::process::{Child, Command, Stdio};
 use std::time::{Duration, Instant};
-use std::{fmt::Write as _, fs, fs::File, thread};
+use std::{fmt::Write as _, fs, fs::File, path::PathBuf, thread};
 
 /// The format of the result that each worker must give.
 pub(crate) const SCHEMA: &str = r#"{"type":"object","properties":{"ok":{"type":"boolean"},"summary":{"type":"string"}},"required":["ok","summary"],"additionalProperties":false}"#;
@@ -31,12 +31,12 @@ impl Worker for Claude {
         let rules = fs::read_to_string(job.rules)
             .with_context(|| format!("cannot read the rules page {}", job.rules.display()))?;
         let settings = job.rules.with_extension("claude.json");
-        let out = job.dir.join(format!("{}.out.json", job.step));
-        let err = job.dir.join(format!("{}.err.txt", job.step));
+        let (out, err) = files(job);
         let mut command = Command::new("claude");
         command
             .args(["-p", &prompt(job), "--append-system-prompt", &rules])
-            .args(["--output-format", "json", "--json-schema", SCHEMA])
+            .args(["--output-format", "stream-json", "--verbose"])
+            .args(["--json-schema", SCHEMA])
             .args([
                 "--permission-mode",
                 "dontAsk",
@@ -51,8 +51,9 @@ impl Worker for Claude {
         }
         let child = command.spawn().context("cannot start the claude command")?;
         wait(child, self.time_limit)?;
+        // The last line of the trace is the result.
         let text = fs::read_to_string(&out)?;
-        let reply: Reply = serde_json::from_str(&text)
+        let reply: Reply = serde_json::from_str(text.lines().last().unwrap_or_default())
             .with_context(|| format!("claude gave no result; see {}", err.display()))?;
         if reply.is_error {
             bail!("claude reported an error: {}", reply.result);
@@ -61,6 +62,15 @@ impl Worker for Claude {
             .structured_output
             .context("claude gave no result in the correct format")
     }
+}
+
+/// The trace file and the error file of this try. A new try gets a new number.
+pub(crate) fn files(job: &Job) -> (PathBuf, PathBuf) {
+    let name = |n: u32, end: &str| job.dir.join(format!("{}.{n}.{end}", job.step));
+    let n = (1..10_000)
+        .find(|n| !name(*n, "trace.jsonl").exists())
+        .unwrap_or(1);
+    (name(n, "trace.jsonl"), name(n, "err.txt"))
 }
 
 /// Waits until a worker ends. Stops the worker at the time limit.
@@ -91,8 +101,8 @@ pub(crate) fn prompt(job: &Job) -> String {
         job.step,
         papers.display()
     );
-    let _ = writeln!(text, "Papers that you read: {}", list(job.reads));
-    let _ = writeln!(text, "Papers that you write: {}", list(job.writes));
+    let _ = writeln!(text, "Papers that you read: {}", job.reads.join(", "));
+    let _ = writeln!(text, "Papers that you write: {}", job.writes.join(", "));
     if let Some(before) = job.before {
         let word = if before.ok { "good" } else { "bad" };
         let _ = writeln!(
@@ -103,13 +113,4 @@ pub(crate) fn prompt(job: &Job) -> String {
     }
     text.push_str("When you end, give ok and a short summary, as your rules page says.");
     text
-}
-
-/// Makes a list of paper names, or the word "none".
-fn list(papers: &[String]) -> String {
-    if papers.is_empty() {
-        "none".to_owned()
-    } else {
-        papers.join(", ")
-    }
 }

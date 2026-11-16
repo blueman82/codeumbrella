@@ -62,4 +62,15 @@ The output has three parts: the run id, the status, and a note.
 - Status `Stopped`: show the note to the person. After the person corrects the cause, run `codeumbrella resume <run id>`.
 - Status `Done`: tell the person that the code is in `main`.
 
+## The log and the trace files
+
+The run folder is `.codeumbrella/runs/<run id>/`.
+
+- `log.jsonl` has one line for each step that ended: the time, the step, good or bad, the seconds and the summary.
+- `<step>.<number>.trace.jsonl` has all that one worker did in one try. These files are large.
+
+When the status is `Done` or `Stopped`, read `log.jsonl`. Give the person a short table: the time of each step, the slowest step, the number of repair tries, and the answers of the person.
+
+Do not read a full trace file. Use `grep` to find one thing in it, for example a command, an error or `total_cost_usd`. Do this only when the person wants to know why a step was slow or bad, or what the run cost.
+
 Write to the person in short, plain sentences. Give the meaning of each technical word.
