@@ -48,7 +48,13 @@ fn the_builder_and_the_checker_run_in_the_claude_sandbox_with_the_locks() {
 }
 
 /// The folders and files that hold keys of the person.
-const KEYS: [&str; 4] = ["~/.ssh", "~/.config/gh", "~/.netrc", "~/.git-credentials"];
+const KEYS: [&str; 5] = [
+    "~/.ssh",
+    "~/.config/gh",
+    "~/.netrc",
+    "~/.git-credentials",
+    "~/Library/Keychains",
+];
 
 #[test]
 fn no_claude_role_runs_hooks_uses_the_web_or_reads_the_keys_of_the_person() {
@@ -56,7 +62,12 @@ fn no_claude_role_runs_hooks_uses_the_web_or_reads_the_keys_of_the_person() {
         let file = json(&format!("roles/{role}.claude.json"));
         assert_eq!(file["disableAllHooks"], true, "{role}");
         let deny = list(&file["permissions"]["deny"]);
-        for rule in ["WebFetch", "WebSearch", "Read(~/.ssh/**)"] {
+        for rule in [
+            "WebFetch",
+            "WebSearch",
+            "Read(~/.ssh/**)",
+            "Read(~/Library/Keychains/**)",
+        ] {
             assert!(deny.contains(&rule), "{role} {rule}");
         }
         assert!(deny.contains(&"Read(~/.config/gh/**)"), "{role}");
@@ -105,7 +116,13 @@ fn each_codex_role_has_its_sandbox_and_its_locks() {
         }
     }
     for role in ["planner", "builder", "checker"] {
-        assert!(!text(&format!("roles/{role}.codex.txt")).contains("danger"));
+        let file = text(&format!("roles/{role}.codex.txt"));
+        assert!(!file.contains("danger"));
+        // No Codex role can read the folders that hold keys of the person.
+        for key in KEYS {
+            let lock = format!("\"{}\"=\"deny\"", key.replace('~', "{home}"));
+            assert!(file.contains(&lock), "{role} {lock}");
+        }
     }
 }
 

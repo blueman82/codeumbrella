@@ -1,1 +1,1 @@
-{extends=":read-only", filesystem={":workspace_roots"={".codeumbrella/runs/{run}/papers/spec"="write", ".codeumbrella/runs/{run}/papers/tests"="write"}}}
+{extends=":read-only", filesystem={":workspace_roots"={".codeumbrella/runs/{run}/papers/spec"="write", ".codeumbrella/runs/{run}/papers/tests"="write"}, "{home}/.ssh"="deny", "{home}/.config/gh"="deny", "{home}/.netrc"="deny", "{home}/.git-credentials"="deny", "{home}/Library/Keychains"="deny"}}

@@ -4,7 +4,7 @@ use crate::claude::{SCHEMA, files, prompt, wait};
 use crate::engine::{Job, Outcome, Worker};
 use anyhow::{Context, Result, ensure};
 use std::process::{Command, Stdio};
-use std::{fs, fs::File, time::Duration};
+use std::{env, fs, fs::File, time::Duration};
 
 /// Starts Codex workers.
 #[derive(Debug)]
@@ -17,12 +17,15 @@ impl Worker for Codex {
     fn run(&self, job: &Job) -> Result<Outcome> {
         let rules = fs::read_to_string(job.rules)
             .with_context(|| format!("cannot read the rules page {}", job.rules.display()))?;
-        // The sandbox settings of the role. `{run}` in the file is the run id.
+        // The sandbox settings of the role. In the file, `{run}` is the run id
+        // and `{home}` is the home folder of the person.
         let settings = job.rules.with_extension("codex.txt");
         let settings = fs::read_to_string(&settings)
             .with_context(|| format!("cannot read the settings {}", settings.display()))?;
         let run = job.dir.file_name().unwrap_or_default().to_string_lossy();
+        let home = env::var("HOME").unwrap_or_default();
         let settings = settings.trim().replace("{run}", &run);
+        let settings = settings.replace("{home}", &home);
         let schema = job.dir.join("schema.json");
         fs::write(&schema, SCHEMA)?;
         let out = job.dir.join(format!("{}.out.json", job.step));

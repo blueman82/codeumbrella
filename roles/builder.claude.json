@@ -20,7 +20,8 @@
       "Read(~/.ssh/**)",
       "Read(~/.config/gh/**)",
       "Read(~/.netrc)",
-      "Read(~/.git-credentials)"
+      "Read(~/.git-credentials)",
+      "Read(~/Library/Keychains/**)"
     ]
   },
   "sandbox": {
@@ -35,7 +36,8 @@
         "~/.ssh",
         "~/.config/gh",
         "~/.netrc",
-        "~/.git-credentials"
+        "~/.git-credentials",
+        "~/Library/Keychains"
       ]
     }
   },
