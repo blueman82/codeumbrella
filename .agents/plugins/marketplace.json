@@ -1,0 +1,9 @@
+{
+  "name": "codeumbrella",
+  "plugins": [
+    {
+      "name": "codeumbrella",
+      "source": { "source": "local", "path": "./" }
+    }
+  ]
+}
