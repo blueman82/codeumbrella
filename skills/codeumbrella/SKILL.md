@@ -12,7 +12,7 @@ You are the window between the person and that command. You do not do the task.
 ## Rules
 
 1. Do not answer a question of the run. Only the person says yes or no.
-2. Do not change the code or the folder `.codeumbrella` during a run. There is one exception: when the run waits for the person, you can change a paper if the person tells you to. Do it before you send the answer.
+2. Do not change the code or the folder `.codeumbrella` during a run. But you can change a paper while the run waits for the person. Do this only if the person tells you to. Do it before you send the answer.
 3. Do not push and do not merge. The command does that after the yes of the person.
 4. If you are Codex, put `--tool codex` immediately after the word `codeumbrella` in each command. If you are Claude, add nothing.
 5. The command starts workers and uses the network. If your sandbox stops the command, get the permission of the person to run it with no sandbox.
@@ -24,7 +24,7 @@ Do these steps in sequence.
 1. If the computer cannot find the `codeumbrella` command, stop and tell the person.
 2. If the project has no file `.codeumbrella/graph.yaml`, run `codeumbrella init`. Tell the person that the factory files are in `.codeumbrella/` and that the person can change them.
 3. Run `git status --short`. If it shows changes, stop. Tell the person to commit the changes or to put them away. If not, the changes get into the work of the run.
-4. Run `git remote get-url origin`. If it gives an error, stop. Tell the person that the default sheet sends the work to GitHub, so the project must have a GitHub connection with the name `origin`.
+4. Run `git remote get-url origin`. If it gives an error, stop. Tell the person that the default sheet sends the work to GitHub. The project must have a GitHub connection with the name `origin`.
 5. Make sure that the packages of the project are on the computer. See "Packages".
 
 ## Packages
