@@ -1,0 +1,11 @@
+{
+  "name": "codeumbrella",
+  "owner": { "name": "Gary Harrison" },
+  "plugins": [
+    {
+      "name": "codeumbrella",
+      "source": "./",
+      "description": "Give a task to the codeumbrella software factory from a chat, and answer its questions."
+    }
+  ]
+}
