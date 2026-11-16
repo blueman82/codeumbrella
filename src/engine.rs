@@ -6,7 +6,9 @@ use anyhow::{Context, Result, bail};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::hash::{DefaultHasher, Hash, Hasher};
-use std::{fs, path::Path, path::PathBuf, process::Command, time::Instant};
+use std::{
+    fmt::Write as _, fs, path::Path, path::PathBuf, process::Command, thread, time::Instant,
+};
 
 /// What one step gives back.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -37,7 +39,7 @@ pub struct Job<'a> {
 }
 
 /// A tool that can do a worker step, such as Claude or Codex.
-pub trait Worker {
+pub trait Worker: Sync {
     /// Does one step and gives back its result.
     ///
     /// # Errors
@@ -191,7 +193,7 @@ impl Run {
         while let Some(name) = self.state.at.clone() {
             let step = graph.step(&name)?;
             let start = Instant::now();
-            let outcome = match self.step(&name, step, roles, worker) {
+            let outcome = match self.step(&name, step, graph, roles, worker) {
                 Ok(Some(outcome)) => outcome,
                 Ok(None) => return self.save(),
                 Err(error) => {
@@ -219,6 +221,7 @@ impl Run {
         &mut self,
         name: &str,
         step: &Step,
+        graph: &Graph,
         roles: &Path,
         worker: &dyn Worker,
     ) -> Result<Option<Outcome>> {
@@ -254,24 +257,73 @@ impl Run {
         if step.kind == Kind::Command {
             return self.commands(&step.run).map(Some);
         }
+        if step.kind == Kind::Fan {
+            return self
+                .fan(step, graph, roles, worker, before.as_ref())
+                .map(Some);
+        }
         for paper in &step.writes {
             fs::create_dir_all(self.paper(paper))?;
         }
+        let outcome = self.work(name, step, roles, worker, before.as_ref())?;
+        for paper in &step.writes {
+            let print = fingerprint(&self.paper(paper))?;
+            self.state.prints.insert(paper.clone(), print);
+        }
+        Ok(Some(outcome))
+    }
+
+    /// Gives one worker step to a worker.
+    fn work(
+        &self,
+        name: &str,
+        step: &Step,
+        roles: &Path,
+        worker: &dyn Worker,
+        before: Option<&Outcome>,
+    ) -> Result<Outcome> {
         let role = step.role.as_deref().unwrap_or_default();
-        let outcome = worker.run(&Job {
+        worker.run(&Job {
             task: &self.state.task,
             step: name,
             rules: &roles.join(format!("{role}.md")),
             dir: &self.dir,
             reads: &step.reads,
             writes: &step.writes,
-            before: before.as_ref(),
-        })?;
-        for paper in &step.writes {
-            let print = fingerprint(&self.paper(paper))?;
-            self.state.prints.insert(paper.clone(), print);
+            before,
+        })
+    }
+
+    /// Does the parts of a fan step at the same time, and waits for all of
+    /// them. The result is good only if all the parts are good. The summary
+    /// has the result of each part.
+    // ponytail: the log gives each part the time of the full fan.
+    fn fan(
+        &self,
+        step: &Step,
+        graph: &Graph,
+        roles: &Path,
+        worker: &dyn Worker,
+        before: Option<&Outcome>,
+    ) -> Result<Outcome> {
+        let start = Instant::now();
+        let results: Vec<Result<Outcome>> = thread::scope(|scope| {
+            let part = |name| self.work(name, graph.step(name)?, roles, worker, before);
+            let fan = step.fan.iter();
+            let parts: Vec<_> = fan.map(|n| scope.spawn(move || part(n))).collect();
+            let end =
+                |p: thread::ScopedJoinHandle<_>| p.join().unwrap_or_else(|_| bail!("it broke"));
+            parts.into_iter().map(end).collect()
+        });
+        let (mut ok, mut summary) = (true, String::new());
+        for (name, result) in step.fan.iter().zip(results) {
+            let outcome = result.with_context(|| format!("the fan part {name}"))?;
+            log::record(&self.dir, name, outcome.ok, &outcome.summary, start)?;
+            ok &= outcome.ok;
+            let word = if outcome.ok { "good" } else { "bad" };
+            let _ = writeln!(summary, "{name} ({word}): {}", outcome.summary);
         }
-        Ok(Some(outcome))
+        Ok(Outcome { ok, summary })
     }
 
     /// Runs the commands of a command step, with no shell. It stops at the

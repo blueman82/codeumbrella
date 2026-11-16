@@ -21,6 +21,9 @@ const FILES: &[&str] = &[
     "roles/checker.md",
     "roles/checker.claude.json",
     "roles/checker.codex.txt",
+    "roles/safety.md",
+    "roles/safety.claude.json",
+    "roles/safety.codex.txt",
 ];
 
 /// A new empty project folder.

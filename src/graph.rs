@@ -1,6 +1,6 @@
 //! The instruction sheet: the steps of the factory and the rules between them.
 
-use anyhow::{Context, Result, bail};
+use anyhow::{Context, Result, bail, ensure};
 use serde::Deserialize;
 use std::{collections::BTreeMap, fs, path::Path};
 
@@ -15,6 +15,8 @@ pub enum Kind {
     Person,
     /// The supervisor runs the set commands of the step.
     Command,
+    /// The supervisor does the steps in the `fan` line at the same time.
+    Fan,
 }
 
 /// One step of the work.
@@ -29,6 +31,9 @@ pub struct Step {
     /// The commands of a command step. Each command is a list of words.
     #[serde(default)]
     pub run: Vec<Vec<String>>,
+    /// The steps of a fan step. They run at the same time.
+    #[serde(default)]
+    pub fan: Vec<String>,
     /// The papers that the step reads.
     #[serde(default)]
     pub reads: Vec<String>,
@@ -73,7 +78,8 @@ impl Graph {
     /// # Errors
     /// Gives an error for a step that does not exist, a worker step with no
     /// rules page, a command step with no commands, a way back with no maximum,
-    /// a maximum of 0, a name that is a path, or `next` lines with no end.
+    /// a maximum of 0, a name that is a path, a fan part that is not a plain
+    /// worker step, or `next` lines with no end.
     pub fn check(&self, roles: &Path) -> Result<()> {
         self.step(&self.start).context("the start line")?;
         for (name, step) in &self.steps {
@@ -90,13 +96,26 @@ impl Graph {
                     bail!("step {name}: there is no rules page for the role {role}")
                 }
                 (Kind::Worker, None) => bail!("step {name}: a worker step must have a role"),
-                (Kind::Person | Kind::Command, Some(_)) => {
+                (Kind::Person | Kind::Command | Kind::Fan, Some(_)) => {
                     bail!("step {name}: only a worker step has a role")
                 }
                 _ => {}
             }
             if (step.kind == Kind::Command) == step.run.is_empty() {
                 bail!("step {name}: a command step, and only a command step, has run lines");
+            }
+            ensure!(
+                (step.kind == Kind::Fan) != step.fan.is_empty(),
+                "step {name}: a fan step, and only a fan step, has a fan line"
+            );
+            // A part of a fan only gives a result. The fan step has the paths.
+            for part in &step.fan {
+                let s = self.step(part).with_context(|| format!("step {name}"))?;
+                let plain = s.kind == Kind::Worker && s.writes.is_empty() && s.max_tries.is_none();
+                ensure!(
+                    plain && s.next.is_none() && s.on_bad.is_none(),
+                    "step {name}: the fan part {part} must be a worker step with no writes, next, on_bad or max_tries"
+                );
             }
             if step.max_tries == Some(0) || step.run.iter().any(Vec::is_empty) {
                 bail!("step {name}: max_tries must be 1 or more, and a command must have words");

@@ -62,7 +62,7 @@ const KEYS: [&str; 5] = [
 
 #[test]
 fn no_claude_role_runs_hooks_uses_the_web_or_reads_the_keys_of_the_person() {
-    for role in ["planner", "builder", "checker"] {
+    for role in ["planner", "builder", "checker", "safety"] {
         let file = json(&format!("roles/{role}.claude.json"));
         assert_eq!(file["disableAllHooks"], true, "{role}");
         let deny = list(&file["permissions"]["deny"]);
@@ -120,7 +120,7 @@ fn each_codex_role_has_its_sandbox_and_its_locks() {
             );
         }
     }
-    for role in ["planner", "builder", "checker"] {
+    for role in ["planner", "builder", "checker", "safety"] {
         let file = text(&format!("roles/{role}.codex.txt"));
         assert!(!file.contains("danger"));
         // No Codex role can read the folders that hold keys of the person.
@@ -433,4 +433,31 @@ fn a_codex_worker_does_not_start_with_no_home_folder() {
     let run = command.output().unwrap();
     assert!(out(&run).contains("HOME is not set"), "{}", out(&run));
     assert!(!dir.join("bin/started").exists(), "the worker started");
+}
+
+#[test]
+fn the_safety_checker_cannot_write_a_file() {
+    let file = json("roles/safety.claude.json");
+    let allow = list(&file["permissions"]["allow"]);
+    assert_eq!(allow, ["Read", "Glob", "Grep", "Bash"]);
+    let deny = list(&file["permissions"]["deny"]);
+    assert!(deny.contains(&"Edit(/{project}/**)"), "{deny:?}");
+    assert_eq!(file["sandbox"]["enabled"], true);
+    assert_eq!(file["sandbox"]["allowUnsandboxedCommands"], false);
+    assert_eq!(file["sandbox"]["failIfUnavailable"], true);
+    let codex = text("roles/safety.codex.txt");
+    assert!(codex.starts_with("{extends=\":read-only\""), "{codex}");
+    assert!(!codex.contains("\"write\""), "{codex}");
+}
+
+#[test]
+fn the_check_of_the_default_sheet_is_a_fan_with_the_tests_and_the_safety_checker() {
+    let graph = Graph::load(&root().join("graph.example.yaml"), &root().join("roles")).unwrap();
+    let check = graph.step("check").unwrap();
+    assert_eq!(check.kind, Kind::Fan);
+    assert_eq!(check.fan, ["check_tests", "check_safety"]);
+    assert_eq!(check.on_bad.as_deref(), Some("repair"));
+    let role = |name| graph.step(name).unwrap().role.clone().unwrap();
+    assert_eq!(role("check_tests"), "checker");
+    assert_eq!(role("check_safety"), "safety");
 }

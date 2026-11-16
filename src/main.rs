@@ -31,7 +31,10 @@ const DEFAULTS: &[(&str, &str)] = defaults!(
     "builder.codex.txt",
     "checker.md",
     "checker.claude.json",
-    "checker.codex.txt"
+    "checker.codex.txt",
+    "safety.md",
+    "safety.claude.json",
+    "safety.codex.txt"
 );
 
 /// A software factory: it puts code into main after the tests and your approval.

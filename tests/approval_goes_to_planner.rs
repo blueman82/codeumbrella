@@ -3,20 +3,22 @@
 use anyhow::Result;
 use codeumbrella::engine::{Job, Outcome, Run, Status, Worker};
 use codeumbrella::graph::Graph;
-use std::cell::RefCell;
 use std::path::PathBuf;
+use std::sync::Mutex;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::{env, fs, process};
 
 /// A worker that always gives a good result and records the steps that it did.
 #[derive(Default)]
 struct Script {
-    calls: RefCell<Vec<String>>,
+    calls: Mutex<Vec<String>>,
 }
 
 impl Worker for Script {
     fn run(&self, job: &Job) -> Result<Outcome> {
-        self.calls.borrow_mut().push(job.step.to_owned());
+        if job.step != "check_safety" {
+            self.calls.lock().unwrap().push(job.step.to_owned());
+        }
         for paper in job.writes {
             fs::write(job.dir.join("papers").join(paper).join("file.md"), job.step)?;
         }
@@ -87,7 +89,10 @@ fn a_no_at_the_approval_goes_to_the_planner_and_then_to_the_person_for_the_tests
     // The planner works again. The person sees the tests again. Nothing merges.
     assert_eq!(run.state.status, Status::Waiting);
     assert_eq!(run.state.at.as_deref(), Some("look_at_tests"));
-    assert_eq!(*worker.calls.borrow(), ["plan", "build", "check", "plan"]);
+    assert_eq!(
+        *worker.calls.lock().unwrap(),
+        ["plan", "build", "check_tests", "plan"]
+    );
     assert!(!run.state.results.contains_key("merge"));
 
     // After a yes, the work goes on to the builder and the checker, then to the approval.
@@ -96,8 +101,15 @@ fn a_no_at_the_approval_goes_to_the_planner_and_then_to_the_person_for_the_tests
     assert_eq!(run.state.status, Status::Waiting);
     assert_eq!(run.state.at.as_deref(), Some("approval"));
     assert_eq!(
-        *worker.calls.borrow(),
-        ["plan", "build", "check", "plan", "build", "check"]
+        *worker.calls.lock().unwrap(),
+        [
+            "plan",
+            "build",
+            "check_tests",
+            "plan",
+            "build",
+            "check_tests"
+        ]
     );
 }
 

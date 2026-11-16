@@ -8,6 +8,8 @@ The factory stops two times for you. First, you look at the tests. Second, you g
 
 The page [ARCHITECTURE.md](ARCHITECTURE.md) shows the parts and the path of a task in two pictures.
 
+Two checkers look at each piece of work at the same time. One runs the tests that you gave approval for. One reads the change for safety problems.
+
 ## Requirements: what the computer must have
 
 - Rust with `cargo`, to build the `codeumbrella` command. Check: `cargo --version`

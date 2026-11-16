@@ -6,10 +6,12 @@
 #
 # The lines that a step can have:
 #
-#   type       Who does the step. `worker` (the default), `person` or `command`.
+#   type       Who does the step. `worker` (the default), `person`, `command`
+#              or `fan`.
 #              worker:  an AI worker does the step.
 #              person:  the run stops until you answer yes or no.
 #              command: the supervisor runs the commands in `run`. No AI.
+#              fan:     the supervisor does the steps in `fan` at the same time.
 #   role       Only for a worker step. The rules page of the worker is
 #              `.codeumbrella/roles/<role>.md`. You can add your own roles.
 #              A new role must also have its two settings files in that
@@ -17,6 +19,10 @@
 #   run        Only for a command step. A list of commands. Each command is a
 #              list of words. In a word, {run} is the id of the run.
 #              If a command gives an error, the result of the step is bad.
+#   fan        Only for a fan step. A list of worker steps. They run at the
+#              same time. The fan step waits for all of them. Its result is
+#              good only if all of them are good. A step in this list has
+#              only `role` and `reads`.
 #   reads      The papers that the step reads. A paper is a folder of files
 #              that one step writes for other steps.
 #   writes     The papers that the step writes. No other worker can change them.
@@ -55,12 +61,25 @@ steps:
     reads: [spec]
     next: check
 
-  # A checker runs the tests. A bad result goes to the repair step.
+  # Two checkers look at the work at the same time. This step is a fan.
+  # The result is good only if all the steps in the `fan` line are good.
+  # A bad result goes to the repair step, with the report of each checker.
   check:
-    role: checker
-    reads: [spec, tests]
+    type: fan
+    fan: [check_tests, check_safety]
     on_bad: repair
     next: no_locked_files
+
+  # This checker runs the tests that you gave approval for.
+  check_tests:
+    role: checker
+    reads: [spec, tests]
+
+  # This checker reads the change. It looks for keys, weaker tests and
+  # changes that the task does not want. It cannot write a file.
+  check_safety:
+    role: safety
+    reads: [spec]
 
   # A builder repairs the code. Then the checker looks again.
   # The builder gets the report of the checker.

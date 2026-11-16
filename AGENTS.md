@@ -18,6 +18,7 @@ The supervisor knows nothing about software work. All knowledge of the steps is 
 |---|---|
 | Sheet | `.codeumbrella/graph.yaml` in a project: the steps and the rules between them. `graph.example.yaml` is the default. |
 | Step | One piece of the work. A worker does it, a person does it, or the supervisor runs its commands. |
+| Fan | A step that starts two or more worker steps at the same time, and waits for all of them. |
 | Supervisor | The code in `src/graph.rs`, `src/engine.rs`, `src/main.rs`, `src/log.rs` and `src/lib.rs`. |
 | Tool part | The code that starts one type of worker. `src/claude.rs` is the part for Claude. `src/codex.rs` is the part for Codex. |
 | Notebook | `.codeumbrella/runs/<run-id>/state.json`: where the run is. |
@@ -77,9 +78,11 @@ To install the command and the chat command on a computer, run `./install.sh`.
 
 ## The sheet
 
-The file `graph.example.yaml` tells what each line does. A step can have only these lines: `role`, `type`, `run`, `reads`, `writes`, `next`, `on_bad`, `max_tries`. The sheet also has one `start` line.
+The file `graph.example.yaml` tells what each line does. A step can have only these lines: `role`, `type`, `run`, `reads`, `writes`, `next`, `on_bad`, `max_tries`, `fan`. The sheet also has one `start` line.
 
 - A step with `type: person` stops the run until the person answers yes or no.
+- A step with `type: fan` has a `fan` line: a list of worker steps. The supervisor does them at the same time and waits for all of them. The result is good only if all of them are good.
+- A step in a `fan` line has only `role` and `reads`. It writes no paper.
 - A step with `type: command` has a `run` line: a list of commands. The supervisor runs them itself, with no shell and no worker. In a word, `{run}` is the id of the run. If a command gives an error, the result is bad.
 - `next` is the step after a good result. `on_bad` is the step after a bad result.
 - A step that an `on_bad` line goes to must have `max_tries`.
@@ -126,6 +129,8 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - After a stop for a changed paper, `resume` stops again. A person must put the paper back first.
 - The plan step has 3 tries for one run. The first plan uses one. Thus 2 no answers are possible before a stop.
 - Each role has one rules page.
+- The default check step is a fan of two checkers. One runs the tests. One reads the change for safety problems, and it cannot write a file.
+- The two checkers work in the same project folder. Only the tests checker writes there.
 
 ## Rust rules
 
@@ -165,7 +170,7 @@ A new package gets into this list only when all of these are correct:
 
 ## Limits for lines of code
 
-- The supervisor (`src/graph.rs`, `src/engine.rs`, `src/main.rs`, `src/log.rs`, `src/lib.rs`): 520 lines of code.
+- The supervisor (`src/graph.rs`, `src/engine.rs`, `src/main.rs`, `src/log.rs`, `src/lib.rs`): 560 lines of code.
 - Each tool part: 100 lines of code.
 - Empty lines, comment lines and tests do not count.
 - Count with: `grep -v -E '^\s*(//|$)' <file> | wc -l`
@@ -185,7 +190,7 @@ An AI in a chat runs the command most of the time. Keep the output of the comman
 
 ## Not in version 1
 
-- Pieces of a task that run at the same time.
+- Builders that work at the same time. The fan of today is only for workers that write no file.
 - A different worker that writes the tests.
 - A step that writes lessons after each run.
 - Custom hooks.
