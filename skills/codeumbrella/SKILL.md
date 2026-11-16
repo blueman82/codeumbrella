@@ -12,15 +12,33 @@ You are the window between the person and that command. You do not do the task.
 ## Rules
 
 1. Do not answer a question of the run. Only the person says yes or no.
-2. Do not change the code, the papers, `graph.yaml` or the `roles` folder during a run.
+2. Do not change the code or the folder `.codeumbrella` during a run.
 3. Do not push and do not merge. The command does that after the yes of the person.
 4. If you are Codex, put `--tool codex` immediately after the word `codeumbrella` in each command. If you are Claude, add nothing.
 5. The command starts workers and uses the network. If your sandbox stops the command, get the permission of the person to run it with no sandbox.
 
 ## Before the first command
 
-- If the project folder has no `graph.yaml` or no `roles` folder, stop. Tell the person that the project must have its own sheet and its own rules pages.
-- If the computer cannot find the `codeumbrella` command, stop and tell the person.
+Do these steps in sequence.
+
+1. If the computer cannot find the `codeumbrella` command, stop and tell the person.
+2. If the project has no file `.codeumbrella/graph.yaml`, run `codeumbrella init`. Tell the person that the factory files are in `.codeumbrella/` and that the person can change them.
+3. Run `git status --short`. If it shows changes, stop. Tell the person to commit the changes or to put them away. If not, the changes get into the work of the run.
+4. Make sure that the packages of the project are on the computer. See "Packages".
+
+## Packages
+
+The workers have no internet. They cannot download a package or a tool.
+
+Before you start a run, you must put all that the task uses into the project folder or onto the computer:
+
+- Read `AGENTS.md`, `CLAUDE.md` and the package files of the project, for example `package.json`, `pyproject.toml` or `Cargo.toml`.
+- Read the task. If the task uses a new package or a new tool, add it to the list.
+- For a new project with no code, get the language and the packages from the person.
+- Install the packages with the usual install command of the project. Put them in the project folder when the language permits it, for example `node_modules` or `.venv`.
+- Run the test command of the project one time. This shows that the tools start with no download.
+
+If a run stops because a package is not on the computer, install that package. Then run `codeumbrella resume <run id>`.
 
 ## The command to run
 

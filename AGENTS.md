@@ -6,7 +6,9 @@ This file is the one source of the project rules for all agents. `CLAUDE.md` imp
 
 Codeumbrella is a software factory. A person gives it a task. It gives back good code in `main`.
 
-The heart is an instruction sheet (`graph.yaml`) and a small supervisor that reads the sheet and does what it says. The supervisor starts workers (Claude first, Codex after), keeps a notebook, and stops for the person.
+The factory is written in Rust. The projects that go through it can be in each language. Put no knowledge of one language into the supervisor, the default sheet or the default rules pages.
+
+The heart is an instruction sheet (`.codeumbrella/graph.yaml` in each project) and a small supervisor that reads the sheet and does what it says. The supervisor starts workers (Claude first, Codex after), keeps a notebook, and stops for the person.
 
 The supervisor knows nothing about software work. All knowledge of the steps is in the sheet and in the rules pages.
 
@@ -14,13 +16,13 @@ The supervisor knows nothing about software work. All knowledge of the steps is 
 
 | Word | Meaning |
 |---|---|
-| Sheet | `graph.yaml`: the steps and the rules between them. |
+| Sheet | `.codeumbrella/graph.yaml` in a project: the steps and the rules between them. `graph.example.yaml` is the default. |
 | Step | One piece of the work. A worker does it, a person does it, or the supervisor runs its commands. |
 | Supervisor | The code in `src/graph.rs`, `src/engine.rs` and `src/main.rs`. |
 | Tool part | The code that starts one type of worker. `src/claude.rs` is the part for Claude. `src/codex.rs` is the part for Codex. |
 | Notebook | `.codeumbrella/runs/<run-id>/state.json`: where the run is. |
 | Paper | A folder in `.codeumbrella/runs/<run-id>/papers/` that one step writes and other steps read. |
-| Role | The type of a worker. Its rules page is `roles/<role>.md`. |
+| Role | The type of a worker. Its rules page is `.codeumbrella/roles/<role>.md` in a project. The folder `roles` holds the defaults. |
 
 ## Commands
 
@@ -30,6 +32,7 @@ cargo clippy --all-targets -- -D warnings      # usual errors, and a warning sto
 cargo test                                     # tests, with a simulated worker
 cargo build --locked                           # build
 
+codeumbrella init                              # put the default sheet and rules pages into a project
 codeumbrella run "<task>"                      # start a run with Claude workers
 codeumbrella --tool codex run "<task>"         # start a run with Codex workers
 codeumbrella status [run-id]                   # show where a run is
@@ -39,20 +42,14 @@ codeumbrella resume <run-id>                   # try a stopped step again, with 
 
 Run all four `cargo` commands before you say that work is complete.
 
-To install the command and the chat command on a computer:
-
-```sh
-cargo install --path . --locked
-ln -s "$PWD/skill" ~/.claude/skills/codeumbrella
-ln -s "$PWD/skill" ~/.codex/skills/codeumbrella
-```
+To install the command and the chat command on a computer, run `./install.sh`.
 
 ## Structure
 
 | Path | Contents |
 |---|---|
-| `graph.yaml` | The first sheet: plan, look at tests, build, check, repair, open the PR, approval, merge. |
-| `roles/<role>.md` | The rules page of each role, written by hand. |
+| `graph.example.yaml` | The default sheet, with a comment for each option. `init` copies it into a project. |
+| `roles/<role>.md` | The default rules page of each role, written by hand. |
 | `roles/<role>.claude.json` | The Claude permissions and the sandbox settings of each role. |
 | `src/graph.rs` | Reads the sheet and finds its errors before a run. |
 | `src/engine.rs` | Does one step at a time, keeps the notebook, keeps the papers safe. |
@@ -61,11 +58,12 @@ ln -s "$PWD/skill" ~/.codex/skills/codeumbrella
 | `src/claude.rs` | Starts one `claude -p` worker. |
 | `src/codex.rs` | Starts one `codex exec` worker. |
 | `tests/engine.rs` | Tests of the supervisor with a simulated worker. |
-| `skill/SKILL.md` | The chat command `/codeumbrella`. Claude and Codex use the same file. |
+| `skills/codeumbrella/SKILL.md` | The chat command `/codeumbrella`. Claude and Codex use the same file. |
+| `install.sh` | Installs the command and the chat command. |
 
 ## The sheet
 
-A step can have only these lines: `role`, `type`, `run`, `reads`, `writes`, `next`, `on_bad`, `max_tries`, `on_limit`. The sheet also has one `start` line.
+A step can have only these lines (`graph.example.yaml` tells what each one does): `role`, `type`, `run`, `reads`, `writes`, `next`, `on_bad`, `max_tries`, `on_limit`. The sheet also has one `start` line.
 
 - A step with `type: person` stops the run until the person answers yes or no.
 - A step with `type: command` has a `run` line: a list of commands. The supervisor runs them itself, with no shell and no worker. In a word, `{run}` is the id of the run. If a command gives an error, the result is bad.
@@ -78,13 +76,14 @@ A step can have only these lines: `role`, `type`, `run`, `reads`, `writes`, `nex
 - The supervisor opens the PR. Then the run always stops for the approval of the person. The merge comes only after a yes.
 - No worker can push, open a PR or merge. Only the command steps `open_pr` and `merge` can, with the set commands in the sheet.
 - A paper can change only in a step that lists it in `writes`. The supervisor keeps a fingerprint of each paper. If a paper is different when a step reads it, the run stops.
-- Each Claude role has a short list of permitted commands in `roles/<role>.claude.json`. The mode `dontAsk` refuses all other commands.
-- The builder and the checker run in the Claude sandbox. They cannot write to `.codeumbrella`, `roles`, `graph.yaml`, `.claude`, `.github`, `.git/hooks` or `.git/config`. They cannot write to a folder that is not in the project.
-- A deny rule such as `Edit(roles/**)` is what makes the sandbox lock a path. The tests of 15 November 2026 showed this. The setting `sandbox.filesystem.denyWrite` with a relative path did nothing in those tests.
+- All factory files of a project are in the folder `.codeumbrella`: the sheet, the rules pages and the runs. The folder has its own `.gitignore`, so git does not see it.
+- The planner has no shell. The builder and the checker can run all commands, but only in the sandbox.
+- Workers have no internet. The packages of a project must be on the computer before a run. Tests of 16 November 2026 showed that a sandbox with internet lets a worker use the GitHub key of the person.
+- The builder and the checker run in the Claude sandbox. They cannot write to `.codeumbrella`, `.claude`, `.github`, `.git/hooks` or `.git/config`. They cannot write to a folder that is not in the project.
+- A deny rule such as `Edit(.codeumbrella/**)` is what makes the sandbox lock a path. The tests of 15 November 2026 showed this. The setting `sandbox.filesystem.denyWrite` with a relative path did nothing in those tests.
 - A deny rule without the sandbox is not sufficient. A script that a permitted command starts can go around it.
 - Each Codex role runs in the Codex sandbox with the settings in `roles/<role>.codex.txt`. The locked paths are the same as for Claude. The planner can write only to its two papers. The Codex sandbox has no network, so a Codex worker cannot push.
-- Codex has no list of permitted commands. The sandbox is its only wall.
-- The permitted test commands are for a Rust project (`cargo`). A different project must change the lists of the builder and the checker.
+- The sandbox is the only wall for the commands of a worker, for Claude and for Codex.
 - The command steps were not tested with a GitHub project.
 - Each role has one rules page.
 
@@ -125,7 +124,7 @@ A new package gets into this list only when all of these are correct:
 
 ## Limits for lines of code
 
-- The supervisor (`src/graph.rs`, `src/engine.rs`, `src/main.rs`, `src/lib.rs`): 400 lines of code.
+- The supervisor (`src/graph.rs`, `src/engine.rs`, `src/main.rs`, `src/lib.rs`): 430 lines of code.
 - Each tool part: 100 lines of code.
 - Empty lines, comment lines and tests do not count.
 - Count with: `grep -v -E '^\s*(//|$)' <file> | wc -l`

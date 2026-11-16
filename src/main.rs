@@ -7,20 +7,45 @@ use codeumbrella::codex::Codex;
 use codeumbrella::engine::{Run, Worker};
 use codeumbrella::graph::Graph;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use std::{fs, path::PathBuf};
+use std::{fs, path::Path, path::PathBuf};
 
-/// The folder that holds all runs of a project.
-const RUNS: &str = ".codeumbrella/runs";
+/// The folder in a project that holds the sheet, the rules pages and the runs.
+const HOME: &str = ".codeumbrella";
+
+/// One default rules file: its name in the project, and its text.
+macro_rules! role {
+    ($name:literal) => {
+        (
+            concat!("roles/", $name),
+            include_str!(concat!("../roles/", $name)),
+        )
+    };
+}
+
+/// The default files that `init` writes into the folder of the factory.
+const DEFAULTS: &[(&str, &str)] = &[
+    (".gitignore", "*\n"),
+    ("graph.yaml", include_str!("../graph.example.yaml")),
+    role!("planner.md"),
+    role!("planner.claude.json"),
+    role!("planner.codex.txt"),
+    role!("builder.md"),
+    role!("builder.claude.json"),
+    role!("builder.codex.txt"),
+    role!("checker.md"),
+    role!("checker.claude.json"),
+    role!("checker.codex.txt"),
+];
 
 /// A software factory: give it a task, get good code.
 #[derive(Parser)]
 #[command(version, about)]
 struct Cli {
     /// The instruction sheet.
-    #[arg(long, default_value = "graph.yaml")]
+    #[arg(long, default_value = ".codeumbrella/graph.yaml")]
     sheet: PathBuf,
     /// The folder with the rules pages.
-    #[arg(long, default_value = "roles")]
+    #[arg(long, default_value = ".codeumbrella/roles")]
     roles: PathBuf,
     /// The maximum number of minutes for one step.
     #[arg(long, default_value_t = 30)]
@@ -40,6 +65,8 @@ enum Tool {
 
 #[derive(Subcommand)]
 enum Cmd {
+    /// Put the default sheet and rules pages into this project.
+    Init,
     /// Start a new run for a task.
     Run { task: String },
     /// Show where a run is. Without an id: the newest run.
@@ -63,8 +90,9 @@ enum YesNo {
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
-    let runs = PathBuf::from(RUNS);
+    let runs = Path::new(HOME).join("runs");
     let mut run = match &cli.command {
+        Cmd::Init => return init(),
         Cmd::Run { task } => {
             let graph = Graph::load(&cli.sheet, &cli.roles)?;
             let seconds = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
@@ -82,8 +110,8 @@ fn main() -> Result<()> {
     if let Cmd::Answer { answer, text, .. } = &cli.command {
         run.answer(*answer == YesNo::Yes, text)?;
     }
-    if matches!(cli.command, Cmd::Resume { .. }) {
-        run.resume();
+    if let (Cmd::Resume { .. }, Some(at)) = (&cli.command, &run.state.at) {
+        run.state.tries.remove(at);
     }
     if !matches!(cli.command, Cmd::Status { .. }) {
         let graph = Graph::load(&cli.sheet, &cli.roles)?;
@@ -94,13 +122,25 @@ fn main() -> Result<()> {
         };
         run.go(&graph, &cli.roles, worker)?;
     }
-    let id = run
-        .dir
-        .file_name()
-        .map_or_else(String::new, |n| n.to_string_lossy().into_owned());
+    let (id, state) = (run.dir.file_name().unwrap_or_default(), &run.state);
     println!(
-        "Run: {id}\nStatus: {:?}\n{}",
-        run.state.status, run.state.note
+        "Run: {}\nStatus: {:?}\n{}",
+        id.to_string_lossy(),
+        state.status,
+        state.note
     );
+    Ok(())
+}
+
+/// Writes each default file that the project does not have.
+fn init() -> Result<()> {
+    for (name, text) in DEFAULTS {
+        let path = Path::new(HOME).join(name);
+        if !path.exists() {
+            fs::create_dir_all(path.parent().context("the path has no folder")?)?;
+            fs::write(&path, text).with_context(|| format!("cannot write {}", path.display()))?;
+        }
+    }
+    println!("The factory files are in {HOME}/. Change them for this project.");
     Ok(())
 }

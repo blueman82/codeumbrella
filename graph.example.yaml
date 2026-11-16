@@ -1,0 +1,86 @@
+# The instruction sheet of codeumbrella: the steps of the factory and the
+# rules between them. `codeumbrella init` copies this file to
+# `.codeumbrella/graph.yaml` in your project. Change that copy for your project.
+#
+# The lines that a step can have:
+#
+#   type       Who does the step. `worker` (the default), `person` or `command`.
+#              worker:  an AI worker does the step.
+#              person:  the run stops until you answer yes or no.
+#              command: the supervisor runs the commands in `run`. No AI.
+#   role       Only for a worker step. The rules page of the worker is
+#              `.codeumbrella/roles/<role>.md`. You can add your own roles.
+#   run        Only for a command step. A list of commands. Each command is a
+#              list of words. In a word, {run} is the id of the run.
+#              If a command gives an error, the result of the step is bad.
+#   reads      The papers that the step reads. A paper is a folder of files
+#              that one step writes for other steps.
+#   writes     The papers that the step writes. No other step can change them.
+#   next       The step after a good result. With no `next`, the run ends.
+#   on_bad     The step after a bad result. With no `on_bad`, a bad result
+#              stops the run. The step that `on_bad` goes to must have `max_tries`.
+#   max_tries  The maximum number of times that the run does this step.
+#              At the maximum, the run stops and tells you.
+#   on_limit   What occurs at `max_tries`. The only value is `stop_for_person`.
+#              The run stops at the maximum with or without this line.
+
+# The name of the first step.
+start: plan
+
+steps:
+  # A planner writes the description of the work and the tests.
+  plan:
+    role: planner
+    writes: [spec, tests]
+    max_tries: 3
+    next: look_at_tests
+
+  # You look at the tests. A no sends the work back to the planner.
+  # When you trust the planner, remove this step and change `next` of `plan`.
+  look_at_tests:
+    type: person
+    on_bad: plan
+    next: build
+
+  # A builder writes the code and commits it.
+  build:
+    role: builder
+    reads: [spec]
+    next: check
+
+  # A checker runs the tests. A bad result goes to the repair step.
+  check:
+    role: checker
+    reads: [spec, tests]
+    on_bad: repair
+    next: open_pr
+
+  # A builder repairs the code. Then the checker looks again.
+  repair:
+    role: builder
+    reads: [spec]
+    max_tries: 3
+    on_limit: stop_for_person
+    next: check
+
+  # The supervisor sends the code to GitHub and opens the PR. No worker can
+  # push or merge. Change these commands if your project does not use GitHub.
+  # core.hooksPath: the push runs no script from the project folder.
+  open_pr:
+    type: command
+    run:
+      - [git, -c, core.hooksPath=/dev/null, push, --set-upstream, origin, "codeumbrella/{run}"]
+      - [gh, pr, create, --head, "codeumbrella/{run}", --fill]
+    next: approval
+
+  # You look at the PR on GitHub and answer yes or no.
+  approval:
+    type: person
+    next: merge
+
+  # GitHub refuses the merge if a necessary check of the PR is not good.
+  # Other merge types are --merge and --rebase.
+  merge:
+    type: command
+    run:
+      - [gh, pr, merge, "codeumbrella/{run}", --squash]

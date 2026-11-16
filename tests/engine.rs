@@ -49,7 +49,7 @@ fn root() -> PathBuf {
 /// Each command step gets a command that does nothing, so no test can push.
 fn sheet() -> (Graph, PathBuf) {
     let roles = root().join("roles");
-    let mut graph = Graph::load(&root().join("graph.yaml"), &roles).unwrap();
+    let mut graph = Graph::load(&root().join("graph.example.yaml"), &roles).unwrap();
     for step in graph.steps.values_mut().filter(|s| !s.run.is_empty()) {
         step.run = vec![vec!["true".to_owned()]];
     }
@@ -151,7 +151,7 @@ fn the_repair_stops_at_its_maximum() {
     assert_eq!(repairs, 3);
 
     // After `resume`, the run can do the stopped step again.
-    run.resume();
+    run.state.tries.remove("repair");
     run.go(&graph, &roles, &worker).unwrap();
     assert_eq!(worker.calls.borrow().len(), 3 + 2 * 3 + 2 * 3);
 }

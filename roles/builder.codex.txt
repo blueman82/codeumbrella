@@ -1,1 +1,1 @@
-{extends=":workspace", filesystem={":workspace_roots"={".codeumbrella"="read", "roles"="read", "graph.yaml"="read", ".claude"="read", ".github"="read", ".git"="write", ".git/hooks"="read", ".git/config"="read"}}}
+{extends=":workspace", filesystem={":workspace_roots"={".codeumbrella"="read", ".claude"="read", ".github"="read", ".git"="write", ".git/hooks"="read", ".git/config"="read"}}}

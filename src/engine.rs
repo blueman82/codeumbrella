@@ -98,13 +98,12 @@ impl Run {
     /// Gives an error if the folder or the notebook cannot be written.
     pub fn start(dir: PathBuf, task: &str, graph: &Graph) -> Result<Self> {
         fs::create_dir_all(dir.join("papers"))?;
-        let (task, at) = (task.to_owned(), Some(graph.start.clone()));
-        let state = State {
-            task,
-            at,
-            ..State::default()
+        let mut run = Self {
+            dir,
+            state: State::default(),
         };
-        let run = Self { dir, state };
+        task.clone_into(&mut run.state.task);
+        run.state.at = Some(graph.start.clone());
         run.save()?;
         Ok(run)
     }
@@ -141,13 +140,6 @@ impl Run {
         let summary = format!("The person said {}. {text}", if ok { "yes" } else { "no" });
         self.state.answer = Some(Outcome { ok, summary });
         self.save()
-    }
-
-    /// Sets the count of tries of the stopped step to 0, so `go` can do it again.
-    pub fn resume(&mut self) {
-        if let Some(at) = &self.state.at {
-            self.state.tries.remove(at);
-        }
     }
 
     /// Does steps until the run ends, stops, or waits for the person.
@@ -217,10 +209,7 @@ impl Run {
         for paper in &step.writes {
             fs::create_dir_all(self.paper(paper))?;
         }
-        let role = step
-            .role
-            .as_deref()
-            .context("a worker step must have a role")?;
+        let role = step.role.as_deref().unwrap_or_default();
         let outcome = worker.run(&Job {
             task: &self.state.task,
             step: name,
