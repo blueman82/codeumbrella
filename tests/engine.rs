@@ -237,6 +237,23 @@ fn a_paper_that_the_person_changes_at_a_stop_does_not_stop_the_run() {
 }
 
 #[test]
+fn a_worker_change_to_a_paper_stops_the_run_before_the_question_for_the_person() {
+    let (graph, roles) = sheet();
+    let worker = Script {
+        cheat: Some("check".to_owned()),
+        ..Script::default()
+    };
+    let mut run = Run::start(folder(), "a task", &graph).unwrap();
+    run.go(&graph, &roles, &worker).unwrap();
+    run.answer(true, "").unwrap();
+    run.go(&graph, &roles, &worker).unwrap();
+    // The run does not get to the approval step, where an answer makes new fingerprints.
+    assert_eq!(run.state.status, Status::Stopped);
+    assert!(run.state.note.contains("paper tests"), "{}", run.state.note);
+    assert!(!run.state.results.contains_key("open_pr"));
+}
+
+#[test]
 fn an_answer_with_no_open_question_is_an_error() {
     let (graph, _) = sheet();
     let mut run = Run::start(folder(), "a task", &graph).unwrap();

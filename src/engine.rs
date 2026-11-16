@@ -185,6 +185,12 @@ impl Run {
         worker: &dyn Worker,
     ) -> Result<Option<Outcome>> {
         let before = self.state.last.clone();
+        // Before each step, also a step for the person: no paper changed.
+        for paper in step.reads.iter().chain(self.state.prints.keys()) {
+            if self.state.prints.get(paper) != Some(&fingerprint(&self.paper(paper))?) {
+                bail!("the paper {paper} is not as its writer left it");
+            }
+        }
         if step.kind == Kind::Person {
             let answer = self.state.answer.take();
             if answer.is_none() {
@@ -207,11 +213,6 @@ impl Run {
                 return self.halt(Status::Stopped, note).map(|()| None);
             }
             *tries += 1;
-        }
-        for paper in &step.reads {
-            if self.state.prints.get(paper) != Some(&fingerprint(&self.paper(paper))?) {
-                bail!("the paper {paper} is not as its writer left it");
-            }
         }
         for paper in &step.writes {
             fs::create_dir_all(self.paper(paper))?;
