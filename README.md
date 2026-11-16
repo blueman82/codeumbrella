@@ -10,6 +10,9 @@ The factory stops two times for you. First, you look at the tests. Second, you g
 - `git`, to keep the versions of the code. Check: `git --version`
 - `gh`, the GitHub command, to open the PR. Check: `gh --version`
 - `claude` (Claude Code) or `codex` (Codex). These start the workers. Check: `claude --version` or `codex --version`
+- A GitHub project for your code, with the name `origin`. Check: `git remote get-url origin`
+- `gh` signed in. Check: `gh auth status`
+- macOS. There is no test on Linux or Windows.
 
 ## Install
 
@@ -30,6 +33,12 @@ The plugin brings only the chat command `/codeumbrella`. The `codeumbrella` comm
      ```
      Then open Codex, type `/plugins`, and install `codeumbrella`.
 
+## Before a run
+
+- Workers have no internet. Install the packages of your project first.
+- Workers can connect to a server on your computer, for example a test database.
+- Put the test command at the end of the task: `Test command: <command>`
+
 ## First run
 
 1. Go to your project folder. Commit your changes first.
@@ -42,3 +51,40 @@ The plugin brings only the chat command `/codeumbrella`. The `codeumbrella` comm
    - In a terminal, run `codeumbrella answer <run-id> yes` or `codeumbrella answer <run-id> no "why"`.
 
 To see where a run is, run `codeumbrella status`.
+
+## Your two answers
+
+| Stop | Yes | No, with your text |
+|---|---|---|
+| The tests | The builder starts. | The planner writes the tests again. |
+| The PR | The supervisor merges. | The builder corrects the code. The same PR gets it. |
+
+## Codex workers
+
+Add `--tool codex` after the word `codeumbrella` in each command:
+`codeumbrella --tool codex run "<task>"`
+
+## When a run stops
+
+| Look here | What it has |
+|---|---|
+| `.codeumbrella/runs/<run-id>/log.jsonl` | One line for each step: time, result, seconds. |
+| `.codeumbrella/runs/<run-id>/<step>.<number>.trace.jsonl` | All that one worker did. |
+| `codeumbrella resume <run-id>` | Tries the stopped step again. |
+
+## Change the factory
+
+| File in `.codeumbrella/` | What you change |
+|---|---|
+| `graph.yaml` | The steps and their sequence. Comments in the file tell each option. |
+| `roles/<role>.md` | The rules of one worker. |
+| `roles/<role>.claude.json`, `roles/<role>.codex.txt` | What one worker can do. |
+
+## What a worker can and cannot do
+
+| Can | Cannot |
+|---|---|
+| Write code in the project, and commit | Push, open a PR, or merge |
+| Run commands in a sandbox | Use the internet or GitHub |
+| Connect to a server on your computer | Write to `.codeumbrella`, `.github` or the git settings |
+| | Write to a folder that is not the project |
