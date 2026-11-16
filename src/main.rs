@@ -25,6 +25,8 @@ macro_rules! role {
 /// The default files that `init` writes into the folder of the factory.
 const DEFAULTS: &[(&str, &str)] = &[
     (".gitignore", "*\n"),
+    // For a project that has no ignore file. The path goes up to the project folder.
+    ("../.gitignore", include_str!("../default.gitignore")),
     ("graph.yaml", include_str!("../graph.example.yaml")),
     role!("planner.md"),
     role!("planner.claude.json"),
@@ -122,13 +124,10 @@ fn main() -> Result<()> {
         };
         run.go(&graph, &cli.roles, worker)?;
     }
-    let (id, state) = (run.dir.file_name().unwrap_or_default(), &run.state);
     // The screen gets a short note. The full text is in the log.
-    let (id, note) = (
-        id.to_string_lossy(),
-        state.note.chars().take(300).collect::<String>(),
-    );
-    println!("Run: {id}\nStatus: {:?}\n{note}", state.status);
+    let note: String = run.state.note.chars().take(300).collect();
+    let id = run.dir.file_name().unwrap_or_default().to_string_lossy();
+    println!("Run: {id}\nStatus: {:?}\n{note}", run.state.status);
     println!("More: {}", run.dir.join("log.jsonl").display());
     Ok(())
 }

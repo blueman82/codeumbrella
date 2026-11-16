@@ -1,0 +1,31 @@
+# The default ignore file from `codeumbrella init`. Change it for your project.
+
+# Secrets. Do not commit them.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Packages and build output of the usual languages
+node_modules/
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+target/
+
+# Files of the operating system
+.DS_Store
+Thumbs.db
+
+# Files of editors
+.idea/
+.vscode/
+*.swp
+*~
+
+# Logs and temporary files
+*.log
+*.tmp
