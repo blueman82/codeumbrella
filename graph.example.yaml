@@ -87,7 +87,7 @@ steps:
       - [git, -C, ".codeumbrella/runs/{run}/clean", fetch, --quiet, --recurse-submodules=no, origin]
       - [git, -C, ".codeumbrella/runs/{run}/clean", remote, set-head, origin, --auto]
       - [git, -C, ".codeumbrella/runs/{run}/clean", fetch, --quiet, --recurse-submodules=no, ../../../.., "+refs/heads/codeumbrella/{run}:refs/heads/codeumbrella/{run}"]
-      - [git, -C, ".codeumbrella/runs/{run}/clean", --no-replace-objects, diff, --quiet, --no-ext-diff, --no-textconv, "refs/remotes/origin/HEAD...refs/heads/codeumbrella/{run}", --, .github, .claude, .codeumbrella]
+      - [git, -C, ".codeumbrella/runs/{run}/clean", --no-replace-objects, diff, --quiet, --no-ext-diff, --no-textconv, "refs/remotes/origin/HEAD...refs/heads/codeumbrella/{run}", --, ":(icase).github", ":(icase).claude", ":(icase).codeumbrella"]
     next: push
 
   # The supervisor sends the code to GitHub. No worker can push or merge.
@@ -97,7 +97,7 @@ steps:
   push:
     type: command
     run:
-      - [git, -C, ".codeumbrella/runs/{run}/clean", push, --quiet, origin, "refs/heads/codeumbrella/{run}:refs/heads/codeumbrella/{run}"]
+      - [git, -C, ".codeumbrella/runs/{run}/clean", push, --quiet, --no-follow-tags, origin, "refs/heads/codeumbrella/{run}:refs/heads/codeumbrella/{run}"]
     next: find_pr
 
   # Is there a PR for this run? Yes: go to your approval. No: open one.

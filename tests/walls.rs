@@ -150,7 +150,16 @@ fn the_push_sends_only_the_checked_commit_to_the_branch_of_the_run() {
     let push = &graph.step("push").unwrap().run;
     assert_eq!(
         push,
-        &[["git", "-C", clean, "push", "--quiet", "origin", &both]]
+        &[[
+            "git",
+            "-C",
+            clean,
+            "push",
+            "--quiet",
+            "--no-follow-tags",
+            "origin",
+            &both
+        ]]
     );
     // The step before gets GitHub and the run branch into the clean copy, then compares.
     let guard = &graph.step("no_locked_files").unwrap().run;
@@ -165,7 +174,8 @@ fn the_push_sends_only_the_checked_commit_to_the_branch_of_the_run() {
         guard[5][3..].join(" "),
         format!(
             "--no-replace-objects diff --quiet --no-ext-diff --no-textconv \
-             refs/remotes/origin/HEAD...{name} -- .github .claude .codeumbrella"
+             refs/remotes/origin/HEAD...{name} -- \
+             :(icase).github :(icase).claude :(icase).codeumbrella"
         )
     );
     // No command of the sheet uses a word that goes around a check.

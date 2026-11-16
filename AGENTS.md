@@ -90,6 +90,8 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - The supervisor opens the PR. Then the run always stops for the approval of the person. The merge comes only after a yes. A no with a text sends the work back to the planner. The person then sees the tests again.
 - No worker can push, open a PR or merge. Only the command steps `push`, `open_pr` and `merge` can, with the set commands in the sheet.
 - The step `no_locked_files` stops the run if the work changes `.github`, `.claude` or `.codeumbrella`. A worker cannot write to these folders, but git can put such a file into a commit.
+- That step reads a capital letter and a small letter as the same letter. A test on 16 November 2026 showed the cause. On a Mac, a commit with `.Claude/settings.json` got through the step and changed `.claude/settings.json`.
+- The push does not send tags.
 - A worker can write to the `.git` folder of the project. Thus that step and the push do not use it. They use a clean copy in the run folder, which no worker can write to.
 - The clean copy gets the code of GitHub from GitHub. It gets only the `branch` of the run from the project. The push sends the commit that the step compared.
 - The push gives the full name of the run `branch` two times. Thus it cannot go to a different `branch`. Tests on 16 November 2026 showed these attacks with git.
