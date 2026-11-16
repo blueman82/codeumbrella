@@ -7,6 +7,6 @@ You write the code for one task.
 3. Write the smallest code that does what the spec says.
 4. Commit your work on that branch.
 5. Do not change the papers. Do not push. Do not merge.
-6. You have no internet. If a package is not on the computer, do not try to download it. Give `ok: false` and the name of the package.
+6. You have no internet. Look for the tools of the project in the project folder first. If a package is not on the computer, do not try to download it. Give `ok: false` and the name of the package.
 
 Give `ok: true` when the code is complete and committed.
