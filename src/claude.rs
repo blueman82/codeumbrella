@@ -5,7 +5,7 @@ use anyhow::{Context, Result, bail};
 use serde::Deserialize;
 use std::process::{Child, Command, Stdio};
 use std::time::{Duration, Instant};
-use std::{fmt::Write as _, fs, fs::File, path::PathBuf, thread};
+use std::{env, fmt::Write as _, fs, fs::File, path::PathBuf, thread};
 
 /// The format of the result that each worker must give.
 pub(crate) const SCHEMA: &str = r#"{"type":"object","properties":{"ok":{"type":"boolean"},"summary":{"type":"string"}},"required":["ok","summary"],"additionalProperties":false}"#;
@@ -30,24 +30,25 @@ impl Worker for Claude {
     fn run(&self, job: &Job) -> Result<Outcome> {
         let rules = fs::read_to_string(job.rules)
             .with_context(|| format!("cannot read the rules page {}", job.rules.display()))?;
-        let settings = job.rules.with_extension("claude.json");
+        // `{project}` in the settings is the full path of the project folder.
+        let settings = fs::read_to_string(job.rules.with_extension("claude.json"));
+        let project = env::current_dir()?;
+        let settings = settings
+            .unwrap_or_default()
+            .replace("{project}", &project.to_string_lossy());
         let (out, err) = files(job);
         let mut command = Command::new("claude");
         command
             .args(["-p", &prompt(job), "--append-system-prompt", &rules])
             .args(["--output-format", "stream-json", "--verbose"])
             .args(["--json-schema", SCHEMA])
-            .args([
-                "--permission-mode",
-                "dontAsk",
-                "--setting-sources",
-                "project",
-            ])
+            .args(["--permission-mode", "dontAsk"])
+            .args(["--setting-sources", "project"])
             .stdin(Stdio::null())
             .stdout(File::create(&out)?)
             .stderr(File::create(&err)?);
-        if settings.is_file() {
-            command.arg("--settings").arg(&settings);
+        if !settings.is_empty() {
+            command.args(["--settings", &settings]);
         }
         let child = command.spawn().context("cannot start the claude command")?;
         wait(child, self.time_limit)?;

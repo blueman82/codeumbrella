@@ -54,7 +54,7 @@ To install the command and the chat command on a computer, run `./install.sh`.
 | `graph.example.yaml` | The default sheet, with a comment for each option. `init` copies it into a project. |
 | `default.gitignore` | The default ignore file. `init` gives it to a project that has no `.gitignore`. |
 | `roles/<role>.md` | The default rules page of each role, written by hand. |
-| `roles/<role>.claude.json` | The Claude permissions and the sandbox settings of each role. |
+| `roles/<role>.claude.json` | The Claude permissions and the sandbox settings of each role. In this file, `{project}` is the full path of the project folder. |
 | `src/graph.rs` | Reads the sheet and finds its errors before a run. |
 | `src/engine.rs` | Does one step at a time, keeps the notebook, keeps the papers safe. |
 | `src/main.rs` | The `codeumbrella` command. |

@@ -4,8 +4,8 @@
       "Read",
       "Glob",
       "Grep",
-      "Edit(.codeumbrella/runs/*/papers/spec/**)",
-      "Edit(.codeumbrella/runs/*/papers/tests/**)"
+      "Edit(/{project}/.codeumbrella/runs/*/papers/spec/**)",
+      "Edit(/{project}/.codeumbrella/runs/*/papers/tests/**)"
     ]
   }
 }
