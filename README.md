@@ -1,6 +1,6 @@
 # Codeumbrella
 
-Codeumbrella is a software factory. You give it a task. It gives the task to workers (AI programs). They plan, write and check the code. At the end, good code goes into `main`.
+Codeumbrella is a software factory. You give it a task. It gives the task to workers (AI programs). They plan, write and check the code. Code goes into `main` only after two things: the code agrees with the tests that you gave approval for, and you gave approval for the PR.
 
 The factory stops two times for you. First, you look at the tests. Second, you approve the pull request (PR, a request to add code to `main`). You answer yes or no each time.
 
