@@ -67,7 +67,7 @@ The output has three parts: the run id, the status, and a note.
 - Status `Stopped`: show the note to the person. After the person corrects the cause, run `codeumbrella resume <run id>`.
 - If the note says that a paper is not as its writer left it, `resume` does not help. A person must put the paper back first, or start a new run.
 - If the step `no_locked_files` stopped the run, the work changes `.github`, `.claude` or `.codeumbrella`. Show this to the person. Do not go around it.
-- Status `Done`: tell the person that the PR is merged. Then run `git switch <the name that you kept>` and `git pull`.
+- Status `Done`: tell the person that the merge of the PR is complete. Then run `git switch <the name that you kept>` and `git pull`.
 
 ## The log and the `trace` files
 

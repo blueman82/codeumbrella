@@ -97,9 +97,9 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - Only one command can work on a run at a time. The file `lock` in the run folder shows this. After a kill, a person removes that file.
 - A worker that ends with an error code gives no good result.
 - A worker does not get the values `GH_TOKEN` and `GITHUB_TOKEN` of the person.
-- For a Claude worker, only the settings file of its role counts. The worker loads no settings, hooks or tool servers of the project or of the person.
+- For a Claude worker, only the settings file of its role counts. The worker uses no settings, hooks or tool servers of the project or of the person.
 - A live test on 16 November 2026 showed the cause. With the project settings, a hook of the project ran in a worker, with no sandbox.
-- Thus Claude does not load `AGENTS.md` and `CLAUDE.md` of a project by itself. Each rules page tells the worker to read them.
+- Thus Claude does not read `AGENTS.md` and `CLAUDE.md` of a project by itself. Each rules page tells the worker to read them.
 - A Claude worker cannot read `~/.ssh`, `~/.config/gh`, `~/.netrc` and `~/.git-credentials`. It has no web tools. The Codex roles do not have this read lock.
 - A role with no settings file is an error. A worker does not start with no settings.
 - A paper can change only in a step that lists it in `writes`. The supervisor keeps a fingerprint of each paper. Before each step, the supervisor compares all the papers with their fingerprints. If a paper is different, the run stops. The person can change a paper while the run waits for an answer. The answer makes the fingerprints again.
