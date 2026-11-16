@@ -224,6 +224,19 @@ fn a_worker_that_changes_the_tests_stops_the_run() {
 }
 
 #[test]
+fn a_paper_that_the_person_changes_at_a_stop_does_not_stop_the_run() {
+    let (graph, roles) = sheet();
+    let worker = Script::default();
+    let mut run = Run::start(folder(), "a task", &graph).unwrap();
+    run.go(&graph, &roles, &worker).unwrap();
+    fs::write(run.dir.join("papers/tests/file.md"), "better tests").unwrap();
+    run.answer(true, "").unwrap();
+    run.go(&graph, &roles, &worker).unwrap();
+    assert_eq!(run.state.status, Status::Waiting);
+    assert_eq!(run.state.at.as_deref(), Some("approval"));
+}
+
+#[test]
 fn an_answer_with_no_open_question_is_an_error() {
     let (graph, _) = sheet();
     let mut run = Run::start(folder(), "a task", &graph).unwrap();

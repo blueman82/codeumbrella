@@ -129,13 +129,20 @@ impl Run {
         fs::write(self.dir.join("state.json"), text).context("cannot write the notebook")
     }
 
-    /// Records the answer of the person to the open question.
+    /// Records the answer of the person to the open question, and makes the
+    /// fingerprints of the papers again.
     ///
     /// # Errors
-    /// Gives an error if the run does not wait for an answer.
+    /// Gives an error if the run does not wait for an answer, or if a paper
+    /// is not readable.
     pub fn answer(&mut self, ok: bool, text: &str) -> Result<()> {
         if self.state.status != Status::Waiting {
             bail!("this run has no open question");
+        }
+        // The person answers for the papers as they are at this time.
+        let papers = self.dir.join("papers");
+        for (paper, print) in &mut self.state.prints {
+            *print = fingerprint(&papers.join(paper))?;
         }
         let summary = format!("The person said {}. {text}", if ok { "yes" } else { "no" });
         self.state.answer = Some(Outcome { ok, summary });
