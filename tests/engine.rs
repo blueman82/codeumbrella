@@ -169,7 +169,7 @@ fn a_no_from_the_person_goes_back_to_the_plan() {
 }
 
 #[test]
-fn a_no_at_the_approval_sends_the_work_back_to_the_builder() {
+fn a_no_at_the_approval_sends_the_work_back_to_the_planner() {
     let (graph, roles) = sheet();
     let worker = Script::default();
     let mut run = Run::start(folder(), "a task", &graph).unwrap();
@@ -178,13 +178,10 @@ fn a_no_at_the_approval_sends_the_work_back_to_the_builder() {
     run.go(&graph, &roles, &worker).unwrap();
     run.answer(false, "Change the heading.").unwrap();
     run.go(&graph, &roles, &worker).unwrap();
-    // The builder repairs, the checker looks again, and the run comes back to the person.
+    // The planner corrects the spec and the tests, and the person sees the tests again.
     assert_eq!(run.state.status, Status::Waiting);
-    assert_eq!(run.state.at.as_deref(), Some("approval"));
-    assert_eq!(
-        *worker.calls.borrow(),
-        ["plan", "build", "check", "repair", "check"]
-    );
+    assert_eq!(run.state.at.as_deref(), Some("look_at_tests"));
+    assert_eq!(*worker.calls.borrow(), ["plan", "build", "check", "plan"]);
     assert!(!run.state.results.contains_key("merge"));
 }
 

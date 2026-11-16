@@ -63,7 +63,7 @@ Run `codeumbrella init --update` in your project. It replaces each factory file 
 | Stop | Yes | No, with your text |
 |---|---|---|
 | The tests | The builder starts. | The planner writes the tests again. |
-| The PR | The supervisor merges. | The builder corrects the code. The same PR gets it. |
+| The PR | The supervisor merges. | The planner corrects the spec and the tests. You see the tests again. The same PR gets the new code. |
 
 ## Codex workers
 
