@@ -132,6 +132,8 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - After a stop for a changed paper, `resume` stops again. A person must put the paper back first.
 - The plan step has 3 tries for one run. The first plan uses one. Thus 2 no answers are possible before a stop.
 - Each role has one rules page.
+- The chat starts `run`, `answer` and `resume` with `nohup`, so a command lives after the shell ends. If the status is Running and no command is alive, the chat removes `lock` and runs `resume`.
+- The checker compares each test file of the paper `tests` with the project in each try. A file that is different or not there gets the paper version, because the person approved the paper. The builder does not change such a file.
 - The default check step is a fan of two checkers. One runs the tests. One reads the change for safety problems, and it cannot write a file.
 - The two checkers work in the same copy. Only the tests checker writes there.
 - The safety checker does not read the commit that the tests checker makes at the same time. The person sees that commit in the PR.

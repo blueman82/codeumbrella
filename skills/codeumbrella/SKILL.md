@@ -49,7 +49,13 @@ If a run stops because a package is not on the computer, install that package. T
 | A task | `codeumbrella run "<task>"` |
 | No task | `codeumbrella status` |
 
-One command can run for many minutes. Give it a time limit of 10 minutes. If it does not end in that time, run `codeumbrella status` to see where the run is.
+A `run`, `answer` or `resume` command can run for 15 to 25 minutes. A shell of the chat can end, or a time limit of the chat can stop it. The command then stops, and the file `lock` stays. So start each of these commands so that it continues after the shell ends and after a time limit. Send the output to a file. For a usual shell:
+
+`nohup codeumbrella run "<task>" > .codeumbrella/out.txt 2>&1 &`
+
+Use the same form for `answer` and `resume`. Then run `codeumbrella status` each few minutes until the status is not Running. Read the output file after that.
+
+If the status is Running and no `codeumbrella` command is alive on the computer, tell the person, remove the file `lock` in the run folder, and run `codeumbrella resume <run id>`.
 
 ## After each command
 
