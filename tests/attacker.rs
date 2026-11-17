@@ -62,12 +62,26 @@ fn the_default_sheet_has_the_attack_step_between_the_plan_and_the_person() {
     let plan = graph.step("plan").unwrap();
     assert_eq!(plan.next.as_deref(), Some("attack_plan"));
     assert_eq!(plan.max_tries, Some(3));
-    // The planner corrects the plan one time. Then the person sees the tests.
-    let correct = graph.step("correct_plan").unwrap();
-    assert_eq!(correct.role.as_deref(), Some("planner"));
-    assert_eq!(correct.writes, ["spec", "tests"]);
-    assert_eq!(correct.next.as_deref(), Some("look_at_tests"));
-    // No step goes back to the attacker. Thus a circle is not possible.
+    // Three attacks at the maximum, in one line. After each bad attack, the
+    // planner corrects the plan. The last correction goes to the person.
+    let line = [
+        ("attack_plan", "correct_plan", "look_at_tests"),
+        ("correct_plan", "", "attack_plan_2"),
+        ("attack_plan_2", "correct_plan_2", "look_at_tests"),
+        ("correct_plan_2", "", "attack_plan_3"),
+        ("attack_plan_3", "correct_plan_3", "look_at_tests"),
+        ("correct_plan_3", "", "look_at_tests"),
+    ];
+    for (name, on_bad, next) in line {
+        let step = graph.step(name).unwrap();
+        let attacker = name.starts_with("attack");
+        let role = if attacker { "attacker" } else { "planner" };
+        assert_eq!(step.role.as_deref(), Some(role), "{name}");
+        assert_eq!(step.writes.is_empty(), attacker, "{name}");
+        assert_eq!(step.on_bad.as_deref().unwrap_or(""), on_bad, "{name}");
+        assert_eq!(step.next.as_deref(), Some(next), "{name}");
+    }
+    // Only `plan` goes to the first attack. Thus a circle is not possible.
     for (name, step) in &graph.steps {
         let to_attack = [&step.next, &step.on_bad].contains(&&Some("attack_plan".to_owned()));
         assert_eq!(to_attack, name == "plan", "{name}");
@@ -201,7 +215,7 @@ impl Worker for Script {
         }
         let mut left = self.bad_times.lock().unwrap();
         let mut ok = true;
-        if job.step == self.bad_step {
+        if job.step.starts_with(self.bad_step) {
             ok = *left == 0;
             *left = left.saturating_sub(1);
         }
@@ -234,15 +248,38 @@ fn a_good_attack_result_goes_to_the_person() {
 }
 
 #[test]
-fn a_bad_attack_result_goes_to_the_planner_one_time_and_then_to_the_person() {
+fn one_bad_attack_gets_one_correction_and_a_second_attack() {
     let (graph, roles) = sheet();
-    // The attacker always gives a bad result.
+    let worker = Script::new("attack_plan", 1);
+    let mut run = Run::start(folder(), "a task", &graph).unwrap();
+    run.go(&graph, &roles, &worker).unwrap();
+    assert_eq!(run.state.at.as_deref(), Some("look_at_tests"));
+    assert_eq!(
+        worker.calls(),
+        ["plan", "attack_plan", "correct_plan", "attack_plan_2"]
+    );
+}
+
+#[test]
+fn an_attacker_that_is_always_bad_gets_three_rounds_and_then_the_person_sees_the_tests() {
+    let (graph, roles) = sheet();
     let worker = Script::new("attack_plan", 99);
     let mut run = Run::start(folder(), "a task", &graph).unwrap();
     run.go(&graph, &roles, &worker).unwrap();
     assert_eq!(run.state.status, Status::Waiting);
     assert_eq!(run.state.at.as_deref(), Some("look_at_tests"));
-    assert_eq!(worker.calls(), ["plan", "attack_plan", "correct_plan"]);
+    assert_eq!(
+        worker.calls(),
+        [
+            "plan",
+            "attack_plan",
+            "correct_plan",
+            "attack_plan_2",
+            "correct_plan_2",
+            "attack_plan_3",
+            "correct_plan_3"
+        ]
+    );
     assert!(!run.state.results.contains_key("build"));
 }
 

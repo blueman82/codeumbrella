@@ -132,8 +132,10 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - A paper that a step writes is not compared before that step. Thus a writer can run again after a try that broke its paper.
 - After a stop for a changed paper, `resume` stops again. A person must put the paper back first.
 - The plan step has 3 tries for one run. The first plan uses one. Thus 2 no answers are possible before a stop.
-- The attacker reads the spec and the tests after the planner. It cannot write a file. There is one attack for each plan.
-- A bad result of the attacker goes to the step `correct_plan`. The planner corrects the plan one time, and then the person sees the tests.
+- The attacker reads the spec and the tests after the planner. It cannot write a file.
+- A bad result of the attacker goes to a step `correct_plan`. The planner corrects the plan, and the attacker looks again.
+- There are 3 attacks at the maximum for each plan. After the third correction, the person sees the tests.
+- The sheet has these six steps in one line, with no path back. Thus a circle is not possible.
 - A live test on 17 November 2026 showed the cause. A Codex attacker gave 5 bad results for a small task, and the run stopped.
 - The settings of the attacker are the same as those of the safety checker.
 - Each role has one rules page.

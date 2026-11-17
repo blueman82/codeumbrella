@@ -38,9 +38,10 @@ SUPERVISOR ── uses your GitHub key ──► GITHUB: push · PR · merge (me
 plan (3 tries) ◄─────────────────────────────┬──────────┐
   ▼                                          │          │
 attack_plan: the attacker looks for weak     │          │
-points, one time for each plan               │          │
-  ├── a problem ──► correct_plan ──┐         │          │
-  ▼ none                           ▼         │          │
+points, 3 times at the maximum               │          │
+  ├── a problem ──► correct_plan ──► attack  │          │
+  │                 again, or after the      │          │
+  ▼ none            third time: go on ──┐    │          │
 YOU: tests? ── no ───────────────────────────┘          │ no
   ▼ yes                                                 │
 build                                                   │
@@ -66,7 +67,8 @@ an error · a bad result with no path for it · a changed paper · a maximum
 - A fan is a step that starts two or more worker steps at the same time. It waits for all of them.
 - `resume` tries a stopped step again. After a changed paper, a person must put the paper back first.
 - The plan step has 3 tries for one run, and the first plan uses one.
-- A bad result of the attacker goes to the step `correct_plan`. The planner corrects the plan one time.
-- The attacker does not look again after that. Thus the two workers cannot go in a circle.
-- You can remove the steps `attack_plan` and `correct_plan` for a faster run.
+- A bad result of the attacker goes to a step `correct_plan`. The planner corrects the plan, and the attacker looks again.
+- There are 3 attacks at the maximum for each plan. After the third correction, the person sees the tests.
+- The six steps go in one line, with no path back. Thus the two workers cannot go in a circle.
+- You can remove the six attack steps for a faster run.
 - The picture shows the default sheet, `graph.example.yaml`. A project can change its own sheet.
