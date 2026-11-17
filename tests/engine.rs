@@ -103,7 +103,7 @@ fn a_good_run_stops_two_times_for_the_person_and_then_ends() {
     assert_eq!(run.state.status, Status::Done);
     assert_eq!(
         *worker.calls.lock().unwrap(),
-        ["plan", "build", "check_tests"]
+        ["plan", "attack_plan", "build", "check_tests"]
     );
     // The PR opens before the approval. The merge comes after it.
     assert!(run.state.results.contains_key("find_pr"));
@@ -126,6 +126,7 @@ fn a_bad_check_goes_to_repair_and_back() {
         *worker.calls.lock().unwrap(),
         [
             "plan",
+            "attack_plan",
             "build",
             "check_tests",
             "repair",
@@ -165,7 +166,7 @@ fn the_repair_stops_at_its_maximum() {
     // After `resume`, the run can do the stopped step again.
     run.state.tries.remove("repair");
     run.go(&graph, &roles, &worker).unwrap();
-    assert_eq!(worker.calls.lock().unwrap().len(), 3 + 2 * 3 + 2 * 3);
+    assert_eq!(worker.calls.lock().unwrap().len(), 4 + 2 * 3 + 2 * 3);
 }
 
 #[test]
@@ -177,7 +178,10 @@ fn a_no_from_the_person_goes_back_to_the_plan() {
     run.answer(false, "The tests are too easy.").unwrap();
     run.go(&graph, &roles, &worker).unwrap();
     assert_eq!(run.state.status, Status::Waiting);
-    assert_eq!(*worker.calls.lock().unwrap(), ["plan", "plan"]);
+    assert_eq!(
+        *worker.calls.lock().unwrap(),
+        ["plan", "attack_plan", "plan", "attack_plan"]
+    );
 }
 
 #[test]
@@ -195,7 +199,14 @@ fn a_no_at_the_approval_sends_the_work_back_to_the_planner() {
     assert_eq!(run.state.at.as_deref(), Some("look_at_tests"));
     assert_eq!(
         *worker.calls.lock().unwrap(),
-        ["plan", "build", "check_tests", "plan"]
+        [
+            "plan",
+            "attack_plan",
+            "build",
+            "check_tests",
+            "plan",
+            "attack_plan"
+        ]
     );
     assert!(!run.state.results.contains_key("merge"));
 }
@@ -359,7 +370,10 @@ fn a_step_can_run_again_after_its_own_try_broke_its_papers() {
     fs::write(run.dir.join("papers/spec/file.md"), "half a plan").unwrap();
     run.go(&graph, &roles, &worker).unwrap();
     assert_eq!(run.state.status, Status::Waiting);
-    assert_eq!(*worker.calls.lock().unwrap(), ["plan", "plan"]);
+    assert_eq!(
+        *worker.calls.lock().unwrap(),
+        ["plan", "attack_plan", "plan", "attack_plan"]
+    );
 }
 
 /// A sheet with one fan step `check` that has the parts `a` and `b`.

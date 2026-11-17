@@ -104,7 +104,7 @@ fn claude(tools: &Path) -> String {
     format!(
         r#"pwd -P > "{t}/cwd.txt"
 for a in "$@"; do echo "$a"; done > "{t}/args.txt"
-p=""; for a in "$@"; do [ "$p" = "--settings" ] && printf '%s' "$a" > "{t}/settings.json"; p="$a"; done
+p=""; for a in "$@"; do [ "$p" = "--settings" ] && [ ! -f "{t}/settings.json" ] && printf '%s' "$a" > "{t}/settings.json"; p="$a"; done
 touch evil.txt
 echo '{{"is_error":false,"result":"","structured_output":{{"ok":true,"summary":"done"}}}}'"#
     )
@@ -115,7 +115,7 @@ fn codex(tools: &Path) -> String {
     let t = tools.display();
     format!(
         r#"pwd -P > "{t}/cwd.txt"
-for a in "$@"; do echo "$a"; done > "{t}/args.txt"
+[ -f "{t}/args.txt" ] || for a in "$@"; do echo "$a"; done > "{t}/args.txt"
 while [ "$1" != "--output-last-message" ]; do shift; done
 echo '{{"ok":true,"summary":"done"}}' > "$2""#
     )

@@ -14,28 +14,25 @@ const HOME: &str = ".codeumbrella";
 
 /// The default files that `init` writes into the folder of the factory.
 macro_rules! defaults {
-    ($($name:literal),*) => {
+    ($($role:literal),*) => {
         &[(".gitignore", "*\n"), ("graph.yaml", include_str!("../graph.example.yaml")),
           // For a project that has no ignore file. The path goes up to the project folder.
           ("../.gitignore", include_str!("../default.gitignore")),
-          $((concat!("roles/", $name), include_str!(concat!("../roles/", $name)))),*]
+          $(role!($role, ".md"), role!($role, ".claude.json"), role!($role, ".codex.txt")),*]
     };
 }
 
-const DEFAULTS: &[(&str, &str)] = defaults!(
-    "planner.md",
-    "planner.claude.json",
-    "planner.codex.txt",
-    "builder.md",
-    "builder.claude.json",
-    "builder.codex.txt",
-    "checker.md",
-    "checker.claude.json",
-    "checker.codex.txt",
-    "safety.md",
-    "safety.claude.json",
-    "safety.codex.txt"
-);
+/// One role file: its path in the folder of the factory, and its text.
+macro_rules! role {
+    ($role:literal, $ext:literal) => {
+        (
+            concat!("roles/", $role, $ext),
+            include_str!(concat!("../roles/", $role, $ext)),
+        )
+    };
+}
+
+const DEFAULTS: &[(&str, &str)] = defaults!("planner", "attacker", "builder", "checker", "safety");
 
 /// A software factory: it puts code into main after the tests and your approval.
 #[derive(Parser)]
