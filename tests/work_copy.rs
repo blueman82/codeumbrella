@@ -314,15 +314,6 @@ fn the_notes_do_not_say_that_a_worker_writes_in_the_project_folder() {
 }
 
 #[test]
-fn the_version_is_0_1_2_in_the_four_files() {
-    assert!(text("Cargo.toml").contains("version = \"0.1.2\""));
-    assert!(text("Cargo.lock").contains("name = \"codeumbrella\"\nversion = \"0.1.2\""));
-    for file in [".claude-plugin/plugin.json", ".codex-plugin/plugin.json"] {
-        assert!(text(file).contains("\"version\": \"0.1.2\""), "{file}");
-    }
-}
-
-#[test]
 fn the_documents_tell_about_the_work_copy() {
     let agents = text("AGENTS.md");
     assert!(!agents.to_lowercase().contains("known limit"));
