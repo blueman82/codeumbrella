@@ -96,8 +96,11 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - The step `no_locked_files` stops the run if the work changes `.github`, `.claude` or `.codeumbrella`. A worker cannot write to these folders, but git can put such a file into a commit.
 - That step reads a capital letter and a small letter as the same letter. A test on 16 November 2026 showed the cause. On a Mac, a commit with `.Claude/settings.json` got through the step and changed `.claude/settings.json`.
 - The push does not send tags.
-- A worker can write to the `.git` folder of the project. Thus that step and the push do not use it. They use a clean copy in the run folder, which no worker can write to.
-- The clean copy gets the code of GitHub from GitHub. It gets only the `branch` of the run from the project. The push sends the commit that the step compared.
+- The first step `copy` clones the project into `work` in the run folder. Each worker starts in that copy.
+- A run does not change the project folder or its branch. After status Done, the person gets the code with `git pull`.
+- A tool in the project folder, for example in `.venv`, needs its full path in the test command.
+- A worker can write to the `.git` folder of its copy. Thus that step and the push do not use it. They use a clean copy in the run folder, which no worker can write to.
+- The clean copy gets the code of GitHub from GitHub. It gets only the `branch` of the run from `../work`. The push sends the commit that the step compared.
 - The push gives the full name of the run `branch` two times. Thus it cannot go to a different `branch`. Tests on 16 November 2026 showed these attacks with git.
 - An answer names its step. An answer for a different step is an error. Thus a yes for the tests cannot become a yes for the merge.
 - Only one command can work on a run at a time. The file `lock` in the run folder shows this. After a kill, a person removes that file.
@@ -120,7 +123,6 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - The builder and the checker run in the Claude sandbox. They cannot write to `.codeumbrella`, `.claude`, `.github`, `.git/hooks` or `.git/config`. They cannot write to a folder that is not in the project.
 - They also cannot write the files `.git/commondir` and `.git/config.worktree`. With such a file, a worker can give git its own settings. Then git runs a script of the worker with no sandbox.
 - The steps with `gh` read the clean copy, not the `.git` folder of the project. The word `GIT_DIR` in the sheet does this.
-- A known limit: a worker can put a second git folder with its own settings into the project. A git command of the person in the project can then run a script of the worker. A test on 16 November 2026 showed this.
 - A deny rule such as `Edit(.codeumbrella/**)` is what makes the sandbox lock a path. The tests of 15 November 2026 showed this. The setting `sandbox.filesystem.denyWrite` with a relative path did nothing in those tests.
 - A deny rule without the sandbox is not sufficient. A script that a permitted command starts can go around it.
 - Each Codex role runs in the Codex sandbox with the settings in `roles/<role>.codex.txt`. The locked paths are the same as for Claude. The planner can write only to the two papers of its run. The Codex sandbox has no internet, so a Codex worker cannot push.
@@ -131,7 +133,7 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - The plan step has 3 tries for one run. The first plan uses one. Thus 2 no answers are possible before a stop.
 - Each role has one rules page.
 - The default check step is a fan of two checkers. One runs the tests. One reads the change for safety problems, and it cannot write a file.
-- The two checkers work in the same project folder. Only the tests checker writes there.
+- The two checkers work in the same copy. Only the tests checker writes there.
 - The safety checker does not read the commit that the tests checker makes at the same time. The person sees that commit in the PR.
 
 ## Rust rules

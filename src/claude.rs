@@ -52,6 +52,7 @@ impl Worker for Claude {
             // The worker does not get the GitHub token of the person.
             .env_remove("GH_TOKEN")
             .env_remove("GITHUB_TOKEN")
+            .current_dir(job.dir.join("work"))
             .stdin(Stdio::null())
             .stdout(File::create(&out)?)
             .stderr(File::create(&err)?)
