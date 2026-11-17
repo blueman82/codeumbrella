@@ -40,7 +40,7 @@ fn the_chat_starts_commands_so_that_they_outlive_the_shell() {
 fn the_chat_polls_status_until_it_is_not_running() {
     let s = text(SKILL);
     assert!(s.contains("Running"));
-    assert!(s.to_lowercase().contains("few minutes"));
+    assert!(s.to_lowercase().contains("each 3 minutes"));
     assert!(s.to_lowercase().contains("output file"));
 }
 

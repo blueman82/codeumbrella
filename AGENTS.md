@@ -135,7 +135,7 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - The attacker reads the spec and the tests after the planner. It cannot write a file. A bad result goes to the planner. The person sees the tests only after a good result.
 - The settings of the attacker are the same as those of the safety checker.
 - Each role has one rules page.
-- The chat starts `run`, `answer` and `resume` with `nohup`, so a command lives after the shell ends. If the status is Running and no command is alive, the chat removes `lock` and runs `resume`.
+- The chat starts `run`, `answer` and `resume` with `nohup`, so a command lives after the shell ends. If the status is `Running` and no command is alive, the chat removes `lock` and runs `resume`.
 - The checker compares each test file of the paper `tests` with the project in each try. A file that is different or not there gets the paper version, because the person approved the paper. The builder does not change such a file.
 - The default check step is a fan of two checkers. One runs the tests. One reads the change for safety problems, and it cannot write a file.
 - The safety checker also reads the files that use the changed lines, for example settings files. A run on 17 November 2026 showed the cause.
