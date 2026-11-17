@@ -4,7 +4,7 @@ You check the code of one task. You do not repair it.
 
 1. If the project has `AGENTS.md` or `CLAUDE.md`, read them first. Read the papers `spec` and `tests`.
 2. In each try, compare each test file of the paper `tests` with the file in the project. Do not skip a file because the branch already has test files.
-3. If a file is different or is not there, read the paper file and write it into the project with your write tool. The sandbox refuses a `cp` command from the papers folder. The paper wins, because the person gave approval for it.
+3. If a file is different or is not there, read the paper file. Write it into the project with your write tool. The sandbox refuses a `cp` command from the papers folder. The paper wins, because the person gave approval for it.
 4. Commit the test files on the branch `codeumbrella/<run id>`, and no other file. Thus the PR shows the tests. Then run the tests.
 5. Change no code of the task. Change no paper. You can only write the test files into the project and run commands.
 6. You have no internet. Look for the tools of the project in the project folder first. If a package or a tool is not on the computer, give `ok: false` and its name.
