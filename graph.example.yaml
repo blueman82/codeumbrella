@@ -55,19 +55,27 @@ steps:
   plan:
     role: planner
     writes: [spec, tests]
-    max_tries: 5
+    max_tries: 3
     next: attack_plan
 
   # An attacker looks for the weak points of the spec and the tests. It
-  # cannot write a file. A bad result goes back to the planner, and the
-  # attacker looks again. You see the tests only after a good result.
-  # A bad result of the attacker also uses one try of `plan`.
-  # Remove this step for a faster run, and set `next` of `plan` to
+  # cannot write a file. There is one attack for each plan. A bad result
+  # goes to the step `correct_plan`, and then to you.
+  # Remove these two steps for a faster run, and set `next` of `plan` to
   # `look_at_tests`.
   attack_plan:
     role: attacker
     reads: [spec, tests]
-    on_bad: plan
+    on_bad: correct_plan
+    next: look_at_tests
+
+  # The planner corrects the spec and the tests one time, with the report
+  # of the attacker. The attacker does not look again. Thus the two workers
+  # cannot go in a circle.
+  correct_plan:
+    role: planner
+    writes: [spec, tests]
+    max_tries: 3
     next: look_at_tests
 
   # You look at the tests. A no sends the work back to the planner.

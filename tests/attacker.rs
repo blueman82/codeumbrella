@@ -57,15 +57,20 @@ fn the_default_sheet_has_the_attack_step_between_the_plan_and_the_person() {
     assert_eq!(attack.role.as_deref(), Some("attacker"));
     assert_eq!(attack.reads, ["spec", "tests"]);
     assert_eq!(attack.writes, [] as [String; 0]);
-    assert_eq!(attack.on_bad.as_deref(), Some("plan"));
+    assert_eq!(attack.on_bad.as_deref(), Some("correct_plan"));
     assert_eq!(attack.next.as_deref(), Some("look_at_tests"));
     let plan = graph.step("plan").unwrap();
     assert_eq!(plan.next.as_deref(), Some("attack_plan"));
-    assert_eq!(plan.max_tries, Some(5));
-    // Only the attack step leads to the person for the tests.
+    assert_eq!(plan.max_tries, Some(3));
+    // The planner corrects the plan one time. Then the person sees the tests.
+    let correct = graph.step("correct_plan").unwrap();
+    assert_eq!(correct.role.as_deref(), Some("planner"));
+    assert_eq!(correct.writes, ["spec", "tests"]);
+    assert_eq!(correct.next.as_deref(), Some("look_at_tests"));
+    // No step goes back to the attacker. Thus a circle is not possible.
     for (name, step) in &graph.steps {
-        let to_person = [&step.next, &step.on_bad].contains(&&Some("look_at_tests".to_owned()));
-        assert_eq!(to_person, name == "attack_plan", "{name}");
+        let to_attack = [&step.next, &step.on_bad].contains(&&Some("attack_plan".to_owned()));
+        assert_eq!(to_attack, name == "plan", "{name}");
     }
 }
 
@@ -229,35 +234,15 @@ fn a_good_attack_result_goes_to_the_person() {
 }
 
 #[test]
-fn a_bad_attack_result_goes_to_the_planner_and_then_back_to_the_attacker() {
+fn a_bad_attack_result_goes_to_the_planner_one_time_and_then_to_the_person() {
     let (graph, roles) = sheet();
-    let worker = Script::new("attack_plan", 1);
-    let mut run = Run::start(folder(), "a task", &graph).unwrap();
-    run.go(&graph, &roles, &worker).unwrap();
-    // The person sees the tests only after a good attack result.
-    assert_eq!(run.state.status, Status::Waiting);
-    assert_eq!(run.state.at.as_deref(), Some("look_at_tests"));
-    assert_eq!(
-        worker.calls(),
-        ["plan", "attack_plan", "plan", "attack_plan"]
-    );
-    assert!(!run.state.results.contains_key("build"));
-}
-
-#[test]
-fn the_planner_has_five_tries_and_the_run_stops_after_them() {
-    let (graph, roles) = sheet();
+    // The attacker always gives a bad result.
     let worker = Script::new("attack_plan", 99);
     let mut run = Run::start(folder(), "a task", &graph).unwrap();
     run.go(&graph, &roles, &worker).unwrap();
-    assert_eq!(run.state.status, Status::Stopped);
-    assert!(
-        run.state.note.contains("maximum of 5"),
-        "{}",
-        run.state.note
-    );
-    let plans = worker.calls().iter().filter(|c| *c == "plan").count();
-    assert_eq!(plans, 5);
+    assert_eq!(run.state.status, Status::Waiting);
+    assert_eq!(run.state.at.as_deref(), Some("look_at_tests"));
+    assert_eq!(worker.calls(), ["plan", "attack_plan", "correct_plan"]);
     assert!(!run.state.results.contains_key("build"));
 }
 

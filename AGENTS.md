@@ -131,8 +131,10 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - `init --update` copies each changed factory file to `<name>.before`, then writes the default. It does not touch `runs` or the `.gitignore` of the project folder.
 - A paper that a step writes is not compared before that step. Thus a writer can run again after a try that broke its paper.
 - After a stop for a changed paper, `resume` stops again. A person must put the paper back first.
-- The plan step has 5 tries for one run. The first plan uses one. A bad result of the attacker also uses one.
-- The attacker reads the spec and the tests after the planner. It cannot write a file. A bad result goes to the planner. The person sees the tests only after a good result.
+- The plan step has 3 tries for one run. The first plan uses one. Thus 2 no answers are possible before a stop.
+- The attacker reads the spec and the tests after the planner. It cannot write a file. There is one attack for each plan.
+- A bad result of the attacker goes to the step `correct_plan`. The planner corrects the plan one time, and then the person sees the tests.
+- A live test on 17 November 2026 showed the cause. A Codex attacker gave 5 bad results for a small task, and the run stopped.
 - The settings of the attacker are the same as those of the safety checker.
 - Each role has one rules page.
 - The chat starts `run`, `answer` and `resume` with `nohup`, so a command lives after the shell ends. If the status is `Running` and no command is alive, the chat removes `lock` and runs `resume`.
