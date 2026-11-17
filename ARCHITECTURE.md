@@ -25,7 +25,7 @@ SUPERVISOR ── uses your GitHub key ──► GITHUB: push · PR · merge (me
 
 - The plan paper has the name `spec`.
 - The builder and the checker can connect to a server on the same computer, for example a database.
-- A worker can read the tests paper, but it cannot change it. The papers folder is locked for the builder and the checker.
+- A worker can read the tests paper, but it cannot change it. The builder and the checker cannot write to the papers folder.
 - The supervisor compares each paper with its fingerprint before each step.
 - The workers write in a copy of the project in the `work` folder of the run. A run does not change the project folder or its branch.
 - After status Done, the person gets the code with `git pull`.
