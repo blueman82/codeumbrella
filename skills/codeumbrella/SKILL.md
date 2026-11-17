@@ -25,8 +25,7 @@ Do these steps in sequence.
 2. If the project has no file `.codeumbrella/graph.yaml`, run `codeumbrella init`. Tell the person that the factory files are in `.codeumbrella/` and that the person can change them. Then run `git status --short`. If it shows a new file `.gitignore`, tell the person and commit that file.
 3. Run `git status --short`. If it shows changes, stop. Tell the person to commit the changes or to put them away. If not, the changes get into the work of the run.
 4. Run `git remote get-url origin`. If it gives an error, stop. Tell the person that the default sheet sends the work to GitHub, and that the project has no GitHub connection. Offer to make a private GitHub project. After a yes from the person, run `gh repo create <name of the project folder> --private --source . --remote origin --push`. Do not make a public project.
-5. Run `git branch --show-current` and keep the name. If the name starts with `codeumbrella/`, stop. The project is on the work of an earlier run. Tell the person, and switch to the usual `branch` of the person first.
-6. Make sure that the packages of the project are on the computer. See "Packages".
+5. Make sure that the packages of the project are on the computer. See "Packages". A tool in the project folder, for example in `.venv`, needs its full path in the test command.
 
 ## Packages
 
@@ -67,7 +66,7 @@ The output has three parts: the run id, the status, and a note.
 - Status `Stopped`: show the note to the person. After the person corrects the cause, run `codeumbrella resume <run id>`.
 - If the note says that a paper is not as its writer left it, `resume` does not help. A person must put the paper back first, or start a new run.
 - If the step `no_locked_files` stopped the run, the work changes `.github`, `.claude` or `.codeumbrella`. Show this to the person. Do not go around it.
-- Status `Done`: tell the person that the merge of the PR is complete. Then run `git switch <the name that you kept>` and `git pull`.
+- Status `Done`: tell the person that the merge of the PR is complete. Tell the person to run `git pull`. The workers wrote in a copy, so the project branch did not change.
 
 ## The log and the `trace` files
 

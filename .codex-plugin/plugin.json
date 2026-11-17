@@ -1,6 +1,6 @@
 {
   "name": "codeumbrella",
   "description": "Give a task to the codeumbrella software factory from a chat, and answer its questions.",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "skills": "./skills/"
 }

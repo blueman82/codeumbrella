@@ -128,6 +128,7 @@ impl Run {
     /// Gives an error if the folder or the notebook cannot be written.
     pub fn start(dir: PathBuf, task: &str, graph: &Graph) -> Result<Self> {
         fs::create_dir_all(dir.join("papers"))?;
+        fs::create_dir_all(dir.join("work"))?;
         let mut run = Self {
             dir,
             state: State::default(),

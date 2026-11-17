@@ -44,6 +44,9 @@ The plugin brings only the chat command `/codeumbrella`. The `codeumbrella` comm
 - Workers have no internet. Install the packages of your project first.
 - Workers can connect to a server on your computer, for example a test database.
 - Put the test command at the end of the task: `Test command: <command>`
+- A tool in your project folder, for example in `.venv`, needs its full path in the test command.
+- The workers write in a copy in the run folder. A run does not change your project folder or its branch.
+- After status Done, get the code with `git pull`.
 
 ## First run
 

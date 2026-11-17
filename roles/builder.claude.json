@@ -4,8 +4,7 @@
       "Read",
       "Glob",
       "Grep",
-      "Edit",
-      "Write",
+      "Edit(/{project}/.codeumbrella/runs/{run}/work/**)",
       "Bash"
     ],
     "deny": [

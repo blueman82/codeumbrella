@@ -208,12 +208,32 @@ fn project() -> PathBuf {
     let _ = fs::remove_dir_all(&dir);
     fs::create_dir_all(dir.join("bin")).unwrap();
     assert!(cu(&dir, &["init"]).status.success());
+    // The first step `copy` clones the project, so it must be a git repo.
+    for args in [
+        &["init", "--quiet"][..],
+        &["add", "-A"],
+        &[
+            "-c",
+            "user.name=t",
+            "-c",
+            "user.email=t@t",
+            "commit",
+            "--quiet",
+            "-m",
+            "x",
+        ],
+    ] {
+        let status = Command::new("git").args(args).current_dir(&dir).status();
+        assert!(status.unwrap().success());
+    }
     dir
 }
 
 /// Writes a simulated tool: a shell script in the `bin` folder of the project.
 fn tool(dir: &Path, name: &str, script: &str) {
     let path = dir.join("bin").join(name);
+    // Workers start in the work folder, so the script needs the full path.
+    let script = script.replace("$PWD/bin", &dir.join("bin").display().to_string());
     fs::write(&path, format!("#!/bin/sh\n{script}\n")).unwrap();
     fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).unwrap();
 }
