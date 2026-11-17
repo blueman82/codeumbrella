@@ -279,6 +279,41 @@ fn the_codex_planner_papers_are_full_paths_next_to_the_home_keys() {
 }
 
 #[test]
+fn the_builder_and_the_checker_can_edit_only_the_work_copy_of_their_run() {
+    for role in ["builder", "checker"] {
+        let file: serde_json::Value =
+            serde_json::from_str(&text(&format!("roles/{role}.claude.json"))).unwrap();
+        let allow: Vec<&str> = file["permissions"]["allow"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|v| v.as_str().unwrap())
+            .collect();
+        let rule = "Edit(/{project}/.codeumbrella/runs/{run}/work/**)";
+        assert_eq!(allow, ["Read", "Glob", "Grep", rule, "Bash"], "{role}");
+        // The locks stay.
+        let deny = file["permissions"]["deny"].to_string();
+        for lock in [
+            "Edit(.codeumbrella/**)",
+            "Edit(.git/config)",
+            "Edit(.git/hooks/**)",
+        ] {
+            assert!(deny.contains(lock), "{role} {lock}");
+        }
+    }
+}
+
+#[test]
+fn the_notes_do_not_say_that_a_worker_writes_in_the_project_folder() {
+    let agents = text("AGENTS.md");
+    assert!(
+        !agents.contains("cannot write to a folder that is not in the project"),
+        "AGENTS.md still has the old sentence"
+    );
+    assert!(agents.contains("work"));
+}
+
+#[test]
 fn the_version_is_0_1_2_in_the_four_files() {
     assert!(text("Cargo.toml").contains("version = \"0.1.2\""));
     assert!(text("Cargo.lock").contains("name = \"codeumbrella\"\nversion = \"0.1.2\""));
@@ -299,31 +334,4 @@ fn the_documents_tell_about_the_work_copy() {
     assert!(readme.contains("git pull"));
     assert!(readme.contains(".venv"));
     assert!(text("ARCHITECTURE.md").contains("work"));
-}
-
-#[test]
-fn builder_and_checker_write_only_in_the_work_copy() {
-    for role in ["builder", "checker"] {
-        let text = std::fs::read_to_string(format!("roles/{role}.claude.json")).unwrap();
-        let json: serde_json::Value = serde_json::from_str(&text).unwrap();
-        let allow: Vec<&str> = json["permissions"]["allow"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .map(|v| v.as_str().unwrap())
-            .collect();
-        assert_eq!(
-            allow,
-            [
-                "Read",
-                "Glob",
-                "Grep",
-                "Edit(/{project}/.codeumbrella/runs/{run}/work/**)",
-                "Bash"
-            ],
-            "{role}"
-        );
-    }
-    let agents = std::fs::read_to_string("AGENTS.md").unwrap();
-    assert!(!agents.contains("folder that is not in the project"));
 }
