@@ -59,9 +59,12 @@ steps:
     next: attack_plan
 
   # An attacker looks for the weak points of the spec and the tests. It
-  # cannot write a file. There is one attack for each plan. A bad result
-  # goes to the step `correct_plan`, and then to you.
-  # Remove these two steps for a faster run, and set `next` of `plan` to
+  # cannot write a file. A bad result goes to the planner, who corrects the
+  # plan. Then the attacker looks again. There are 3 attacks at the maximum
+  # for each plan. After the last correction, you see the tests.
+  # The steps go in one line, with no path back. Thus the two workers
+  # cannot go in a circle.
+  # Remove these six steps for a faster run, and set `next` of `plan` to
   # `look_at_tests`.
   attack_plan:
     role: attacker
@@ -69,10 +72,31 @@ steps:
     on_bad: correct_plan
     next: look_at_tests
 
-  # The planner corrects the spec and the tests one time, with the report
-  # of the attacker. The attacker does not look again. Thus the two workers
-  # cannot go in a circle.
   correct_plan:
+    role: planner
+    writes: [spec, tests]
+    max_tries: 3
+    next: attack_plan_2
+
+  attack_plan_2:
+    role: attacker
+    reads: [spec, tests]
+    on_bad: correct_plan_2
+    next: look_at_tests
+
+  correct_plan_2:
+    role: planner
+    writes: [spec, tests]
+    max_tries: 3
+    next: attack_plan_3
+
+  attack_plan_3:
+    role: attacker
+    reads: [spec, tests]
+    on_bad: correct_plan_3
+    next: look_at_tests
+
+  correct_plan_3:
     role: planner
     writes: [spec, tests]
     max_tries: 3
