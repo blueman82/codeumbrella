@@ -300,3 +300,30 @@ fn the_documents_tell_about_the_work_copy() {
     assert!(readme.contains(".venv"));
     assert!(text("ARCHITECTURE.md").contains("work"));
 }
+
+#[test]
+fn builder_and_checker_write_only_in_the_work_copy() {
+    for role in ["builder", "checker"] {
+        let text = std::fs::read_to_string(format!("roles/{role}.claude.json")).unwrap();
+        let json: serde_json::Value = serde_json::from_str(&text).unwrap();
+        let allow: Vec<&str> = json["permissions"]["allow"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|v| v.as_str().unwrap())
+            .collect();
+        assert_eq!(
+            allow,
+            [
+                "Read",
+                "Glob",
+                "Grep",
+                "Edit(/{project}/.codeumbrella/runs/{run}/work/**)",
+                "Bash"
+            ],
+            "{role}"
+        );
+    }
+    let agents = std::fs::read_to_string("AGENTS.md").unwrap();
+    assert!(!agents.contains("folder that is not in the project"));
+}
