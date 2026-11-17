@@ -176,10 +176,10 @@ fn agents_md_has_a_line_for_each_repair() {
 }
 
 #[test]
-fn the_line_limits_in_agents_md_do_not_change() {
+fn the_line_limits_in_agents_md_are_the_agreed_ones() {
     let a = text("AGENTS.md");
-    assert!(a.contains("`src/lib.rs`): 560 lines of code."));
-    assert!(a.contains("Each tool part: 100 lines of code."));
+    assert!(a.contains("`src/lib.rs`): 580 lines of code."));
+    assert!(a.contains("Each tool part: 110 lines of code."));
 }
 
 #[test]

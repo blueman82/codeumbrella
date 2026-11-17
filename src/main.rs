@@ -4,8 +4,8 @@ use anyhow::{Context, Result, ensure};
 use clap::{Parser, Subcommand, ValueEnum};
 use codeumbrella::claude::Claude;
 use codeumbrella::codex::Codex;
-use codeumbrella::engine::{Lock, Run, Worker};
-use codeumbrella::graph::Graph;
+use codeumbrella::engine::{Job, Lock, Outcome, Run, Worker};
+use codeumbrella::graph::{Graph, Tool};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use std::{env, fs, path::Path, path::PathBuf};
 
@@ -54,10 +54,17 @@ struct Cli {
     command: Cmd,
 }
 
-#[derive(Clone, Copy, ValueEnum)]
-enum Tool {
-    Claude,
-    Codex,
+/// Gives each worker step to the tool of the step, or to the tool of the command.
+struct Mixed(Tool, Duration);
+
+impl Worker for Mixed {
+    fn run(&self, job: &Job) -> Result<Outcome> {
+        let time_limit = self.1;
+        match job.tool.unwrap_or(self.0) {
+            Tool::Claude => Claude { time_limit }.run(job),
+            Tool::Codex => Codex { time_limit }.run(job),
+        }
+    }
 }
 
 #[derive(Subcommand)]
@@ -134,11 +141,8 @@ fn main() -> Result<()> {
     if !matches!(cli.command, Cmd::Status { .. }) {
         let graph = Graph::load(&cli.sheet, &cli.roles)?;
         let time_limit = Duration::from_secs(cli.step_minutes * 60);
-        let worker: &dyn Worker = match cli.tool {
-            Tool::Claude => &Claude { time_limit },
-            Tool::Codex => &Codex { time_limit },
-        };
-        run.go(&graph, &cli.roles, worker)?;
+        let worker = Mixed(cli.tool, time_limit);
+        run.go(&graph, &cli.roles, &worker)?;
     }
     // The screen gets a short note. The full text is in the log.
     let note: String = run.state.note.chars().take(300).collect();

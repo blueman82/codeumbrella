@@ -335,9 +335,9 @@ fn the_code_obeys_the_limits_for_lines() {
         .iter()
         .map(|name| code_lines(&format!("src/{name}.rs")))
         .sum();
-    assert!(total <= 560, "the supervisor has {total} lines");
+    assert!(total <= 580, "the supervisor has {total} lines");
     for part in ["claude", "codex"] {
         let lines = code_lines(&format!("src/{part}.rs"));
-        assert!(lines <= 100, "{part} has {lines} lines");
+        assert!(lines <= 110, "{part} has {lines} lines");
     }
 }

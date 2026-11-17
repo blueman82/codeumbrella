@@ -44,6 +44,8 @@ impl Worker for Claude {
             .args(["-p", &prompt(job), "--append-system-prompt", &rules])
             .args(["--output-format", "stream-json", "--verbose"])
             .args(["--json-schema", SCHEMA])
+            .args(job.model.iter().flat_map(|m| ["--model", m]))
+            .args(job.effort.iter().flat_map(|e| ["--effort", e]))
             // Only the settings of the role count. The worker loads no settings,
             // hooks or tool servers of the project or of the person.
             .args(["--permission-mode", "dontAsk", "--strict-mcp-config"])

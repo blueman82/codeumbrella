@@ -50,6 +50,13 @@ impl Worker for Codex {
             .args(["--enable", "network_proxy"])
             .args(["-c", "default_permissions=\"role\""])
             .args(["-c", &format!("permissions.role={settings}")])
+            .args(job.model.iter().flat_map(|m| ["-m", m]))
+            .args(
+                job.effort
+                    .map(|e| format!("model_reasoning_effort=\"{e}\""))
+                    .iter()
+                    .flat_map(|e| ["-c", e]),
+            )
             .arg("--output-schema")
             .arg(&schema)
             .arg("--output-last-message")
