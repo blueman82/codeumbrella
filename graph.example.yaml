@@ -63,6 +63,7 @@
 #     model: gpt-6.2-sol
 #     effort: medium
 #     reads: [spec]
+#     next: check
 
 # The name of the first step.
 start: copy
