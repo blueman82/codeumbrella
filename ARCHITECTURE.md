@@ -16,6 +16,7 @@ SUPERVISOR ── uses your GitHub key ──► GITHUB: push · PR · merge (me
  ▼
 ┌─ WORKERS: no internet · no read of your key folders · no write to the factory files ─────┐
 │ planner   writes the PAPERS: plan + tests. Claude: no shell. Codex: a sandbox.           │
+│ attacker  in a sandbox · gets the plan + the tests ──►  finds weak points, writes no file │
 │ builder   in a sandbox · gets the plan             ──►  writes code on the run branch    │
 │ checker   in a sandbox · gets the plan + the tests ──►  copies the tests, runs them      │
 │ safety    in a sandbox · gets the plan             ──►  reads the change, writes no file │
@@ -34,9 +35,12 @@ SUPERVISOR ── uses your GitHub key ──► GITHUB: push · PR · merge (me
 ## The path of a task
 
 ```
-plan (3 tries) ◄─────────────────────────────┬──────────┐
-  ▼                                          │ no       │ no
-YOU: tests? ─────────────────────────────────┘          │
+plan (5 tries) ◄─────────────────────────────┬──────────┐
+  ▼                                          │          │
+attack_plan: the attacker looks for weak     │          │
+points ── a problem ─────────────────────────┤          │
+  ▼ none                                     │          │
+YOU: tests? ── no ───────────────────────────┘          │ no
   ▼ yes                                                 │
 build                                                   │
   ▼                                                     │
@@ -60,5 +64,7 @@ an error · a bad result with no path for it · a changed paper · a maximum
 
 - A fan is a step that starts two or more worker steps at the same time. It waits for all of them.
 - `resume` tries a stopped step again. After a changed paper, a person must put the paper back first.
-- The plan step has 3 tries for one run, and the first plan uses one. Thus 2 no answers are possible.
+- The plan step has 5 tries for one run, and the first plan uses one.
+- A bad result of the attacker also uses one try of the plan step.
+- You can remove the step `attack_plan` for a faster run.
 - The picture shows the default sheet, `graph.example.yaml`. A project can change its own sheet.

@@ -91,7 +91,14 @@ fn a_no_at_the_approval_goes_to_the_planner_and_then_to_the_person_for_the_tests
     assert_eq!(run.state.at.as_deref(), Some("look_at_tests"));
     assert_eq!(
         *worker.calls.lock().unwrap(),
-        ["plan", "build", "check_tests", "plan"]
+        [
+            "plan",
+            "attack_plan",
+            "build",
+            "check_tests",
+            "plan",
+            "attack_plan"
+        ]
     );
     assert!(!run.state.results.contains_key("merge"));
 
@@ -104,9 +111,11 @@ fn a_no_at_the_approval_goes_to_the_planner_and_then_to_the_person_for_the_tests
         *worker.calls.lock().unwrap(),
         [
             "plan",
+            "attack_plan",
             "build",
             "check_tests",
             "plan",
+            "attack_plan",
             "build",
             "check_tests"
         ]

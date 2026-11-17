@@ -74,6 +74,7 @@ To install the command and the chat command on a computer, run `./install.sh`.
 | `.agents/plugins/` | The Codex marketplace file `marketplace.json`. |
 | `tests/packaging.rs` | Tests of the plugin files and the README. |
 | `tests/walls.rs` | Tests of the safety settings and the safety checks. Each one becomes bad if a wall goes. |
+| `tests/attacker.rs` | Tests of the plan attacker: its step, its files, its settings and its rules page. |
 | `install.sh` | Installs the command and the chat command. |
 | `LICENSE` | The MIT licence. Do not change its text. |
 
@@ -130,11 +131,14 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - `init --update` copies each changed factory file to `<name>.before`, then writes the default. It does not touch `runs` or the `.gitignore` of the project folder.
 - A paper that a step writes is not compared before that step. Thus a writer can run again after a try that broke its paper.
 - After a stop for a changed paper, `resume` stops again. A person must put the paper back first.
-- The plan step has 3 tries for one run. The first plan uses one. Thus 2 no answers are possible before a stop.
+- The plan step has 5 tries for one run. The first plan uses one. A bad result of the attacker also uses one.
+- The attacker reads the spec and the tests after the planner. It cannot write a file. A bad result goes to the planner. The person sees the tests only after a good result.
+- The settings of the attacker are the same as those of the safety checker.
 - Each role has one rules page.
 - The chat starts `run`, `answer` and `resume` with `nohup`, so a command lives after the shell ends. If the status is Running and no command is alive, the chat removes `lock` and runs `resume`.
 - The checker compares each test file of the paper `tests` with the project in each try. A file that is different or not there gets the paper version, because the person approved the paper. The builder does not change such a file.
 - The default check step is a fan of two checkers. One runs the tests. One reads the change for safety problems, and it cannot write a file.
+- The safety checker also reads the files that use the changed lines, for example settings files. A run on 17 November 2026 showed the cause.
 - The two checkers work in the same copy. Only the tests checker writes there.
 - The safety checker does not read the commit that the tests checker makes at the same time. The person sees that commit in the PR.
 

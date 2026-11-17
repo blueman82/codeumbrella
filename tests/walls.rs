@@ -62,7 +62,7 @@ const KEYS: [&str; 5] = [
 
 #[test]
 fn no_claude_role_runs_hooks_uses_the_web_or_reads_the_keys_of_the_person() {
-    for role in ["planner", "builder", "checker", "safety"] {
+    for role in ["planner", "builder", "checker", "safety", "attacker"] {
         let file = json(&format!("roles/{role}.claude.json"));
         assert_eq!(file["disableAllHooks"], true, "{role}");
         let deny = list(&file["permissions"]["deny"]);
@@ -120,7 +120,7 @@ fn each_codex_role_has_its_sandbox_and_its_locks() {
             );
         }
     }
-    for role in ["planner", "builder", "checker", "safety"] {
+    for role in ["planner", "builder", "checker", "safety", "attacker"] {
         let file = text(&format!("roles/{role}.codex.txt"));
         assert!(!file.contains("danger"));
         // No Codex role can read the folders that hold keys of the person.
@@ -273,7 +273,7 @@ fn id(o: &Output) -> String {
 /// A simulated `claude` that records what it got and gives a good result.
 const GOOD_CLAUDE: &str = r#"env > "$PWD/bin/env.txt"
 for a in "$@"; do echo "$a"; done > "$PWD/bin/args.txt"
-p=""; for a in "$@"; do [ "$p" = "--settings" ] && printf '%s' "$a" > "$PWD/bin/settings.json"; p="$a"; done
+p=""; for a in "$@"; do [ "$p" = "--settings" ] && [ ! -f "$PWD/bin/settings.json" ] && printf '%s' "$a" > "$PWD/bin/settings.json"; p="$a"; done
 echo '{"is_error":false,"result":"","structured_output":{"ok":true,"summary":"done"}}'"#;
 
 #[test]
@@ -329,14 +329,14 @@ exit 3"#;
 #[test]
 fn a_codex_try_cannot_use_the_result_of_a_try_before() {
     let dir = project();
-    // The first call writes a result. Each call after that writes nothing.
+    // The first two calls (plan, attack) write a result. Each call after that writes nothing.
     tool(
         &dir,
         "codex",
         r#"env > "$PWD/bin/env.txt"
 for a in "$@"; do echo "$a"; done > "$PWD/bin/args.txt"
-[ -f "$PWD/bin/called" ] && exit 0
-touch "$PWD/bin/called"
+[ -f "$PWD/bin/called2" ] && exit 0
+if [ -f "$PWD/bin/called" ]; then touch "$PWD/bin/called2"; else touch "$PWD/bin/called"; fi
 while [ "$1" != "--output-last-message" ]; do shift; done
 echo '{"ok":true,"summary":"try 1"}' > "$2""#,
     );
