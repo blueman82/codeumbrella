@@ -120,7 +120,7 @@ impl Graph {
             }
             let own = [&step.model, &step.effort];
             let safe = |c: char| c.is_ascii_alphanumeric() || ".-_".contains(c);
-            let good = |v: &String| !v.is_empty() && v.chars().all(safe);
+            let good = |v: &String| !v.is_empty() && !v.starts_with('-') && v.chars().all(safe);
             let fine = own.into_iter().flatten().all(good);
             let set = step.tool.is_some() || own.iter().any(|o| o.is_some());
             let wrong = set && step.kind != Kind::Worker;

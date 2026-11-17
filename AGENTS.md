@@ -111,6 +111,7 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - An answer and a resume get the lock before they read the notebook. Thus a second command cannot write an answer into a run that is active.
 - The clean copy reads the `origin` settings from `.git/config` of the project. Thus the factory does not work in a linked git worktree.
 - `model` and `effort` have only letters, digits, `.`, `-` and `_`. Thus no quote or brace can reach the tool command.
+- `model` and `effort` cannot start with `-`. Thus the tool never reads them as an option.
 - A worker that ends with an error code gives no good result.
 - A worker does not get the values `GH_TOKEN` and `GITHUB_TOKEN` of the person.
 - For a Claude worker, only the settings file of its role counts. The worker uses no settings, hooks or tool servers of the project or of the person.
@@ -189,7 +190,7 @@ A new package gets into this list only when all of these are correct:
 ## Limits for lines of code
 
 - The supervisor (`src/graph.rs`, `src/engine.rs`, `src/main.rs`, `src/log.rs`, `src/lib.rs`): 580 lines of code.
-- Each tool part: 110 lines of code.
+- Each tool part: 100 lines of code.
 - Empty lines, comment lines and tests do not count.
 - Count with: `grep -v -E '^\s*(//|$)' <file> | wc -l`
 

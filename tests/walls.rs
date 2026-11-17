@@ -531,6 +531,13 @@ fn a_model_or_effort_with_a_bad_character_is_an_error() {
             let text = worker(&format!("{line}: \"{value}\""));
             assert!(refused(&text), "{line} with {c:?} is not refused");
         }
+        // A value that starts with `-` would look like an option to the tool.
+        for bad in ["-x", "--dangerous", "-", "-1"] {
+            let text = worker(&format!("{line}: \"{bad}\""));
+            assert!(refused(&text), "{line} {bad:?} is not refused");
+        }
+        // A `-` inside the value is good.
+        assert!(!refused(&worker(&format!("{line}: \"a-b\""))));
     }
 }
 

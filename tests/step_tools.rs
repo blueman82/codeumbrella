@@ -238,7 +238,12 @@ fn the_role_of_a_step_needs_the_settings_file_of_the_tool_that_the_step_uses() {
     assert!(out(&run).contains("Status: Stopped"), "{}", out(&run));
     assert!(out(&run).contains("cannot read the settings"));
     assert!(calls(&dir, "codex").is_empty(), "codex started");
-    // With the Claude tool for that step, the same role works.
+    // With the Claude tool for that step, the same role works. A new project
+    // gives the run its own id: two runs in one second would share an id.
+    let dir = project();
+    tool(&dir, "claude", CLAUDE);
+    tool(&dir, "codex", CODEX);
+    fs::remove_file(dir.join(".codeumbrella/roles/builder.codex.txt")).unwrap();
     sheet(&dir, TWO_STEPS, "", "tool: claude");
     let run = cu(&dir, &["run", "a task"]);
     assert!(out(&run).contains("Status: Done"), "{}", out(&run));
@@ -269,6 +274,8 @@ fn a_sheet_with_a_bad_tool_model_or_effort_is_an_error_before_the_run_starts() {
         "model: 'a\"b'",
         "effort: 'a}b'",
         "effort: \"high; rm\"",
+        "model: \"--dangerous\"",
+        "effort: \"-x\"",
     ] {
         let dir = project();
         tool(&dir, "claude", CLAUDE);

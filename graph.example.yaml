@@ -26,7 +26,7 @@
 #   tool       Only for a worker step. `claude` or `codex`. With no line, the
 #              step uses the tool of the command (`--tool`, default claude).
 #   model      Only for a worker step. A model name of that tool. With no line,
-#              the tool uses its default. Letters, digits, `.`, `-`, `_` only.
+#              the tool uses its default. Letters, digits, `.`, `-`, `_`; no `-` first.
 #   effort     Only for a worker step. How much the AI thinks, for example
 #              `low`, `medium`, `high` or `xhigh`. With no line, the tool uses
 #              its default. Same characters as `model`.
