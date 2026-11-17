@@ -21,7 +21,7 @@ You are the window between the person and that command. You do not do the task.
 
 Do these steps in sequence.
 
-1. If the computer cannot find the `codeumbrella` command, stop and tell the person.
+1. If the computer cannot find the `codeumbrella` command, try `~/.cargo/bin/codeumbrella`. If that file is not there, stop and tell the person.
 2. If the project has no file `.codeumbrella/graph.yaml`, run `codeumbrella init`. Tell the person that the factory files are in `.codeumbrella/` and that the person can change them. Then run `git status --short`. If it shows a new file `.gitignore`, tell the person and commit that file.
 3. Run `git status --short`. If it shows changes, stop. Tell the person to commit the changes or to put them away. If not, the changes get into the work of the run.
 4. Run `git remote get-url origin`. If it gives an error, stop. Tell the person that the default sheet sends the work to GitHub, and that the project has no GitHub connection. Offer to make a private GitHub project. After a yes from the person, run `gh repo create <name of the project folder> --private --source . --remote origin --push`. Do not make a public project.
