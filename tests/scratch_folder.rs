@@ -76,6 +76,9 @@ fn the_attacker_page_tells_the_scratch_folder_and_the_good_bad_test() {
     let page = text("roles/attacker.md");
     assert!(page.contains("$TMPDIR"), "$TMPDIR is missing");
     assert!(page.contains("mktemp -d"), "mktemp -d is missing");
+    assert!(page.contains("remove only that scratch folder"));
+    assert!(page.contains("Give `rm -r` the full path that `mktemp` printed."));
+    assert!(page.contains("Do not remove `$TMPDIR` itself."));
     let flat = page.replace('\n', " ").to_lowercase();
     assert!(
         flat.contains("a test that builds and is bad is not a problem"),
