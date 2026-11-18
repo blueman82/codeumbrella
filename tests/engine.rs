@@ -22,7 +22,8 @@ struct Script {
 
 impl Worker for Script {
     fn run(&self, job: &Job) -> Result<Outcome> {
-        if job.step != "check_safety" {
+        // The parts of a fan run at the same time, so only `check_tests` is in the list.
+        if !matches!(job.step, "check_safety" | "check_review" | "check_security") {
             self.calls.lock().unwrap().push(job.step.to_owned());
         }
         let papers = job.dir.join("papers");
@@ -103,7 +104,7 @@ fn a_good_run_stops_two_times_for_the_person_and_then_ends() {
     assert_eq!(run.state.status, Status::Done);
     assert_eq!(
         *worker.calls.lock().unwrap(),
-        ["plan", "attack_plan", "build", "check_tests"]
+        ["plan", "attack_plan", "build", "simplify", "check_tests"]
     );
     // The PR opens before the approval. The merge comes after it.
     assert!(run.state.results.contains_key("find_pr"));
@@ -122,12 +123,14 @@ fn a_bad_check_goes_to_repair_and_back() {
     run.answer(true, "").unwrap();
     run.go(&graph, &roles, &worker).unwrap();
     assert_eq!(run.state.at.as_deref(), Some("approval"));
+    // The repair goes back to the check. It does not go through `simplify`.
     assert_eq!(
         *worker.calls.lock().unwrap(),
         [
             "plan",
             "attack_plan",
             "build",
+            "simplify",
             "check_tests",
             "repair",
             "check_tests",
@@ -135,6 +138,35 @@ fn a_bad_check_goes_to_repair_and_back() {
             "check_tests"
         ]
     );
+}
+
+#[test]
+fn a_bad_part_of_the_fan_other_than_the_tests_goes_to_repair_too() {
+    for part in ["check_review", "check_security", "check_safety"] {
+        let (graph, roles) = sheet();
+        let worker = Script {
+            bad: bad(part, 1),
+            ..Script::default()
+        };
+        let mut run = Run::start(folder(), "a task", &graph).unwrap();
+        run.go(&graph, &roles, &worker).unwrap();
+        run.answer(true, "").unwrap();
+        run.go(&graph, &roles, &worker).unwrap();
+        assert_eq!(run.state.at.as_deref(), Some("approval"), "{part}");
+        assert_eq!(
+            *worker.calls.lock().unwrap(),
+            [
+                "plan",
+                "attack_plan",
+                "build",
+                "simplify",
+                "check_tests",
+                "repair",
+                "check_tests"
+            ],
+            "{part}"
+        );
+    }
 }
 
 #[test]
@@ -166,7 +198,7 @@ fn the_repair_stops_at_its_maximum() {
     // After `resume`, the run can do the stopped step again.
     run.state.tries.remove("repair");
     run.go(&graph, &roles, &worker).unwrap();
-    assert_eq!(worker.calls.lock().unwrap().len(), 4 + 2 * 3 + 2 * 3);
+    assert_eq!(worker.calls.lock().unwrap().len(), 5 + 2 * 3 + 2 * 3);
 }
 
 #[test]
@@ -203,6 +235,7 @@ fn a_no_at_the_approval_sends_the_work_back_to_the_planner() {
             "plan",
             "attack_plan",
             "build",
+            "simplify",
             "check_tests",
             "plan",
             "attack_plan"

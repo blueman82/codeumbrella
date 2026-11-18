@@ -141,14 +141,22 @@ steps:
   build:
     role: builder
     reads: [spec]
+    next: simplify
+
+  # A simplifier makes the new code simpler and commits it. It changes only
+  # code that the run changed, and not what the code does. It runs the tests.
+  # Remove this step for a faster run, and set `next` of `build` to `check`.
+  simplify:
+    role: simplifier
+    reads: [spec]
     next: check
 
-  # Two checkers look at the work at the same time. This step is a fan.
+  # Four checkers look at the work at the same time. This step is a fan.
   # The result is good only if all the steps in the `fan` line are good.
   # A bad result goes to the repair step, with the report of each checker.
   check:
     type: fan
-    fan: [check_tests, check_safety]
+    fan: [check_tests, check_safety, check_review, check_security]
     on_bad: repair
     next: no_locked_files
 
@@ -162,6 +170,21 @@ steps:
   # It does not read the commit that the tests checker makes at the same time.
   check_safety:
     role: safety
+    reads: [spec]
+
+  # This checker reads the change for errors, hidden errors, tests that show
+  # nothing, wrong comments and broken project rules. It cannot write a file.
+  # Remove it for a faster run: delete this step and its name in the `fan` line.
+  check_review:
+    role: reviewer
+    reads: [spec]
+
+  # This checker reads the change for security problems, such as input with no
+  # check, weaker access checks, weak keys, new packages and safety settings
+  # that go off. It cannot write a file.
+  # Remove it for a faster run: delete this step and its name in the `fan` line.
+  check_security:
+    role: security
     reads: [spec]
 
   # A builder repairs the code. Then the checker looks again.

@@ -69,7 +69,7 @@ The output has three parts: the run id, the status, and a note.
 - After a yes, run `codeumbrella answer <run id> <step> yes`.
 - After a no, run `codeumbrella answer <run id> <step> no "<what the person said>"`.
 - If the command says that a different command works on the run, do not send the answer again. Run `codeumbrella status` and tell the person.
-- Status `Stopped`: show the note to the person. After the person corrects the cause, run `codeumbrella resume <run id>`.
+- Status `Stopped`: show the note and the resume command `codeumbrella resume <run id>` to the person. Run `resume` only after the person says yes in the chat.
 - If the note says that a paper is not as its writer left it, `resume` does not help. A person must put the paper back first, or start a new run.
 - If the step `no_locked_files` stopped the run, the work changes `.github`, `.claude` or `.codeumbrella`. Show this to the person. Do not go around it.
 - Status `Done`: tell the person that the merge of the PR is complete. Tell the person to run `git pull`. The workers wrote in a copy, so the project branch did not change.

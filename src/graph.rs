@@ -1,7 +1,7 @@
 //! The instruction sheet: the steps of the factory and the rules between them.
 
 use anyhow::{Context, Result, bail, ensure};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, fs, path::Path};
 
 /// Who does a step.
@@ -20,7 +20,7 @@ pub enum Kind {
 }
 
 /// The tool that does a worker step.
-#[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq, clap::ValueEnum)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, clap::ValueEnum)]
 #[serde(rename_all = "snake_case")]
 pub enum Tool {
     /// The `claude` command.

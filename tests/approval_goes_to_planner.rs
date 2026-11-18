@@ -16,7 +16,8 @@ struct Script {
 
 impl Worker for Script {
     fn run(&self, job: &Job) -> Result<Outcome> {
-        if job.step != "check_safety" {
+        // The parts of a fan run at the same time, so only `check_tests` is in the list.
+        if !matches!(job.step, "check_safety" | "check_review" | "check_security") {
             self.calls.lock().unwrap().push(job.step.to_owned());
         }
         for paper in job.writes {
@@ -95,6 +96,7 @@ fn a_no_at_the_approval_goes_to_the_planner_and_then_to_the_person_for_the_tests
             "plan",
             "attack_plan",
             "build",
+            "simplify",
             "check_tests",
             "plan",
             "attack_plan"
@@ -113,10 +115,12 @@ fn a_no_at_the_approval_goes_to_the_planner_and_then_to_the_person_for_the_tests
             "plan",
             "attack_plan",
             "build",
+            "simplify",
             "check_tests",
             "plan",
             "attack_plan",
             "build",
+            "simplify",
             "check_tests"
         ]
     );

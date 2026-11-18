@@ -46,9 +46,13 @@ YOU: tests? ── no ───────────────────�
   ▼ yes                                                 │
 build                                                   │
   ▼                                                     │
-check: a FAN of 2 checkers at the same time             │
+simplify: the simplifier makes the code simpler         │
+  ▼                                                     │
+check: a FAN of 4 checkers at the same time             │
   ├──► check_tests    runs the approved tests           │
-  └──► check_safety   reads the change for problems     │
+  ├──► check_safety   reads the change for problems     │
+  ├──► check_review   reads the change for errors       │
+  └──► check_security reads the change for security     │
   │                                                     │
   ├── one of them bad ──► repair (3 tries) ──► check    │
   ▼ all good                                            │

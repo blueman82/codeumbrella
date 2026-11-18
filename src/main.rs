@@ -1,10 +1,10 @@
 //! The `codeumbrella` command.
 
-use anyhow::{Context, Result, ensure};
+use anyhow::{Context, Result, bail, ensure};
 use clap::{Parser, Subcommand, ValueEnum};
 use codeumbrella::claude::Claude;
 use codeumbrella::codex::Codex;
-use codeumbrella::engine::{Job, Lock, Outcome, Run, Worker};
+use codeumbrella::engine::{Job, Lock, Outcome, Run, Status, Worker};
 use codeumbrella::graph::{Graph, Tool};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use std::{env, fs, path::Path, path::PathBuf};
@@ -32,7 +32,16 @@ macro_rules! role {
     };
 }
 
-const DEFAULTS: &[(&str, &str)] = defaults!("planner", "attacker", "builder", "checker", "safety");
+const DEFAULTS: &[(&str, &str)] = defaults!(
+    "planner",
+    "attacker",
+    "builder",
+    "checker",
+    "safety",
+    "reviewer",
+    "security",
+    "simplifier"
+);
 
 /// A software factory: it puts code into main after the tests and your approval.
 #[derive(Parser)]
@@ -47,9 +56,9 @@ struct Cli {
     /// The maximum number of minutes for one step.
     #[arg(long, default_value_t = 30)]
     step_minutes: u64,
-    /// The tool that does the worker steps.
-    #[arg(long, value_enum, default_value = "claude")]
-    tool: Tool,
+    /// The tool that does the worker steps. A run keeps the tool that it started with.
+    #[arg(long, value_enum)]
+    tool: Option<Tool>,
     #[command(subcommand)]
     command: Cmd,
 }
@@ -122,6 +131,17 @@ fn main() -> Result<()> {
             Run::open(newest.context("there are no runs in this folder")?)?
         }
     };
+    // The tool of the run: the notebook first, then `--tool`, then Claude.
+    if !matches!(cli.command, Cmd::Status { .. }) {
+        let tool = match (cli.tool, run.state.tool) {
+            (Some(new), Some(old)) if new != old => {
+                let old = format!("{old:?}").to_lowercase();
+                bail!("this run uses the tool {old}. Use --tool {old} or no --tool option.")
+            }
+            (new, old) => new.or(old).unwrap_or(Tool::Claude),
+        };
+        run.state.tool = Some(tool);
+    }
     let _lock = match lock {
         None if matches!(cli.command, Cmd::Run { .. }) => Some(Lock::take(&run.dir)?),
         lock => lock,
@@ -141,13 +161,17 @@ fn main() -> Result<()> {
     if !matches!(cli.command, Cmd::Status { .. }) {
         let graph = Graph::load(&cli.sheet, &cli.roles)?;
         let time_limit = Duration::from_secs(cli.step_minutes * 60);
-        let worker = Mixed(cli.tool, time_limit);
+        let worker = Mixed(run.state.tool.unwrap_or(Tool::Claude), time_limit);
         run.go(&graph, &cli.roles, &worker)?;
     }
     // The screen gets a short note. The full text is in the log.
     let note: String = run.state.note.chars().take(300).collect();
     let id = run.dir.file_name().unwrap_or_default().to_string_lossy();
     println!("Run: {id}\nStatus: {:?}\n{note}", run.state.status);
+    if run.state.status == Status::Stopped {
+        println!("To continue: codeumbrella resume {id}");
+        println!("Resume only after the person says yes. An AI must not give this approval.");
+    }
     println!("More: {}", run.dir.join("log.jsonl").display());
     Ok(())
 }

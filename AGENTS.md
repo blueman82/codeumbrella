@@ -8,7 +8,7 @@ Codeumbrella is a software factory. A person gives it a task. It puts code into 
 
 The factory is written in Rust. The projects that go through it can be in each language. Put no knowledge of one language into the supervisor, the default sheet or the default rules pages.
 
-The heart is an instruction sheet (`.codeumbrella/graph.yaml` in each project) and a small supervisor that reads the sheet and does what it says. The supervisor starts workers (Claude first, Codex after; a step can pick its tool), keeps a notebook, and stops for the person.
+The heart is an instruction sheet (`.codeumbrella/graph.yaml` in each project) and a small supervisor that reads the sheet and does what it says. The supervisor starts workers (Claude first, Codex after; a step can pick its tool, and a run keeps its tool), keeps a notebook, and stops for the person.
 
 The supervisor knows nothing about software work. All knowledge of the steps is in the sheet and in the rules pages.
 
@@ -26,6 +26,7 @@ The supervisor knows nothing about software work. All knowledge of the steps is 
 | `trace` | `<step>.<number>.trace.jsonl` in the run folder: all that one worker did in one try. |
 | Paper | A folder in `.codeumbrella/runs/<run-id>/papers/` that one step writes and other steps read. |
 | Role | The type of a worker. Its rules page is `.codeumbrella/roles/<role>.md` in a project. The folder `roles` holds the defaults. |
+| Simplifier | The worker after `build`. It makes the code of the run simpler and changes no behaviour. |
 
 ## Commands
 
@@ -76,6 +77,8 @@ To install the command and the chat command on a computer, run `./install.sh`.
 | `tests/walls.rs` | Tests of the safety settings and the safety checks. Each one becomes bad if a wall goes. |
 | `tests/step_tools.rs` | Tests of `tool`, `model` and `effort`, with a simulated `claude` and `codex`. |
 | `tests/attacker.rs` | Tests of the plan attacker: its step, its files, its settings and its rules page. |
+| `tests/run_tool.rs` | Tests of the stop message and of the tool that a run remembers. |
+| `tests/new_roles.rs` | Tests of the roles `reviewer`, `security` and `simplifier`: their files and their rules pages. |
 | `install.sh` | Installs the command and the chat command. |
 | `LICENSE` | The MIT licence. Do not change its text. |
 
@@ -146,9 +149,13 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - Each role has one rules page.
 - The chat starts `run`, `answer` and `resume` with `nohup`, so a command lives after the shell ends. If the status is `Running` and no command is alive, the chat removes `lock` and runs `resume`.
 - The checker compares each test file of the paper `tests` with the project in each try. A file that is different or not there gets the paper version, because the person approved the paper. The builder does not change such a file.
-- The default check step is a fan of two checkers. One runs the tests. One reads the change for safety problems, and it cannot write a file.
+- The default check step is a fan of four checkers. One runs the tests. The safety, review and security checkers read the change, and they cannot write a file.
 - The safety checker also reads the files that use the changed lines, for example settings files. A run on 17 November 2026 showed the cause.
-- The two checkers work in the same copy. Only the tests checker writes there.
+- The four checkers work in the same copy. Only the tests checker writes there.
+- The settings of `reviewer` and `security` are the same as those of `safety`. The settings of `simplifier` are the same as those of `builder`.
+- The step `simplify` comes after `build`. The simplifier changes only code of the run, and not a test file of the paper `tests`. `repair` does not go through it.
+- A run keeps its tool in the notebook. `answer` and `resume` use it, and a different `--tool` is an error before a step starts.
+- A stopped run prints how to resume it. Only a person gives the approval to resume. An AI must not.
 - The safety checker does not read the commit that the tests checker makes at the same time. The person sees that commit in the PR.
 
 ## Rust rules
@@ -189,8 +196,8 @@ A new package gets into this list only when all of these are correct:
 
 ## Limits for lines of code
 
-- The supervisor (`src/graph.rs`, `src/engine.rs`, `src/main.rs`, `src/log.rs`, `src/lib.rs`): 580 lines of code.
-- Each tool part: 100 lines of code.
+- The supervisor (`src/graph.rs`, `src/engine.rs`, `src/main.rs`, `src/log.rs`, `src/lib.rs`): 650 lines of code.
+- Each tool part: 200 lines of code.
 - Empty lines, comment lines and tests do not count.
 - Count with: `grep -v -E '^\s*(//|$)' <file> | wc -l`
 

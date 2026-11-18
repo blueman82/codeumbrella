@@ -89,6 +89,9 @@ pub struct State {
     pub prints: BTreeMap<String, u64>,
     /// The result of the last step that ended.
     pub last: Option<Outcome>,
+    /// The tool of the run. An old notebook has none.
+    #[serde(default)]
+    pub tool: Option<Tool>,
 }
 
 /// The lock of one run: the file `lock` in the run folder. Only one command

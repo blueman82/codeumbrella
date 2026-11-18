@@ -28,8 +28,8 @@ fn list(value: &Value) -> Vec<&str> {
 }
 
 #[test]
-fn the_builder_and_the_checker_run_in_the_claude_sandbox_with_the_locks() {
-    for role in ["builder", "checker"] {
+fn the_builder_the_simplifier_and_the_checker_run_in_the_claude_sandbox_with_the_locks() {
+    for role in ["builder", "simplifier", "checker"] {
         let file = json(&format!("roles/{role}.claude.json"));
         let sandbox = &file["sandbox"];
         assert_eq!(sandbox["enabled"], true, "{role}");
@@ -62,7 +62,16 @@ const KEYS: [&str; 5] = [
 
 #[test]
 fn no_claude_role_runs_hooks_uses_the_web_or_reads_the_keys_of_the_person() {
-    for role in ["planner", "builder", "checker", "safety", "attacker"] {
+    for role in [
+        "planner",
+        "builder",
+        "checker",
+        "safety",
+        "attacker",
+        "reviewer",
+        "security",
+        "simplifier",
+    ] {
         let file = json(&format!("roles/{role}.claude.json"));
         assert_eq!(file["disableAllHooks"], true, "{role}");
         let deny = list(&file["permissions"]["deny"]);
@@ -101,7 +110,7 @@ fn each_codex_role_has_its_sandbox_and_its_locks() {
     let planner = text("roles/planner.codex.txt");
     assert!(planner.starts_with("{extends=\":read-only\""), "{planner}");
     assert!(planner.contains("runs/{run}/papers/spec\"=\"write\""));
-    for role in ["builder", "checker"] {
+    for role in ["builder", "simplifier", "checker"] {
         let file = text(&format!("roles/{role}.codex.txt"));
         assert!(file.starts_with("{extends=\":workspace\""), "{file}");
         assert!(file.contains("mode=\"limited\""), "{file}");
@@ -120,7 +129,16 @@ fn each_codex_role_has_its_sandbox_and_its_locks() {
             );
         }
     }
-    for role in ["planner", "builder", "checker", "safety", "attacker"] {
+    for role in [
+        "planner",
+        "builder",
+        "checker",
+        "safety",
+        "attacker",
+        "reviewer",
+        "security",
+        "simplifier",
+    ] {
         let file = text(&format!("roles/{role}.codex.txt"));
         assert!(!file.contains("danger"));
         // No Codex role can read the folders that hold keys of the person.
@@ -202,6 +220,8 @@ fn the_push_sends_only_the_checked_commit_to_the_branch_of_the_run() {
 static COUNT: AtomicU32 = AtomicU32::new(0);
 
 /// A new project with the factory files, and a folder for simulated tools.
+/// A test that starts two runs takes a new project for each run: two runs in
+/// one project in the same second get the same run name.
 fn project() -> PathBuf {
     let n = COUNT.fetch_add(1, Ordering::SeqCst);
     let dir = env::temp_dir().join(format!("cu-walls-{}-{n}", std::process::id()));
@@ -317,6 +337,9 @@ fn a_worker_that_ends_with_an_error_code_is_not_good() {
     tool(&dir, "claude", &format!("{GOOD_CLAUDE}\nexit 3"));
     let run = cu(&dir, &["run", "a task"]);
     assert!(out(&run).contains("Status: Stopped"), "{}", out(&run));
+    // A new project for the second run: two runs in one project in the same
+    // second get the same run name.
+    let dir = project();
     // This simulated codex writes a good result, and then ends with an error code.
     let codex = r#"while [ "$1" != "--output-last-message" ]; do shift; done
 echo '{"ok":true,"summary":"done"}' > "$2"
@@ -474,15 +497,73 @@ fn the_safety_checker_cannot_write_a_file() {
 }
 
 #[test]
-fn the_check_of_the_default_sheet_is_a_fan_with_the_tests_and_the_safety_checker() {
+fn the_reviewer_and_the_security_checker_cannot_write_a_file() {
+    for role in ["reviewer", "security"] {
+        let file = json(&format!("roles/{role}.claude.json"));
+        let allow = list(&file["permissions"]["allow"]);
+        assert_eq!(allow, ["Read", "Glob", "Grep", "Bash"], "{role}");
+        let deny = list(&file["permissions"]["deny"]);
+        assert!(deny.contains(&"Edit(/{project}/**)"), "{role} {deny:?}");
+        assert!(!allow.iter().any(|a| a.starts_with("Edit")), "{role}");
+        assert!(!allow.contains(&"Write"), "{role}");
+        assert_eq!(file["sandbox"]["enabled"], true, "{role}");
+        assert_eq!(file["sandbox"]["allowUnsandboxedCommands"], false, "{role}");
+        assert_eq!(file["sandbox"]["failIfUnavailable"], true, "{role}");
+        let network = file["sandbox"]["network"].as_object().expect("network");
+        assert_eq!(network.keys().collect::<Vec<_>>(), ["allowLocalBinding"]);
+        assert_eq!(list(&file["sandbox"]["filesystem"]["denyRead"]), KEYS);
+        let codex = text(&format!("roles/{role}.codex.txt"));
+        assert!(
+            codex.starts_with("{extends=\":read-only\""),
+            "{role} {codex}"
+        );
+        assert!(!codex.contains("\"write\""), "{role} {codex}");
+    }
+}
+
+#[test]
+fn the_claude_simplifier_writes_only_in_the_work_copy_of_its_run_and_keeps_the_locks() {
+    let file = json("roles/simplifier.claude.json");
+    let allow = list(&file["permissions"]["allow"]);
+    let rule = "Edit(/{project}/.codeumbrella/runs/{run}/work/**)";
+    assert_eq!(allow, ["Read", "Glob", "Grep", rule, "Bash"]);
+    let deny = list(&file["permissions"]["deny"]);
+    for lock in [
+        "Edit(.codeumbrella/**)",
+        "Edit(.claude/**)",
+        "Edit(.github/**)",
+        "Edit(.git/hooks/**)",
+        "Edit(.git/config)",
+        "Edit(.git/commondir)",
+        "Edit(.git/config.worktree)",
+        "Bash(git push *)",
+    ] {
+        assert!(deny.contains(&lock), "{lock}");
+    }
+    // The only write rule is the work copy of the run.
+    assert_eq!(allow.iter().filter(|a| a.starts_with("Edit")).count(), 1);
+    assert!(!allow.contains(&"Write"), "{allow:?}");
+    assert_eq!(file, json("roles/builder.claude.json"));
+}
+
+#[test]
+fn the_check_of_the_default_sheet_is_a_fan_with_four_checkers() {
     let graph = Graph::load(&root().join("graph.example.yaml"), &root().join("roles")).unwrap();
     let check = graph.step("check").unwrap();
     assert_eq!(check.kind, Kind::Fan);
-    assert_eq!(check.fan, ["check_tests", "check_safety"]);
+    let parts = [
+        "check_tests",
+        "check_safety",
+        "check_review",
+        "check_security",
+    ];
+    assert_eq!(check.fan, parts);
     assert_eq!(check.on_bad.as_deref(), Some("repair"));
     let role = |name| graph.step(name).unwrap().role.clone().unwrap();
     assert_eq!(role("check_tests"), "checker");
     assert_eq!(role("check_safety"), "safety");
+    assert_eq!(role("check_review"), "reviewer");
+    assert_eq!(role("check_security"), "security");
 }
 
 /// True if the sheet text is refused: by the reader or by the check.
