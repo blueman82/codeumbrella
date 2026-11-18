@@ -2,13 +2,16 @@
 
 use crate::graph::{Graph, Kind, Step, Tool};
 use crate::log;
-use anyhow::{Context, Result, bail};
+use anyhow::{Context, Result, bail, ensure};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::{
     fmt::Write as _, fs, path::Path, path::PathBuf, process::Command, thread, time::Instant,
 };
+
+/// The stop note for a worker folder that is empty or not there.
+const EMPTY: &str = "the work folder is empty or not there. The sheet is from before version 0.1.2. Run `codeumbrella init --update` and start a new run";
 
 /// What one step gives back.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -107,10 +110,12 @@ impl Lock {
     /// such run folder.
     pub fn take(dir: &Path) -> Result<Self> {
         let path = dir.join("lock");
-        fs::File::create_new(&path).with_context(|| {
+        let mut file = fs::File::create_new(&path).with_context(|| {
             let path = path.display();
             format!("a different command works on this run. If not, remove the file {path}")
         })?;
+        // `status --wait` reads this number to see if the command lives.
+        std::io::Write::write_all(&mut file, std::process::id().to_string().as_bytes())?;
         Ok(Self(path))
     }
 }
@@ -293,6 +298,8 @@ impl Run {
         before: Option<&Outcome>,
     ) -> Result<Outcome> {
         let role = step.role.as_deref().unwrap_or_default();
+        let filled = fs::read_dir(self.dir.join("work")).is_ok_and(|mut d| d.next().is_some());
+        ensure!(filled, EMPTY);
         worker.run(&Job {
             task: &self.state.task,
             step: name,

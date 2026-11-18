@@ -42,6 +42,7 @@ codeumbrella init --update                     # replace changed factory files w
 codeumbrella run "<task>"                      # start a run with Claude workers
 codeumbrella --tool codex run "<task>"         # start a run with Codex workers. The run keeps this tool
 codeumbrella status [run-id]                   # show where a run is
+codeumbrella status --wait <run-id>            # wait until the run is not `Running`, then show it. It never changes the notebook or the lock
 codeumbrella answer <run-id> <step> yes|no ["text"]   # answer the question of that step, then continue
 codeumbrella resume <run-id>                   # try a stopped step again, with its count of tries at 0. Only after the person says yes
 ```
@@ -79,6 +80,7 @@ To install the command and the chat command on a computer, run `./install.sh`.
 | `tests/attacker.rs` | Tests of the plan attacker: its step, its files, its settings and its rules page. |
 | `tests/run_tool.rs` | Tests of the stop message and of the tool of the run. |
 | `tests/new_roles.rs` | Tests of the roles `reviewer`, `security` and `simplifier`, the new steps and the documents. |
+| `tests/small_repairs.rs` | Tests of version 0.1.11: the lock number, `status --wait`, the work folder, run ids, the stop message. |
 | `install.sh` | Installs the command and the chat command. |
 | `LICENSE` | The MIT licence. Do not change its text. |
 
@@ -110,7 +112,7 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - The clean copy gets the code of GitHub from GitHub. It gets only the `branch` of the run from `../work`. The push sends the commit that the step compared.
 - The push gives the full name of the run `branch` two times. Thus it cannot go to a different `branch`. Tests on 16 November 2026 showed these attacks with git.
 - An answer names its step. An answer for a different step is an error. Thus a yes for the tests cannot become a yes for the merge.
-- Only one command can work on a run at a time. The file `lock` in the run folder shows this. After a kill, a person removes that file.
+- Only one command can work on a run at a time. The file `lock` in the run folder shows this. It holds the process number of that command. After a kill, a person removes that file.
 - An answer and a resume get the lock before they read the notebook. Thus a second command cannot write an answer into a run that is active.
 - The clean copy reads the `origin` settings from `.git/config` of the project. Thus the factory does not work in a linked git worktree.
 - `model` and `effort` have only letters, digits, `.`, `-` and `_`. Thus no quote or brace can reach the tool command.
@@ -138,7 +140,7 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - The sandbox is the only wall for the commands of a worker, for Claude and for Codex.
 - `init --update` copies each changed factory file to `<name>.before`, then writes the default. It does not touch `runs` or the `.gitignore` of the project folder.
 - A paper that a step writes is not compared before that step. Thus a writer can run again after a try that broke its paper.
-- After a stop for a changed paper, `resume` stops again. A person must put the paper back first.
+- After a stop for a changed paper, `resume` stops again. The stop message does not print the `resume` line. A person must put the paper back first.
 - The plan step has 3 tries for one run. The first plan uses one. Thus 2 no answers are possible before a stop.
 - The attacker reads the spec and the tests after the planner. It cannot write a file.
 - A bad result of the attacker goes to a step `correct_plan`. The planner corrects the plan, and the attacker looks again.
@@ -147,7 +149,7 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - A live test on 17 November 2026 showed the cause. A Codex attacker gave 5 bad results for a small task, and the run stopped.
 - The settings of the attacker are the same as those of the safety checker.
 - Each role has one rules page.
-- The chat starts `run`, `answer` and `resume` with `nohup`, and adds `--tool codex` to `run` only, so a command lives after the shell ends. If the status is `Running` and no command is alive, the chat removes `lock` and runs `resume` only after the person says yes.
+- The chat starts `run`, `answer` and `resume` with `nohup`, and adds `--tool codex` to `run` only, so a command lives after the shell ends. The chat uses `status --wait`. If it says that the command of the run is dead, the chat removes `lock` and runs `resume` only after the person says yes.
 - The checker compares each test file of the paper `tests` with the project in each try. A file that is different or not there gets the paper version, because the person approved the paper. The builder does not change such a file.
 - The default check step is a fan of four checkers. `check_tests` runs the tests. `check_safety`, `check_review` and `check_security` read the change. They cannot write a file.
 - The step `simplify` follows `build`. The simplifier changes no test file, and it commits only if the test command passes. The step `repair` does not go through it.

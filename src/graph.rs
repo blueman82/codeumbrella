@@ -1,5 +1,6 @@
 //! The instruction sheet: the steps of the factory and the rules between them.
 
+use crate::claude::INIT;
 use anyhow::{Context, Result, bail, ensure};
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, fs, path::Path};
@@ -110,7 +111,7 @@ impl Graph {
             }
             match (step.kind, &step.role) {
                 (Kind::Worker, Some(role)) if !roles.join(format!("{role}.md")).is_file() => {
-                    bail!("step {name}: there is no rules page for the role {role}")
+                    bail!("step {name}: there is no rules page for the role {role}. {INIT}")
                 }
                 (Kind::Worker, None) => bail!("step {name}: a worker step must have a role"),
                 (Kind::Person | Kind::Command | Kind::Fan, Some(_)) => {

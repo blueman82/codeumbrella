@@ -242,6 +242,7 @@ fn a_good_attack_result_goes_to_the_person() {
     let (graph, roles) = sheet();
     let worker = Script::new("attack_plan", 0);
     let mut run = Run::start(folder(), "a task", &graph).unwrap();
+    std::fs::write(run.dir.join("work/file"), "x").unwrap();
     run.go(&graph, &roles, &worker).unwrap();
     assert_eq!(run.state.status, Status::Waiting);
     assert_eq!(run.state.at.as_deref(), Some("look_at_tests"));
@@ -253,6 +254,7 @@ fn one_bad_attack_gets_one_correction_and_a_second_attack() {
     let (graph, roles) = sheet();
     let worker = Script::new("attack_plan", 1);
     let mut run = Run::start(folder(), "a task", &graph).unwrap();
+    std::fs::write(run.dir.join("work/file"), "x").unwrap();
     run.go(&graph, &roles, &worker).unwrap();
     assert_eq!(run.state.at.as_deref(), Some("look_at_tests"));
     assert_eq!(
@@ -266,6 +268,7 @@ fn an_attacker_that_is_always_bad_gets_three_rounds_and_then_the_person_sees_the
     let (graph, roles) = sheet();
     let worker = Script::new("attack_plan", 99);
     let mut run = Run::start(folder(), "a task", &graph).unwrap();
+    std::fs::write(run.dir.join("work/file"), "x").unwrap();
     run.go(&graph, &roles, &worker).unwrap();
     assert_eq!(run.state.status, Status::Waiting);
     assert_eq!(run.state.at.as_deref(), Some("look_at_tests"));
@@ -289,6 +292,7 @@ fn a_no_from_the_person_still_goes_to_the_planner_and_the_attacker() {
     let (graph, roles) = sheet();
     let worker = Script::new("attack_plan", 0);
     let mut run = Run::start(folder(), "a task", &graph).unwrap();
+    std::fs::write(run.dir.join("work/file"), "x").unwrap();
     run.go(&graph, &roles, &worker).unwrap();
     run.answer(false, "The tests are too easy.").unwrap();
     run.go(&graph, &roles, &worker).unwrap();
