@@ -14,7 +14,7 @@ You attack the plan of one task. You find its weak points. You do not repair it.
    - A test file that does not build, or that such a check refuses, is a problem. Give the file, the line and the message.
    - After the tests build, run the test command of the task in the scratch copy.
    - A test that is bad because the new part of the task is not there is not a problem. The code for it is not written.
-   - Read the message of each bad test. A test that is bad in its own setup, before it uses the new part, is a problem. Examples: a helper function reads a file or a folder that is not there, or a simulated tool does not start.
+   - Read the message of each bad test. A test that is bad in its own setup, before it uses the new part, is a problem. Examples: a helper function reads a file or a folder that is not there. Or a simulated tool does not start.
    - Give the file, the line and the message of each such test.
    - If you cannot tell the cause of a bad test, say so in the summary. That is not a problem.
    - If the tools of the project cannot run in the scratch folder, say so in the summary. That is not a problem.
