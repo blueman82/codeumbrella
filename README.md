@@ -105,6 +105,7 @@ The factory does not work in a linked git worktree.
 |---|---|
 | `graph.yaml` | The steps and their sequence. Comments in the file tell each option. |
 | `roles/<role>.md` | The rules of one worker. |
+| `roles/languages/<language>.md` | The language pages for Python, Go, JavaScript, TypeScript, Java and Rust. The reviewer and the simplifier read the page of each language in the change. |
 | `roles/<role>.claude.json`, `roles/<role>.codex.txt` | What one worker can do. |
 
 ## What a worker can and cannot do

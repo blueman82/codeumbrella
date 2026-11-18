@@ -27,7 +27,8 @@ SUPERVISOR ── uses your GitHub key ──► GITHUB: push · PR · merge (me
 ```
 
 - The plan paper has the name `spec`.
-- The builder and the checker can connect to a server on the same computer, for example a database.
+- The reviewer and the simplifier read the language pages in `roles/languages/` for each language in the change. No other role reads them.
+- The builder, the checker and the simplifier can connect to a server on the same computer, for example a database.
 - A worker can read the tests paper, but it cannot change it. The builder and the checker cannot write to the papers folder.
 - The supervisor compares each paper with its fingerprint before each step.
 - The workers write in a copy of the project in the `work` folder of the run. A run does not change the project folder or its branch.

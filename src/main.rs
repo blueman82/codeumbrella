@@ -19,7 +19,9 @@ macro_rules! defaults {
         &[(".gitignore", "*\n"), ("graph.yaml", include_str!("../graph.example.yaml")),
           // For a project that has no ignore file. The path goes up to the project folder.
           ("../.gitignore", include_str!("../default.gitignore")),
-          $(role!($role, ".md"), role!($role, ".claude.json"), role!($role, ".codex.txt")),*]
+          $(role!($role, ".md"), role!($role, ".claude.json"), role!($role, ".codex.txt")),*,
+          page!("python"), page!("go"), page!("javascript"), page!("typescript"), page!("java"),
+          page!("rust")]
     };
 }
 
@@ -29,6 +31,16 @@ macro_rules! role {
         (
             concat!("roles/", $role, $ext),
             include_str!(concat!("../roles/", $role, $ext)),
+        )
+    };
+}
+
+/// One language page: its path in the folder of the factory, and its text.
+macro_rules! page {
+    ($name:literal) => {
+        (
+            concat!("roles/languages/", $name, ".md"),
+            include_str!(concat!("../roles/languages/", $name, ".md")),
         )
     };
 }
