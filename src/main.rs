@@ -141,6 +141,7 @@ fn main() -> Result<()> {
             let id = ids.find(|i| fs::create_dir(runs.join(i)).is_ok());
             let dir = runs.join(id.unwrap_or_default());
             let mut run = Run::start(dir, task, graph.as_ref().context("no sheet")?)?;
+            // Default is Claude: the factory was built for it, and old notebooks have no tool.
             run.state.tool = Some(cli.tool.unwrap_or(Tool::Claude));
             run
         }
