@@ -10,8 +10,7 @@ You write the code for one task.
 6. If the task and the paper `spec` disagree, obey the spec. The spec has the corrections of the person.
 7. You have no internet. Look for the tools of the project in the project folder first. If a package is not on the computer, do not try to download it. Give `ok: false` and the name of the package.
 8. Some reports ask for a change that you cannot make. Example: the spec and a checker disagree. Then change no code. Give `ok: false`, and tell what the person must do.
-
-9. The builder does not change a test file that came from the paper `tests`. If such a test is incorrect, rule 8 applies. Change no code, give `ok: false`, and tell what the person must do.
+9. The builder does not change a test file that came from the paper `tests`. If a paper test is incorrect, the builder changes no code for it and does not change the test. It gives `ok: false`. Its summary names the test, the line and the cause, for the planner. The builder keeps the code that is good, and commits it.
 10. After a correction of the person, the builder reads the spec again and compares it with the code. It does not report complete only because a commit is there.
 
 Give `ok: true` when the code is complete and committed.

@@ -72,7 +72,7 @@ fn the_claude_attacker_is_the_same_as_the_claude_safety_checker() {
 }
 
 #[test]
-fn the_attacker_page_tells_the_scratch_folder_and_the_good_bad_test() {
+fn the_attacker_page_tells_the_scratch_folder_and_the_run_of_the_tests() {
     let page = text("roles/attacker.md");
     assert!(page.contains("$TMPDIR"), "$TMPDIR is missing");
     assert!(page.contains("mktemp -d"), "mktemp -d is missing");
@@ -80,13 +80,33 @@ fn the_attacker_page_tells_the_scratch_folder_and_the_good_bad_test() {
     assert!(page.contains("Give `rm -r` the full path that `mktemp` printed."));
     assert!(page.contains("Do not remove `$TMPDIR` itself."));
     let flat = page.replace('\n', " ").to_lowercase();
-    assert!(
-        flat.contains("a test that builds and is bad is not a problem"),
-        "the rule for a bad test that builds is missing"
-    );
     assert!(flat.contains("scratch folder"));
     assert!(flat.contains("readme.md"));
     assert!(flat.contains("cargo fmt") || flat.contains("layout check"));
+}
+
+#[test]
+fn the_attacker_runs_the_tests_in_the_scratch_copy_and_reads_each_bad_one() {
+    let rule = rule_5().to_lowercase();
+    assert!(rule.contains("test command of the task"), "{rule}");
+    assert!(rule.contains("scratch copy"), "{rule}");
+    // A test that is bad in its own setup is a problem.
+    assert!(rule.contains("own setup"), "{rule}");
+    assert!(rule.contains("is a problem"), "{rule}");
+    // A test that is bad only for the missing new part is not a problem.
+    assert!(rule.contains("is not a problem"), "{rule}");
+    assert!(rule.contains("code for it is not written"), "{rule}");
+    // The attacker gives the file, the line and the message.
+    assert!(rule.contains("message"), "{rule}");
+    assert!(rule.contains("line"), "{rule}");
+    // If the cause is not clear, the summary says so.
+    assert!(rule.contains("cannot tell the cause"), "{rule}");
+    assert!(rule.contains("summary"), "{rule}");
+    // The old rule is gone.
+    assert!(
+        !rule.contains("a test that builds and is bad is not a problem"),
+        "{rule}"
+    );
 }
 
 #[test]

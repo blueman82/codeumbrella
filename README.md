@@ -12,6 +12,8 @@ An attacker looks for weak points in the plan before you see the tests. A simpli
 
 A `security` checker reads it for weak points that a person can use to do damage.
 
+If the builder finds a bad paper test, the planner corrects only that test, and you see the tests again.
+
 ## Requirements: what the computer must have
 
 - Rust with `cargo`, to build the `codeumbrella` command. Check: `cargo --version`

@@ -48,7 +48,7 @@ points, 3 times at the maximum               │          │
   ▼ none            third time: go on ──┐    │          │
 YOU: tests? ── no ───────────────────────────┘          │ no
   ▼ yes                                                 │
-build                                                   │
+build: a bad result goes to plan, as a no does           │
   ▼                                                     │
 simplify: the simplifier makes the code simpler         │
   ▼                                                     │
@@ -74,7 +74,8 @@ an error · a bad result with no path for it · a changed paper · a maximum
 
 - A fan is a step that starts two or more worker steps at the same time. It waits for all of them.
 - `resume` tries a stopped step again. The person must say yes first. After a changed paper, a person must put the paper back first.
-- The plan step has 3 tries for one run, and the first plan uses one.
+- The plan step has 3 tries for one run, and the first plan uses one. A no or a bad build uses one more. The third bad build stops the run.
+- A bad build goes to `plan`. The planner corrects only the bad paper test. The attacker looks, you see the tests again, and `build` runs again.
 - A bad result of the attacker goes to a step `correct_plan`. The planner corrects the plan, and the attacker looks again.
 - There are 3 attacks at the maximum for each plan. After the third correction, the person sees the tests.
 - The six steps go in one line, with no path back. Thus the two workers cannot go in a circle.

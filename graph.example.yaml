@@ -139,9 +139,15 @@ steps:
     next: build
 
   # A builder writes the code and commits it.
+  # A bad result goes to the planner, as a no of yours does. This is for a
+  # paper test that is bad in its own setup. The planner corrects only that
+  # test. The attacker looks, you see the tests again, and the builder works
+  # again. A bad build uses one of the 3 tries of `plan`. After the third try
+  # the run stops. The step `repair` has no `on_bad` line.
   build:
     role: builder
     reads: [spec]
+    on_bad: plan
     next: simplify
 
   # A simplifier makes the new code simpler, and does not change what it does.

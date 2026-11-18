@@ -150,7 +150,9 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - `init --update` copies each changed factory file to `<name>.before`, then writes the default. It does not touch `runs` or the `.gitignore` of the project folder.
 - A paper that a step writes is not compared before that step. Thus a writer can run again after a try that broke its paper.
 - After a stop for a changed paper, `resume` stops again. The stop message does not print the `resume` line. A person must put the paper back first.
-- The plan step has 3 tries for one run. The first plan uses one. Thus 2 no answers are possible before a stop.
+- The plan step has 3 tries for one run. The first plan uses one. A no of the person or a bad build uses one more. Thus 2 of them can go back, and the third stops the run.
+- The step `build` has `on_bad: plan`. Runs on 18 November 2026 stopped at `build` for one bad paper test each. The code was good. A stopped run refuses a changed paper. The step `repair` has no such line.
+- The attacker runs the test command in its scratch copy. A test that is bad in its own setup is a problem. A run on 18 November 2026 showed the cause. The attacker built the tests and found 10 bad tests, and it gave one cause for all.
 - The attacker reads the spec and the tests after the planner. It writes only in a scratch folder in the temp folder of the computer. There it builds the paper tests and runs the checks. Then it removes that folder.
 - A bad result of the attacker goes to a step `correct_plan`. The planner corrects the plan, and the attacker looks again.
 - There are 3 attacks at the maximum for each plan. After the third correction, the person sees the tests.
