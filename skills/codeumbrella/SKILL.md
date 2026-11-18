@@ -17,6 +17,8 @@ You are the window between the person and that command. You do not do the task.
 4. If you are Codex, put `--tool codex` immediately after the word `codeumbrella` in the command `run` only. The run keeps its tool, so `answer` and `resume` need no `--tool`. If you are Claude, add nothing.
 5. The command starts workers and uses the network. If your sandbox stops the command, get the permission of the person to run it with no sandbox.
 
+6. Run `codeumbrella stop <run id>` only when the person tells you to stop the run. An AI does not stop a run by its own decision. Run it with no sandbox.
+
 ## Before the first command
 
 Do these steps in sequence.

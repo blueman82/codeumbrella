@@ -89,6 +89,7 @@ The run keeps the tool of the run in its notebook. `answer` and `resume` use it.
 |---|---|
 | `.codeumbrella/runs/<run-id>/log.jsonl` | One line for each step: time, result, seconds. |
 | `.codeumbrella/runs/<run-id>/<step>.<number>.trace.jsonl` | All that one worker did. |
+| `codeumbrella stop <run-id>` | Ends an active run: its command and its workers. The status becomes Stopped. Run it with no sandbox, and only when you say stop. |
 | `codeumbrella resume <run-id>` | Tries the stopped step again. A stopped run prints this line, but not after a changed paper. Run it only after you say yes. |
 
 Three stops have their own cause:
@@ -97,7 +98,7 @@ Three stops have their own cause:
 |---|---|
 | A paper is not as its writer left it | A worker changed a paper. Put the paper back, or start a new run. `resume` does not help. |
 | The step `no_locked_files` gave a bad result | The work changes `.github`, `.claude` or `.codeumbrella`. If the task must do that, remove the folder from that step in `graph.yaml`. |
-| A different command works on this run | Wait until that command ends. After a kill, remove the file `lock` in the run folder. |
+| A different command works on this run | Wait until that command ends. After a kill, run `codeumbrella stop <run-id>`. You can also remove the file `lock` by hand. |
 
 The factory does not work in a linked git worktree.
 
