@@ -8,7 +8,7 @@ Codeumbrella is a software factory. A person gives it a task. It puts code into 
 
 The factory is written in Rust. The projects that go through it can be in each language. Knowledge of one language is only in the language pages (`roles/languages/`). The supervisor, the default sheet and the rules pages of the roles have none. Only the six page file names in the file list of `init` are permitted.
 
-The heart is an instruction sheet (`.codeumbrella/graph.yaml` in each project) and a small supervisor that reads the sheet and does what it says. The supervisor starts workers (Claude first, Codex after; a step can pick its tool), keeps a notebook, and stops for the person.
+The heart is an instruction sheet (`.codeumbrella/graph.yaml` in each project) and a small supervisor that reads the sheet and does what it says. The supervisor starts workers, keeps a notebook, and stops for the person. Claude came first and Codex after, and a step can pick its tool.
 
 The supervisor knows nothing about software work. All knowledge of the steps is in the sheet and in the rules pages.
 
@@ -42,7 +42,7 @@ codeumbrella init --update                     # replace changed factory files w
 codeumbrella run "<task>"                      # start a run with Claude workers
 codeumbrella --tool codex run "<task>"         # start a run with Codex workers. The run keeps this tool
 codeumbrella status [run-id]                   # show where a run is
-codeumbrella status --wait <run-id>            # wait until the run is not `Running`, then show it. It never changes the notebook or the lock
+codeumbrella status --wait <run-id>            # wait until the run is not `Running`, then show it. It does not change the notebook or the lock
 codeumbrella answer <run-id> <step> yes|no ["text"]   # answer the question of that step, then continue
 codeumbrella resume <run-id>                   # try a stopped step again, with its count of tries at 0. Only after the person says yes
 ```
@@ -82,18 +82,18 @@ To install the command and the chat command on a computer, run `./install.sh`.
 | `tests/run_tool.rs` | Tests of the stop message and of the tool of the run. |
 | `tests/new_roles.rs` | Tests of the roles `reviewer`, `security` and `simplifier`, the new steps and the documents. |
 | `tests/small_repairs.rs` | Tests of version 0.1.11: the lock number, `status --wait`, the work folder, run ids, the stop message. |
-| `tests/language_pages.rs` | Tests of version 0.1.12: the six language pages, `init`, the two rules pages and the version. |
+| `tests/language_pages.rs` | Tests of the six language pages, `init` and the two rules pages. |
 | `install.sh` | Installs the command and the chat command. |
 | `LICENSE` | The MIT licence. Do not change its text. |
 
 ## The sheet
 
-The file `graph.example.yaml` tells what each line does. A step can have only these lines: `role`, `type`, `run`, `reads`, `writes`, `next`, `on_bad`, `max_tries`, `fan`, `tool`, `model`, `effort`. The sheet also has one `start` line.
+The file `graph.example.yaml` tells what each line does. A step can have only these lines: `role`, `type`, `run`, `reads`, `writes`, `next`, `on_bad` and `max_tries`. It can also have `fan`, `tool`, `model` and `effort`. The sheet also has one `start` line.
 
 - A step with `type: person` stops the run until the person answers yes or no.
 - A step with `type: fan` has a `fan` line: a list of worker steps. The supervisor does them at the same time and waits for all of them. The result is good only if all of them are good.
 - A step in a `fan` line has only `role`, `reads`, `tool`, `model` and `effort`. It writes no paper.
-- Only a worker step can have `tool`, `model` and `effort`. `tool` is `claude` or `codex`; with no line, the step uses the tool of the run.
+- Only a worker step can have `tool`, `model` and `effort`. `tool` is `claude` or `codex`. With no line, the step uses the tool of the run.
 - The step gives `model` and `effort` to its tool. The role needs the settings file of that tool.
 - A step with `type: command` has a `run` line: a list of commands. The supervisor runs them itself, with no shell and no worker. In a word, `{run}` is the id of the run. If a command gives an error, the result is bad.
 - `next` is the step after a good result. `on_bad` is the step after a bad result.
@@ -114,11 +114,11 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - The clean copy gets the code of GitHub from GitHub. It gets only the `branch` of the run from `../work`. The push sends the commit that the step compared.
 - The push gives the full name of the run `branch` two times. Thus it cannot go to a different `branch`. Tests on 16 November 2026 showed these attacks with git.
 - An answer names its step. An answer for a different step is an error. Thus a yes for the tests cannot become a yes for the merge.
-- Only one command can work on a run at a time. The file `lock` in the run folder shows this. It holds the process number of that command. After a kill, a person removes that file.
+- Only one command can work on a run at a time. The file `lock` in the run folder shows this. It holds the number that the computer gives to that command. After a kill, a person removes that file.
 - An answer and a resume get the lock before they read the notebook. Thus a second command cannot write an answer into a run that is active.
 - The clean copy reads the `origin` settings from `.git/config` of the project. Thus the factory does not work in a linked git worktree.
-- `model` and `effort` have only letters, digits, `.`, `-` and `_`. Thus no quote or brace can reach the tool command.
-- `model` and `effort` cannot start with `-`. Thus the tool never reads them as an option.
+- `model` and `effort` have only letters, digits, `.`, `-` and `_`. Thus no quote or brace can get to the tool command.
+- `model` and `effort` cannot start with `-`. Thus the tool does not read them as an option.
 - A worker that ends with an error code gives no good result.
 - A worker does not get the values `GH_TOKEN` and `GITHUB_TOKEN` of the person.
 - For a Claude worker, only the settings file of its role counts. The worker uses no settings, hooks or tool servers of the project or of the person.
@@ -130,7 +130,7 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - A paper can change only in a step that lists it in `writes`. The supervisor keeps a fingerprint of each paper. Before each step, the supervisor compares all the papers with their fingerprints. If a paper is different, the run stops. The person can change a paper while the run waits for an answer. The answer makes the fingerprints again.
 - All factory files of a project are in the folder `.codeumbrella`: the sheet, the rules pages and the runs. The folder has its own `.gitignore`, so git does not see it.
 - The Claude planner has no shell. The builder, the checker and the simplifier can run all commands, but only in the sandbox.
-- The builder, the checker and the simplifier can connect to a server on the same computer, for example a test database. A test on 16 November 2026 showed that the internet and GitHub stay closed with this setting. A worker can thus talk to each server that runs on the computer of the person.
+- The builder, the checker and the simplifier can connect to a server on the same computer. An example is a test database. A test on 16 November 2026 showed that the internet and GitHub stay closed with this setting. A worker can thus talk to each server that runs on the computer of the person.
 - The Codex part always turns on the Codex network proxy. Without the proxy, a Codex role that has network settings gets the full internet.
 - Workers have no internet. The packages of a project must be on the computer before a run. A test on 16 November 2026 showed the cause. With internet, a worker can use the GitHub key of the person.
 - The builder, the checker and the simplifier run in the Claude sandbox. They cannot write to `.codeumbrella`, `.claude`, `.github`, `.git/hooks` or `.git/config`. They write only in the work copy of their run.
@@ -151,13 +151,13 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - A live test on 17 November 2026 showed the cause. A Codex attacker gave 5 bad results for a small task, and the run stopped.
 - The settings of the attacker are the same as those of the safety checker.
 - Each role has one rules page.
-- The chat starts `run`, `answer` and `resume` with `nohup`, and adds `--tool codex` to `run` only, so a command lives after the shell ends. The chat uses `status --wait`. If it says that the command of the run is dead, the chat removes `lock` and runs `resume` only after the person says yes.
+- The chat starts `run`, `answer` and `resume` with `nohup`, so a command lives after the shell ends. It adds `--tool codex` to `run` only. The chat uses `status --wait`. That command can say that the command of the run is dead. Then the chat removes `lock` and runs `resume` only after the person says yes.
 - The checker compares each test file of the paper `tests` with the project in each try. A file that is different or not there gets the paper version, because the person approved the paper. The builder does not change such a file.
 - The default check step is a fan of four checkers. `check_tests` runs the tests. `check_safety`, `check_review` and `check_security` read the change. They cannot write a file.
 - The step `simplify` follows `build`. The simplifier changes no test file, and it commits only if the test command passes. The step `repair` does not go through it.
-- The reviewer and the security checker have the same settings as the safety checker. The simplifier has the same settings as the builder.
+- The reviewer and the `security` checker have the same settings as the safety checker. The simplifier has the same settings as the builder.
 - The stopped run prints `To continue: codeumbrella resume <run id>` and a line that says: resume only after the person says yes. An AI must not give this approval. The limit for the note does not cut them.
-- `answer` and `resume` with a `--tool` that is different from the tool of the run give an error. They give it before a step starts and before the answer is written. A notebook with no tool uses Claude, and `--tool` writes it. `status` never changes the notebook.
+- `answer` and `resume` with a `--tool` that is different from the tool of the run give an error. They give it before a step starts and before the answer is written. A notebook with no tool uses Claude, and `--tool` writes it. `status` does not change the notebook.
 - The safety checker also reads the files that use the changed lines, for example settings files. A run on 17 November 2026 showed the cause.
 - The four checkers work in the same copy. Only the tests checker writes there.
 - The safety checker does not read the commit that the tests checker makes at the same time. The person sees that commit in the PR.

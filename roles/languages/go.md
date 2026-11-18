@@ -1,33 +1,33 @@
 # Go: good practice for a reader of a change
 
-Guides that this page follows: Effective Go and the Go Code Review Comments.
+This page follows these public documents: `Effective Go` and `Go Code Review Comments`.
 
 Use it only after the rules of `AGENTS.md` and `CLAUDE.md` of the project.
 
 ## Names
-- Package names are short, lower case and have no underscore.
-- Exported names start with a capital letter and have a doc comment that starts with the name.
-- Short names suit short scopes. Initialisms such as `ID` and `URL` keep one case.
-- A getter has no `Get` prefix.
+- Package names are short, have only small letters and have no underscore.
+- A public name starts with a capital letter. Its comment starts with the name.
+- Short names are good in short functions. Write `ID` and `URL` all in capitals or all in small letters.
+- A function that gets a value has no `Get` at the start of its name.
 
 ## Errors
-- Check each returned error. Never drop one with `_` without a reason.
-- Wrap an error with `%w` and add context. Error text is lower case and has no final dot.
-- Return an error. Do not `panic` for a normal failure.
-- Test an error with `errors.Is` or `errors.As`.
+- Check each `error` that a call gives back. Do not drop one with `_` if you do not give the cause.
+- Add context to an error with `%w`. Error text starts with a small letter and has no dot at the end.
+- Give back an `error`. Do not use `panic` for a fault that can occur in usual work.
+- Compare an error with `errors.Is` or `errors.As`.
 
 ## Structure
-- Return early on an error, so the normal path has little nesting.
-- Keep interfaces small. The user of a value defines the interface.
-- Pass a `context.Context` as the first argument. Do not store it in a struct.
-- Run `gofmt`. Formatting is not a point for review.
+- After an error, `return` immediately. Then the usual path has only a small number of levels.
+- Keep each `interface` small. The code that uses a value gives the definition of the `interface`.
+- Give a `context.Context` as the first argument. Do not keep it in a `struct`.
+- Run `gofmt`. Layout is not a point for the reviewer.
 
 ## Tests
-- Table tests suit many cases. Each case gets a name.
-- Use `t.Helper()` in helpers and `t.Fatalf` with a clear message.
+- Table tests are good for many conditions. Each line of the table gets a name.
+- Use `t.Helper()` in help functions and `t.Fatalf` with a clear message.
 
 ## Usual faults
-- A goroutine with no way to stop is a leak.
-- A loop variable captured by a closure can share one value in older versions.
+- A goroutine that nothing can stop uses memory with no end.
+- In older versions, each function made in a loop can get the same loop value.
 - Close a response body and a file with `defer`.
-- Writing to a map from two goroutines is a race.
+- Two goroutines that write to one `map` at the same time give incorrect data.

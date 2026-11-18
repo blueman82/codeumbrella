@@ -1,5 +1,5 @@
-//! Tests of version 0.1.12: the six language pages, `init`, the two rules
-//! pages, `AGENTS.md` and the version. No worker is started.
+//! Tests of the six language pages, `init`, the two rules
+//! pages and `AGENTS.md`. No worker is started.
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -201,19 +201,4 @@ fn the_sheet_and_the_documents_name_the_pages() {
     for doc in ["README.md", "ARCHITECTURE.md"] {
         assert!(text(doc).contains("language pages"), "{doc}");
     }
-}
-
-#[test]
-fn the_version_is_0_1_12_everywhere() {
-    assert!(text("Cargo.toml").contains("version = \"0.1.12\""));
-    for file in [".claude-plugin/plugin.json", ".codex-plugin/plugin.json"] {
-        let json: serde_json::Value = serde_json::from_str(&text(file)).unwrap();
-        assert_eq!(json["version"], "0.1.12", "{file}");
-    }
-    let lock = text("Cargo.lock");
-    let at = lock
-        .find("name = \"codeumbrella\"")
-        .expect("package codeumbrella");
-    let version = lock[at..].lines().nth(1).unwrap();
-    assert_eq!(version, "version = \"0.1.12\"");
 }

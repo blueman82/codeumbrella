@@ -1,33 +1,33 @@
 # Python: good practice for a reader of a change
 
-Guides that this page follows: PEP 8, PEP 20 and PEP 257.
+This page follows these public documents: `PEP 8`, `PEP 20` and `PEP 257`.
 
 Use it only after the rules of `AGENTS.md` and `CLAUDE.md` of the project.
 
 ## Names
-- Functions and variables use `snake_case`. Classes use `CapWords`. Constants use `UPPER_CASE`.
-- A name tells what a thing is, not how it is built.
-- A leading underscore marks a name as private.
+- Functions and local names use `snake_case`. Classes use `CapWords`. Constants use `UPPER_CASE`.
+- A name tells what a thing is, not how the code makes it.
+- An underscore at the start of a name shows that the name is private.
 
 ## Errors
-- Catch the narrowest error that you can handle. A bare `except:` hides faults.
-- A handler that does `pass` hides an error. Log it or raise it again.
+- Catch only the type of error that the code can correct. An `except:` with no type hides faults.
+- An `except` block with only `pass` hides an error. Write a log line or `raise` the error again.
 - Use `raise ... from err` to keep the first cause.
-- Use a `with` block for files and locks, so they close on every path.
+- Use a `with` block for files and locks. Then they close on each path.
 
 ## Structure
-- A function does one thing. Long functions with many branches need a split.
-- Avoid a mutable default argument such as `def f(x=[])`. It keeps state between calls.
-- Prefer a comprehension or a plain loop. A nested comprehension is hard to read.
+- A function does one thing. Divide a long function that has many branches.
+- Do not use a default argument that can change, such as `def f(x=[])`. It keeps its value between calls.
+- Use a comprehension or a plain loop. A comprehension in a comprehension is hard to read.
 - Public functions and classes get a short docstring.
 
 ## Tests
-- A test names the case that it checks. It fails if the code is wrong.
-- Avoid a test that only calls the code and asserts nothing.
+- A test names the condition that it checks. It is bad if the code is incorrect.
+- A test that only calls the code and checks nothing shows nothing.
 - Use `pytest.raises` or `assertRaises` to check an error.
 
 ## Usual faults
 - Compare to `None` with `is`, not `==`.
-- Late binding in a loop closure gives the last value to every call.
-- Do not change a list while you loop over it.
-- A wildcard import hides where a name comes from.
+- A function made in a loop reads the loop name when it runs. Then each call gets the last value.
+- Do not change a list while a loop goes through it.
+- An `import *` hides where a name comes from.
