@@ -5,7 +5,7 @@ use anyhow::{Context, Result, bail, ensure};
 use serde::Deserialize;
 use std::process::{Child, Command, ExitStatus, Stdio};
 use std::time::{Duration, Instant};
-use std::{env, fmt::Write as _, fs, fs::File, path::PathBuf, thread};
+use std::{env, fmt::Write as _, fs, fs::File, path::Path, path::PathBuf, thread};
 
 /// The format of the result that each worker must give.
 pub(crate) const SCHEMA: &str = r#"{"type":"object","properties":{"ok":{"type":"boolean"},"summary":{"type":"string"}},"required":["ok","summary"],"additionalProperties":false}"#;
@@ -64,7 +64,7 @@ impl Worker for Claude {
             .stderr(File::create(&err)?)
             .spawn()
             .context("cannot start the claude command")?;
-        let status = wait(child, self.time_limit)?;
+        let status = wait(child, self.time_limit, job.dir)?;
         // The last line of the trace is the result.
         let text = fs::read_to_string(&out)?;
         let reply: Reply = serde_json::from_str(text.lines().last().unwrap_or_default())
@@ -89,8 +89,27 @@ pub(crate) fn files(job: &Job) -> (PathBuf, PathBuf) {
 }
 
 /// Waits until a worker ends, and gives its exit status. Stops the worker at
-/// the time limit.
-pub(crate) fn wait(mut child: Child, limit: Duration) -> Result<ExitStatus> {
+/// the time limit. While it works, the file `worker.<number>` in `dir` holds its
+/// start time, so the next command can end it. With no `ps`, the file is not there.
+pub(crate) fn wait(child: Child, limit: Duration, dir: &Path) -> Result<ExitStatus> {
+    let pid = child.id().to_string();
+    let file = dir.join(format!("worker.{pid}"));
+    let ps = Command::new("ps")
+        .args(["-o", "lstart=", "-p", &pid])
+        .output();
+    if let Some(ps) = ps
+        .ok()
+        .filter(|o| o.status.success() && !o.stdout.is_empty())
+    {
+        let _ = fs::write(&file, ps.stdout);
+    }
+    let result = poll(child, limit);
+    let _ = fs::remove_file(&file);
+    result
+}
+
+/// Waits for the worker and stops it at the time limit.
+fn poll(mut child: Child, limit: Duration) -> Result<ExitStatus> {
     let end = Instant::now() + limit;
     loop {
         if let Some(status) = child.try_wait()? {

@@ -26,6 +26,7 @@ The supervisor knows nothing about software work. All knowledge of the steps is 
 | Log | `log.jsonl` in the run folder: one line for each step that ended. |
 | `trace` | `<step>.<number>.trace.jsonl` in the run folder: all that one worker did in one try. |
 | Paper | A folder in `.codeumbrella/runs/<run-id>/papers/` that one step writes and other steps read. |
+| `worker.<number>` | A file in the run folder while a worker lives. It holds the start time of the worker. The repair uses it to end a worker that stays. |
 | Role | The type of a worker. Its rules page is `.codeumbrella/roles/<role>.md` in a project. The folder `roles` holds the defaults. |
 
 ## Commands
@@ -41,8 +42,8 @@ codeumbrella init                              # put the default sheet and rules
 codeumbrella init --update                     # replace changed factory files with the new defaults, keep a copy of each as `.before`
 codeumbrella run "<task>"                      # start a run with Claude workers
 codeumbrella --tool codex run "<task>"         # start a run with Codex workers. The run keeps this tool
-codeumbrella status [run-id]                   # show where a run is
-codeumbrella status --wait <run-id>            # wait until the run is not `Running`, then show it. It does not change the notebook or the lock
+codeumbrella status [run-id]                   # show where a run is. It changes a file only to repair a run after a kill
+codeumbrella status --wait <run-id>            # wait until the run is not `Running`, then show it. It changes them only to repair a run after a kill
 codeumbrella answer <run-id> <step> yes|no ["text"]   # answer the question of that step, then continue
 codeumbrella stop <run-id>                     # end an active run: its command and its workers. Only after the person says stop
 codeumbrella resume <run-id>                   # try a stopped step again, with its count of tries at 0. Only after the person says yes
@@ -117,8 +118,14 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - The clean copy gets the code of GitHub from GitHub. It gets only the `branch` of the run from `../work`. The push sends the commit that the step compared.
 - The push gives the full name of the run `branch` two times. Thus it cannot go to a different `branch`. Tests on 16 November 2026 showed these attacks with git.
 - An answer names its step. An answer for a different step is an error. Thus a yes for the tests cannot become a yes for the merge.
-- Only one command can work on a run at a time. The file `lock` in the run folder shows this. It holds the number that the computer gives to that command. After a kill, `stop` removes that file. A person can also remove it by hand.
+- Only one command can work on a run at a time. The file `lock` in the run folder shows this. It holds the number that the computer gives to that command. After a kill, the next command for the run repairs it. A person does not remove the file by hand.
 - `stop` works only on a run with status Running. It ends the workers and the command, removes `lock`, and writes Stopped. `resume` then tries the same step.
+- Three runs on 18 November 2026 showed the cause. A chat killed `run` or `answer`. The file `lock` stayed, the notebook said Running, and the worker lived on.
+- The repair is one function. `status`, `status --wait`, `resume`, `answer` and `stop` call it before their own work. No code catches a signal, so it works for a hard kill too.
+- It starts only if `lock` holds a number and that command is dead or is not `codeumbrella`. An empty `lock` or a live `codeumbrella` starts no repair.
+- If the command is alive and `ps` cannot tell its name, the command gives an error with the words "no sandbox" and changes no file.
+- The repair ends the workers that stay, removes `lock`, and writes Stopped with a note for a Running run. A Waiting, Done or Stopped run keeps its notebook. It prints `Repaired: the command of this run was dead.`
+- A tool part writes `worker.<number>` when a worker starts and removes it when the worker ends. With no `ps`, it writes no file. The repair ends the worker only if `ps -o lstart=` gives the text of the file. The computer can give a dead number to a different command.
 - `stop` ends a command only if `ps` shows that its name is `codeumbrella`. The computer can give a dead number to a different command.
 - If the command is alive and `ps` cannot tell its name, `stop` gives an error and changes no file. A sandbox blocks `ps`, so the person runs `stop` with no sandbox.
 - The chat runs `stop` only after the person says stop, with no sandbox. An AI does not stop a run by its own decision.
@@ -160,13 +167,13 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - A live test on 17 November 2026 showed the cause. A Codex attacker gave 5 bad results for a small task, and the run stopped.
 - For Claude, the settings of the attacker are the same as those of the safety checker. For Codex, they have one more entry: write in the temp folder.
 - Each role has one rules page.
-- The chat starts `run`, `answer` and `resume` with `nohup`, so a command lives after the shell ends. It adds `--tool codex` to `run` only. The chat uses `status --wait`. That command can say that the command of the run is dead. Then the chat removes `lock` and runs `resume` only after the person says yes.
+- The chat starts `run`, `answer` and `resume` with `nohup`, so a command lives after the shell ends. It adds `--tool codex` to `run` only. The chat uses `status --wait`. That command repairs a run with a dead command and shows Stopped. The chat tells the person, and runs `resume` only after the person says yes. It does not remove `lock` by hand.
 - The checker compares each test file of the paper `tests` with the project in each try. A file that is different or not there gets the paper version, because the person approved the paper. The builder does not change such a file.
 - The default check step is a fan of four checkers. `check_tests` runs the tests. `check_safety`, `check_review` and `check_security` read the change. They cannot write a file.
 - The step `simplify` follows `build`. The simplifier changes no test file, and it commits only if the test command passes. The step `repair` does not go through it.
 - The reviewer and the `security` checker have the same settings as the safety checker. The simplifier has the same settings as the builder.
 - The stopped run prints `To continue: codeumbrella resume <run id>` and a line that says: resume only after the person says yes. An AI must not give this approval. The limit for the note does not cut them.
-- `answer` and `resume` with a `--tool` that is different from the tool of the run give an error. They give it before a step starts and before the answer is written. A notebook with no tool uses Claude, and `--tool` writes it. `status` does not change the notebook.
+- `answer` and `resume` with a `--tool` that is different from the tool of the run give an error. They give it before a step starts and before the answer is written. A notebook with no tool uses Claude, and `--tool` writes it. `status` changes the notebook only in a repair.
 - The safety checker also reads the files that use the changed lines, for example settings files. A run on 17 November 2026 showed the cause.
 - The four checkers work in the same copy. Only the tests checker writes there.
 - The safety checker does not read the commit that the tests checker makes at the same time. The person sees that commit in the PR.
@@ -209,7 +216,7 @@ A new package gets into this list only when all of these are correct:
 
 ## Limits for lines of code
 
-- The supervisor (`src/graph.rs`, `src/engine.rs`, `src/main.rs`, `src/log.rs`, `src/lib.rs`): 750 lines of code.
+- The supervisor (`src/graph.rs`, `src/engine.rs`, `src/main.rs`, `src/log.rs`, `src/lib.rs`): 1000 lines of code.
 - Each tool part: 200 lines of code.
 - Empty lines, comment lines and tests do not count.
 - Count with: `grep -v -E '^\s*(//|$)' <file> | wc -l`

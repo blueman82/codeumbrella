@@ -264,7 +264,7 @@ fn status_wait_waits_for_a_live_run_and_then_prints_the_status_text() {
 }
 
 #[test]
-fn status_wait_stops_with_a_message_when_the_command_of_the_run_is_dead() {
+fn status_wait_repairs_a_run_when_the_command_of_the_run_is_dead() {
     let dir = setup();
     let run = cu(&dir, &["run", "a task"]);
     let id = id(&run);
@@ -274,19 +274,14 @@ fn status_wait_stops_with_a_message_when_the_command_of_the_run_is_dead() {
     set_status(&dir, &id, "Running");
     let lock = run_dir(&dir, &id).join("lock");
     fs::write(&lock, gone.id().to_string()).unwrap();
-    let before = bytes(&dir, &id);
     let wait = finish(spawn(&dir, &["status", "--wait", &id]), 20);
-    assert!(!wait.status.success(), "{}", out(&wait));
-    let text = out(&wait).to_lowercase();
-    assert!(text.contains("dead"), "{text}");
-    assert!(text.contains("lock"), "{text}");
-    assert!(text.contains("remove"), "{text}");
-    // It never changes the notebook and never removes the lock.
-    assert_eq!(bytes(&dir, &id), before);
-    assert!(lock.exists(), "the lock was removed");
-    // A second call does the same, so nothing changed.
+    assert!(wait.status.success(), "{}", out(&wait));
+    assert!(out(&wait).contains("Status: Stopped"), "{}", out(&wait));
+    // The repair removes the lock.
+    assert!(!lock.exists(), "the lock stayed");
+    // A second call shows the run again and changes nothing.
     let again = finish(spawn(&dir, &["status", "--wait", &id]), 20);
-    assert!(!again.status.success());
+    assert!(again.status.success());
 }
 
 #[test]

@@ -51,13 +51,13 @@ If a run stops because a package is not on the computer, install that package. T
 | A task | `codeumbrella run "<task>"` |
 | No task | `codeumbrella status` |
 
-A `run`, `answer` or `resume` command can run for 15 to 25 minutes. A shell of the chat can end, or a time limit of the chat can stop it. The command then stops, and the file `lock` stays. So start each of these commands so that it continues after the shell ends and after a time limit. Send the output to a file. For a usual shell:
+A `run`, `answer` or `resume` command can run for 15 to 25 minutes. A shell of the chat can end, or a time limit of the chat can stop it. The command then stops. So start each of these commands so that it continues after the shell ends and after a time limit. Send the output to a file. For a usual shell:
 
 `nohup codeumbrella run "<task>" > .codeumbrella/out.txt 2>&1 &`
 
 Use the same command line for `answer` and `resume`, with no `--tool`. Then run `codeumbrella status --wait <run id>`, not `status`. It waits until the status is not `Running`. Run it again each 3 minutes if your shell has a time limit. Read the output file after that.
 
-If the status is `Running` and `status --wait` says that the command is not alive, tell the person. Then remove the file `lock` in the run folder, and run `codeumbrella resume <run id>` only after the person says yes.
+If a kill ended the command of a run, the status stays `Running` and the file `lock` stays. `status --wait` repairs a run with a dead command and shows Stopped. Tell the person, then run `codeumbrella resume <run id>` only after the person says yes. The chat does not remove `lock` by hand.
 
 ## After each command
 
