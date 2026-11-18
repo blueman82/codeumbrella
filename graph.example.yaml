@@ -87,8 +87,9 @@ steps:
     next: attack_plan
 
   # An attacker looks for the weak points of the spec and the tests. It
-  # cannot write a file. A bad result goes to the planner, who corrects the
-  # plan. Then the attacker looks again. There are 3 attacks at the maximum
+  # writes only in a scratch folder in the temp folder of the computer.
+  # A bad result goes to the planner, who corrects the plan.
+  # Then the attacker looks again. There are 3 attacks at the maximum
   # for each plan. After the last correction, you see the tests.
   # The steps go in one line, with no path back. Thus the two workers
   # cannot go in a circle.

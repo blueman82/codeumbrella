@@ -16,7 +16,7 @@ SUPERVISOR ── uses your GitHub key ──► GITHUB: push · PR · merge (me
  ▼
 ┌─ WORKERS: no internet · no read of your key folders · no write to the factory files ─────┐
 │ planner   writes the PAPERS: plan + tests. Claude: no shell. Codex: a sandbox.           │
-│ attacker  in a sandbox · gets the plan + the tests ──►  finds weak points, writes no file │
+│ attacker  in a sandbox · gets the plan + the tests ──►  finds weak points, scratch folder only │
 │ builder   in a sandbox · gets the plan             ──►  writes code on the run branch    │
 │ checker   in a sandbox · gets the plan + the tests ──►  copies the tests, runs them      │
 │ safety    in a sandbox · gets the plan             ──►  reads the change, writes no file │
