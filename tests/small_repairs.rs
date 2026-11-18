@@ -309,6 +309,68 @@ fn status_wait_does_not_stop_when_the_command_of_the_run_is_alive() {
     says(&wait, "Status: Done");
 }
 
+/// The names of all files in a folder, with their sizes.
+fn listing(dir: &Path) -> Vec<(String, u64)> {
+    let mut found = Vec::new();
+    for entry in fs::read_dir(dir).unwrap() {
+        let entry = entry.unwrap();
+        let size = entry.metadata().unwrap().len();
+        found.push((entry.file_name().to_string_lossy().into_owned(), size));
+    }
+    found.sort();
+    found
+}
+
+#[test]
+fn status_wait_stops_when_the_run_says_running_and_has_no_lock() {
+    let dir = setup();
+    let run = cu(&dir, &["run", "a task"]);
+    let id = id(&run);
+    set_status(&dir, &id, "Running");
+    let folder = run_dir(&dir, &id);
+    assert!(!folder.join("lock").exists());
+    let before = bytes(&dir, &id);
+    let files = listing(&folder);
+    let start = Instant::now();
+    let wait = finish(spawn(&dir, &["status", "--wait", &id]), 20);
+    assert!(!wait.status.success(), "{}", out(&wait));
+    // It waits about 2 seconds with no lock before it stops.
+    assert!(start.elapsed() >= Duration::from_millis(1500), "too early");
+    let text = out(&wait).to_lowercase();
+    assert!(text.contains("running"), "{text}");
+    assert!(text.contains("no command"), "{text}");
+    let resume = format!("codeumbrella resume {id}");
+    assert!(text.contains(&resume), "{text}");
+    assert!(text.contains("yes"), "{text}");
+    // It changes no file and makes no lock.
+    assert_eq!(bytes(&dir, &id), before);
+    assert_eq!(listing(&folder), files);
+    assert!(!folder.join("lock").exists());
+}
+
+#[test]
+fn status_wait_starts_its_count_again_when_the_lock_comes_back() {
+    let dir = setup();
+    let run = cu(&dir, &["run", "a task"]);
+    let id = id(&run);
+    set_status(&dir, &id, "Running");
+    let lock = run_dir(&dir, &id).join("lock");
+    let start = Instant::now();
+    let mut wait = spawn(&dir, &["status", "--wait", &id]);
+    // No lock for 1.5 seconds, a live lock for 1 second, then no lock.
+    thread::sleep(Duration::from_millis(1500));
+    fs::write(&lock, std::process::id().to_string()).unwrap();
+    thread::sleep(Duration::from_millis(1000));
+    fs::remove_file(&lock).unwrap();
+    // The first absence would have ended at 2 seconds. The count is new.
+    thread::sleep(Duration::from_millis(1100));
+    assert!(wait.try_wait().unwrap().is_none(), "the count went on");
+    let wait = finish(wait, 20);
+    assert!(!wait.status.success(), "{}", out(&wait));
+    assert!(start.elapsed() >= Duration::from_millis(4000), "too early");
+    says(&wait, &format!("codeumbrella resume {id}"));
+}
+
 // Point 3: a worker folder that is not there or is empty.
 
 const ONE_WORKER: &str = r"start: one
@@ -387,6 +449,24 @@ fn runs_that_start_in_the_same_second_get_different_ids() {
     for id in &ids {
         assert!(run_dir(&dir, id).join("state.json").is_file());
     }
+}
+
+#[test]
+fn run_stops_with_a_message_when_it_cannot_make_the_run_folder() {
+    let dir = project();
+    write_sheet(&dir, TRUE_SHEET);
+    let runs = dir.join(".codeumbrella/runs");
+    fs::create_dir_all(&runs).unwrap();
+    fs::set_permissions(&runs, fs::Permissions::from_mode(0o555)).unwrap();
+    // A person with full rights (for example root) can write anyway.
+    let can_write = fs::create_dir(runs.join("probe")).is_ok();
+    let run = (!can_write).then(|| spawn(&dir, &["run", "a task"]));
+    let result = run.map(|child| finish(child, 20));
+    fs::set_permissions(&runs, fs::Permissions::from_mode(0o755)).unwrap();
+    let Some(run) = result else { return };
+    assert!(!run.status.success(), "{}", out(&run));
+    says(&run, "runs");
+    assert!(out(&run).to_lowercase().contains("permission denied"));
 }
 
 // Point 5: the tool goes into the notebook only after the sheet is good.

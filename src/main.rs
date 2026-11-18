@@ -6,7 +6,8 @@ use codeumbrella::claude::Claude;
 use codeumbrella::codex::Codex;
 use codeumbrella::engine::{Job, Lock, Outcome, Run, Status, Worker};
 use codeumbrella::graph::{Graph, Tool};
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::io::ErrorKind;
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use std::{env, fs, path::Path, path::PathBuf, process::Command};
 
 /// The folder in a project that holds the sheet, the rules pages and the runs.
@@ -134,12 +135,21 @@ fn main() -> Result<()> {
         Cmd::Init { update } => return init(*update),
         Cmd::Run { task } => {
             let seconds = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
-            fs::create_dir_all(&runs)?;
+            fs::create_dir_all(&runs)
+                .with_context(|| format!("cannot make the folder {}", runs.display()))?;
             // `create_dir` fails if the id exists, so two runs never share an id.
-            let more = (1..).map(|n| format!("run-{seconds}-{n}"));
-            let mut ids = [format!("run-{seconds}")].into_iter().chain(more);
-            let id = ids.find(|i| fs::create_dir(runs.join(i)).is_ok());
-            let dir = runs.join(id.unwrap_or_default());
+            // Only "the folder is there already" makes it try the next id.
+            let mut id = format!("run-{seconds}");
+            for n in 1.. {
+                match fs::create_dir(runs.join(&id)) {
+                    Ok(()) => break,
+                    Err(e) if e.kind() == ErrorKind::AlreadyExists => {
+                        id = format!("run-{seconds}-{n}");
+                    }
+                    Err(e) => bail!("cannot make the folder {}/{id}: {e}", runs.display()),
+                }
+            }
+            let dir = runs.join(id);
             let mut run = Run::start(dir, task, graph.as_ref().context("no sheet")?)?;
             // Default is Claude: the factory was built for it, and old notebooks have no tool.
             run.state.tool = Some(cli.tool.unwrap_or(Tool::Claude));
@@ -195,13 +205,24 @@ fn main() -> Result<()> {
 
 /// Waits until the run is not `Running`, then gives it. It changes no file.
 fn wait_for(dir: &Path) -> Result<Run> {
+    let mut no_lock = None;
     loop {
         let run = Run::open(dir.to_path_buf())?;
-        // No lock, or no number yet, means that a command starts or ends.
         if run.state.status != Status::Running {
             return Ok(run);
         }
-        let pid = fs::read_to_string(dir.join("lock")).unwrap_or_default();
+        let pid = fs::read_to_string(dir.join("lock"));
+        // No lock for 2 seconds in a row: no command works on the run.
+        let since = *no_lock.get_or_insert_with(Instant::now);
+        if pid.is_ok() {
+            no_lock = None;
+        } else if since.elapsed() >= Duration::from_secs(2) {
+            let id = dir.file_name().unwrap_or_default().to_string_lossy();
+            bail!(
+                "the run says Running and no command works on it. Run `codeumbrella resume {id}` only after the person says yes."
+            );
+        }
+        let pid = pid.unwrap_or_default();
         let kill = Command::new("kill").args(["-0", pid.trim()]).output();
         let alive = pid.is_empty() || kill.is_ok_and(|o| o.status.success());
         ensure!(
