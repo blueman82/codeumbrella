@@ -20,6 +20,9 @@ SUPERVISOR ── uses your GitHub key ──► GITHUB: push · PR · merge (me
 │ builder   in a sandbox · gets the plan             ──►  writes code on the run branch    │
 │ checker   in a sandbox · gets the plan + the tests ──►  copies the tests, runs them      │
 │ safety    in a sandbox · gets the plan             ──►  reads the change, writes no file │
+│ simplifier in a sandbox · gets the plan            ──►  makes the new code simpler       │
+│ reviewer  in a sandbox · gets the plan             ──►  reads the change for errors      │
+│ security  in a sandbox · gets the plan             ──►  reads the change, security       │
 └──────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -46,9 +49,13 @@ YOU: tests? ── no ───────────────────�
   ▼ yes                                                 │
 build                                                   │
   ▼                                                     │
-check: a FAN of 2 checkers at the same time             │
+simplify: the simplifier makes the code simpler         │
+  ▼                                                     │
+check: a FAN of 4 checkers at the same time             │
   ├──► check_tests    runs the approved tests           │
-  └──► check_safety   reads the change for problems     │
+  ├──► check_safety   reads the change for problems     │
+  ├──► check_review   reads the change for errors       │
+  └──► check_security reads the change for security     │
   │                                                     │
   ├── one of them bad ──► repair (3 tries) ──► check    │
   ▼ all good                                            │
@@ -65,10 +72,12 @@ an error · a bad result with no path for it · a changed paper · a maximum
 ```
 
 - A fan is a step that starts two or more worker steps at the same time. It waits for all of them.
-- `resume` tries a stopped step again. After a changed paper, a person must put the paper back first.
+- `resume` tries a stopped step again. The person must say yes first. After a changed paper, a person must put the paper back first.
 - The plan step has 3 tries for one run, and the first plan uses one.
 - A bad result of the attacker goes to a step `correct_plan`. The planner corrects the plan, and the attacker looks again.
 - There are 3 attacks at the maximum for each plan. After the third correction, the person sees the tests.
 - The six steps go in one line, with no path back. Thus the two workers cannot go in a circle.
 - You can remove the six attack steps for a faster run.
 - The picture shows the default sheet, `graph.example.yaml`. A project can change its own sheet.
+- The run keeps the tool of the run in its notebook. `answer` and `resume` use it.
+- The step `simplify` and the two new checkers are for new runs. You can remove them for a faster run.

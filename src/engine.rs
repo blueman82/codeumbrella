@@ -34,7 +34,7 @@ pub struct Job<'a> {
     pub reads: &'a [String],
     /// The papers that the worker writes.
     pub writes: &'a [String],
-    /// The tool of the step. `None` means the tool of the command.
+    /// The tool of the step. `None` means the tool of the run.
     pub tool: Option<Tool>,
     /// The model of the step. `None` means the default of the tool.
     pub model: Option<&'a str>,
@@ -73,6 +73,9 @@ pub enum Status {
 pub struct State {
     /// The task of the run.
     pub task: String,
+    /// The tool of the run. An older notebook has none.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool: Option<Tool>,
     /// Where the run is.
     pub status: Status,
     /// The step to do next. `None` when the run is complete.

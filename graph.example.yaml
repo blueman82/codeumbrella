@@ -24,7 +24,7 @@
 #              good only if all of them are good. A step in this list has
 #              only `role`, `reads`, `tool`, `model` and `effort`.
 #   tool       Only for a worker step. `claude` or `codex`. With no line, the
-#              step uses the tool of the command (`--tool`, default claude).
+#              step uses the tool of the run (`--tool` of `run`, default claude).
 #   model      Only for a worker step. A model name of that tool. With no line,
 #              the tool uses its default. Letters, digits, `.`, `-`, `_`; no `-` first.
 #   effort     Only for a worker step. How much the AI thinks, for example
@@ -141,14 +141,23 @@ steps:
   build:
     role: builder
     reads: [spec]
+    next: simplify
+
+  # A simplifier makes the new code simpler, and does not change what it does.
+  # It changes no test file. This is for new runs. An active run keeps its
+  # sheet, so do not change the sheet while a run is active.
+  # For a faster run, remove this step. Then set `next` of `build` to `check`.
+  simplify:
+    role: simplifier
+    reads: [spec]
     next: check
 
-  # Two checkers look at the work at the same time. This step is a fan.
+  # Four checkers look at the work at the same time. This step is a fan.
   # The result is good only if all the steps in the `fan` line are good.
   # A bad result goes to the repair step, with the report of each checker.
   check:
     type: fan
-    fan: [check_tests, check_safety]
+    fan: [check_tests, check_safety, check_review, check_security]
     on_bad: repair
     next: no_locked_files
 
@@ -162,6 +171,24 @@ steps:
   # It does not read the commit that the tests checker makes at the same time.
   check_safety:
     role: safety
+    reads: [spec]
+
+  # A reviewer reads the change for errors, hidden errors, tests that show
+  # nothing, wrong comments and broken project rules. It cannot write a file.
+  # This is for new runs. An active run keeps its sheet, so do not change the
+  # sheet while a run is active. For a faster run, remove this step and its
+  # name in the `fan` line of `check`.
+  check_review:
+    role: reviewer
+    reads: [spec]
+
+  # A security checker reads the change for unchecked input, weaker checks of
+  # a person, weak keys, new packages and safety settings that are off. It
+  # cannot write a file. This is for new runs. An active run keeps its sheet,
+  # so do not change the sheet while a run is active. For a faster run, remove
+  # this step and its name in the `fan` line of `check`.
+  check_security:
+    role: security
     reads: [spec]
 
   # A builder repairs the code. Then the checker looks again.

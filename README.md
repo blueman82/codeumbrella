@@ -8,7 +8,7 @@ The factory stops two times for you. First, you look at the tests. Second, you g
 
 The page [ARCHITECTURE.md](ARCHITECTURE.md) shows the parts and the path of a task in two pictures.
 
-An attacker looks for weak points in the plan before you see the tests. Two checkers look at each piece of work at the same time. One runs the tests that you gave approval for. One reads the change for safety problems.
+An attacker looks for weak points in the plan before you see the tests. A simplifier then makes the new code simpler. Four checkers look at each piece of work at the same time. One runs the tests that you gave approval for. One reads the change for safety problems. A reviewer reads it for errors. A security checker reads it for security problems.
 
 ## Requirements: what the computer must have
 
@@ -74,8 +74,10 @@ Run `codeumbrella init --update` in your project. It replaces each factory file 
 
 ## Codex workers
 
-Add `--tool codex` after the word `codeumbrella` in each command:
+Add `--tool codex` after the word `codeumbrella` in the command `run` only:
 `codeumbrella --tool codex run "<task>"`
+
+The run keeps the tool of the run in its notebook. `answer` and `resume` use it. A different `--tool` gives an error.
 
 ## When a run stops
 
@@ -83,7 +85,7 @@ Add `--tool codex` after the word `codeumbrella` in each command:
 |---|---|
 | `.codeumbrella/runs/<run-id>/log.jsonl` | One line for each step: time, result, seconds. |
 | `.codeumbrella/runs/<run-id>/<step>.<number>.trace.jsonl` | All that one worker did. |
-| `codeumbrella resume <run-id>` | Tries the stopped step again. |
+| `codeumbrella resume <run-id>` | Tries the stopped step again. A stopped run prints this line. Run it only after you say yes. |
 
 Three stops have their own cause:
 
