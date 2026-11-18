@@ -86,6 +86,7 @@ fn a_good_run_stops_two_times_for_the_person_and_then_ends() {
     let worker = Script::default();
     let dir = folder();
     let mut run = Run::start(dir.clone(), "a task", &graph).unwrap();
+    std::fs::write(run.dir.join("work/file"), "x").unwrap();
 
     run.go(&graph, &roles, &worker).unwrap();
     assert_eq!(run.state.status, Status::Waiting);
@@ -119,6 +120,7 @@ fn a_bad_check_goes_to_repair_and_back() {
         ..Script::default()
     };
     let mut run = Run::start(folder(), "a task", &graph).unwrap();
+    std::fs::write(run.dir.join("work/file"), "x").unwrap();
     run.go(&graph, &roles, &worker).unwrap();
     run.answer(true, "").unwrap();
     run.go(&graph, &roles, &worker).unwrap();
@@ -149,6 +151,7 @@ fn a_bad_review_or_security_part_also_goes_to_repair() {
             ..Script::default()
         };
         let mut run = Run::start(folder(), "a task", &graph).unwrap();
+        std::fs::write(run.dir.join("work/file"), "x").unwrap();
         run.go(&graph, &roles, &worker).unwrap();
         run.answer(true, "").unwrap();
         run.go(&graph, &roles, &worker).unwrap();
@@ -169,6 +172,7 @@ fn the_repair_stops_at_its_maximum() {
         ..Script::default()
     };
     let mut run = Run::start(folder(), "a task", &graph).unwrap();
+    std::fs::write(run.dir.join("work/file"), "x").unwrap();
     run.go(&graph, &roles, &worker).unwrap();
     run.answer(true, "").unwrap();
     run.go(&graph, &roles, &worker).unwrap();
@@ -198,6 +202,7 @@ fn a_no_from_the_person_goes_back_to_the_plan() {
     let (graph, roles) = sheet();
     let worker = Script::default();
     let mut run = Run::start(folder(), "a task", &graph).unwrap();
+    std::fs::write(run.dir.join("work/file"), "x").unwrap();
     run.go(&graph, &roles, &worker).unwrap();
     run.answer(false, "The tests are too easy.").unwrap();
     run.go(&graph, &roles, &worker).unwrap();
@@ -213,6 +218,7 @@ fn a_no_at_the_approval_sends_the_work_back_to_the_planner() {
     let (graph, roles) = sheet();
     let worker = Script::default();
     let mut run = Run::start(folder(), "a task", &graph).unwrap();
+    std::fs::write(run.dir.join("work/file"), "x").unwrap();
     run.go(&graph, &roles, &worker).unwrap();
     run.answer(true, "").unwrap();
     run.go(&graph, &roles, &worker).unwrap();
@@ -241,6 +247,7 @@ fn a_command_step_obeys_its_maximum() {
     let text = "start: a\nsteps:\n  a: {type: command, run: [[false]], on_bad: a, max_tries: 2}\n";
     let graph: Graph = yaml_serde::from_str(text).unwrap();
     let mut run = Run::start(folder(), "a task", &graph).unwrap();
+    std::fs::write(run.dir.join("work/file"), "x").unwrap();
     run.go(&graph, &root().join("roles"), &Script::default())
         .unwrap();
     assert_eq!(run.state.status, Status::Stopped);
@@ -256,6 +263,7 @@ fn a_bad_command_goes_to_its_on_bad_step() {
     let text = "start: a\nsteps:\n  a: {type: command, run: [[false]], on_bad: b}\n  b: {type: command, run: [[true]], max_tries: 1}\n";
     let graph: Graph = yaml_serde::from_str(text).unwrap();
     let mut run = Run::start(folder(), "a task", &graph).unwrap();
+    std::fs::write(run.dir.join("work/file"), "x").unwrap();
     run.go(&graph, &root().join("roles"), &Script::default())
         .unwrap();
     assert_eq!(run.state.status, Status::Done);
@@ -267,6 +275,7 @@ fn command_run(words: &str) -> Run {
     let text = format!("start: a\nsteps:\n  a: {{type: command, run: [[{words}]]}}\n");
     let graph: Graph = yaml_serde::from_str(&text).unwrap();
     let mut run = Run::start(folder(), "a task", &graph).unwrap();
+    std::fs::write(run.dir.join("work/file"), "x").unwrap();
     run.go(&graph, &root().join("roles"), &Script::default())
         .unwrap();
     run
@@ -294,6 +303,7 @@ fn a_worker_that_changes_the_tests_stops_the_run() {
         ..Script::default()
     };
     let mut run = Run::start(folder(), "a task", &graph).unwrap();
+    std::fs::write(run.dir.join("work/file"), "x").unwrap();
     run.go(&graph, &roles, &worker).unwrap();
     run.answer(true, "").unwrap();
     run.go(&graph, &roles, &worker).unwrap();
@@ -313,6 +323,7 @@ fn a_paper_that_the_person_changes_at_a_stop_does_not_stop_the_run() {
     let (graph, roles) = sheet();
     let worker = Script::default();
     let mut run = Run::start(folder(), "a task", &graph).unwrap();
+    std::fs::write(run.dir.join("work/file"), "x").unwrap();
     run.go(&graph, &roles, &worker).unwrap();
     fs::write(run.dir.join("papers/tests/file.md"), "better tests").unwrap();
     run.answer(true, "").unwrap();
@@ -329,6 +340,7 @@ fn a_worker_change_to_a_paper_stops_the_run_before_the_question_for_the_person()
         ..Script::default()
     };
     let mut run = Run::start(folder(), "a task", &graph).unwrap();
+    std::fs::write(run.dir.join("work/file"), "x").unwrap();
     run.go(&graph, &roles, &worker).unwrap();
     run.answer(true, "").unwrap();
     run.go(&graph, &roles, &worker).unwrap();
@@ -342,6 +354,7 @@ fn a_worker_change_to_a_paper_stops_the_run_before_the_question_for_the_person()
 fn an_answer_with_no_open_question_is_an_error() {
     let (graph, _) = sheet();
     let mut run = Run::start(folder(), "a task", &graph).unwrap();
+    std::fs::write(run.dir.join("work/file"), "x").unwrap();
     assert!(run.answer(true, "").is_err());
 }
 
@@ -388,6 +401,7 @@ fn a_step_can_run_again_after_its_own_try_broke_its_papers() {
     let (graph, roles) = sheet();
     let worker = Script::default();
     let mut run = Run::start(folder(), "a task", &graph).unwrap();
+    std::fs::write(run.dir.join("work/file"), "x").unwrap();
     run.go(&graph, &roles, &worker).unwrap();
     // A second planner try wrote a part of its papers and then gave an error.
     // The run stopped at the plan step, and the person runs `resume`.
@@ -421,6 +435,7 @@ fn a_fan_is_good_only_if_all_its_parts_are_good() {
         ..Script::default()
     };
     let mut run = Run::start(folder(), "a task", &graph).unwrap();
+    std::fs::write(run.dir.join("work/file"), "x").unwrap();
     run.go(&graph, &root().join("roles"), &worker).unwrap();
     assert_eq!(run.state.status, Status::Done);
     // The first fan was bad because of `b`. The repair got the report of each part.
@@ -446,6 +461,7 @@ fn the_parts_of_a_fan_run_at_the_same_time() {
     }
     let graph = fan_sheet("").unwrap();
     let mut run = Run::start(folder(), "a task", &graph).unwrap();
+    std::fs::write(run.dir.join("work/file"), "x").unwrap();
     let worker = Meet(std::sync::Barrier::new(2));
     run.go(&graph, &root().join("roles"), &worker).unwrap();
     assert_eq!(run.state.status, Status::Done);

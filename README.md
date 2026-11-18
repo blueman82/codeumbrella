@@ -59,7 +59,7 @@ The plugin brings only the chat command `/codeumbrella`. The `codeumbrella` comm
    - In a chat, tell the chat your answer.
    - In a terminal, run `codeumbrella answer <run-id> <step> yes` or `codeumbrella answer <run-id> <step> no "why"`. The step is `look_at_tests` or `approval`.
 
-To see where a run is, run `codeumbrella status`.
+To see where a run is, run `codeumbrella status`. To wait until it ends, run `codeumbrella status --wait <run-id>`.
 
 ## After you install a new version
 
@@ -87,7 +87,7 @@ The run keeps the tool of the run in its notebook. `answer` and `resume` use it.
 |---|---|
 | `.codeumbrella/runs/<run-id>/log.jsonl` | One line for each step: time, result, seconds. |
 | `.codeumbrella/runs/<run-id>/<step>.<number>.trace.jsonl` | All that one worker did. |
-| `codeumbrella resume <run-id>` | Tries the stopped step again. A stopped run prints this line. Run it only after you say yes. |
+| `codeumbrella resume <run-id>` | Tries the stopped step again. A stopped run prints this line, but not after a changed paper. Run it only after you say yes. |
 
 Three stops have their own cause:
 

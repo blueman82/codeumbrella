@@ -10,6 +10,9 @@ use std::{env, fmt::Write as _, fs, fs::File, path::PathBuf, thread};
 /// The format of the result that each worker must give.
 pub(crate) const SCHEMA: &str = r#"{"type":"object","properties":{"ok":{"type":"boolean"},"summary":{"type":"string"}},"required":["ok","summary"],"additionalProperties":false}"#;
 
+/// The advice for a role file that is not there.
+pub(crate) const INIT: &str = "Run `codeumbrella init --update`.";
+
 /// Starts Claude workers.
 #[derive(Debug)]
 pub struct Claude {
@@ -28,13 +31,14 @@ struct Reply {
 
 impl Worker for Claude {
     fn run(&self, job: &Job) -> Result<Outcome> {
-        let rules = fs::read_to_string(job.rules)
-            .with_context(|| format!("cannot read the rules page {}", job.rules.display()))?;
+        let rules = fs::read_to_string(job.rules).with_context(|| {
+            format!("cannot read the rules page {}. {INIT}", job.rules.display())
+        })?;
         // In the settings, `{project}` is the full path of the project folder
         // and `{run}` is the run id. A role with no settings file is an error.
         let path = job.rules.with_extension("claude.json");
         let settings = fs::read_to_string(&path)
-            .with_context(|| format!("cannot read the settings {}", path.display()))?;
+            .with_context(|| format!("cannot read the settings {}. {INIT}", path.display()))?;
         let run = job.dir.file_name().unwrap_or_default().to_string_lossy();
         let settings = settings
             .replace("{project}", &env::current_dir()?.to_string_lossy())

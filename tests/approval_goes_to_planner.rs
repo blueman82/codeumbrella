@@ -80,6 +80,7 @@ fn a_no_at_the_approval_goes_to_the_planner_and_then_to_the_person_for_the_tests
     let (graph, roles) = sheet();
     let worker = Script::default();
     let mut run = Run::start(folder(), "a task", &graph).unwrap();
+    std::fs::write(run.dir.join("work/file"), "x").unwrap();
     run.go(&graph, &roles, &worker).unwrap();
     run.answer(true, "").unwrap();
     run.go(&graph, &roles, &worker).unwrap();

@@ -1,6 +1,6 @@
 //! The tool part for Codex: it starts one `codex exec` worker for one step.
 
-use crate::claude::{SCHEMA, files, prompt, wait};
+use crate::claude::{INIT, SCHEMA, files, prompt, wait};
 use crate::engine::{Job, Outcome, Worker};
 use anyhow::{Context, Result, ensure};
 use std::process::{Command, Stdio};
@@ -15,13 +15,14 @@ pub struct Codex {
 
 impl Worker for Codex {
     fn run(&self, job: &Job) -> Result<Outcome> {
-        let rules = fs::read_to_string(job.rules)
-            .with_context(|| format!("cannot read the rules page {}", job.rules.display()))?;
+        let rules = fs::read_to_string(job.rules).with_context(|| {
+            format!("cannot read the rules page {}. {INIT}", job.rules.display())
+        })?;
         // The sandbox settings of the role. In the file, `{run}` is the run id,
         // `{project}` is the project folder and `{home}` is the home folder of the person.
         let settings = job.rules.with_extension("codex.txt");
         let settings = fs::read_to_string(&settings)
-            .with_context(|| format!("cannot read the settings {}", settings.display()))?;
+            .with_context(|| format!("cannot read the settings {}. {INIT}", settings.display()))?;
         let run = job.dir.file_name().unwrap_or_default().to_string_lossy();
         // With no correct home folder, the read locks point at no folder.
         let home = env::var("HOME").context("the value HOME is not set")?;

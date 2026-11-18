@@ -6,8 +6,9 @@ use codeumbrella::claude::Claude;
 use codeumbrella::codex::Codex;
 use codeumbrella::engine::{Job, Lock, Outcome, Run, Status, Worker};
 use codeumbrella::graph::{Graph, Tool};
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use std::{env, fs, path::Path, path::PathBuf};
+use std::io::ErrorKind;
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use std::{env, fs, path::Path, path::PathBuf, process::Command};
 
 /// The folder in a project that holds the sheet, the rules pages and the runs.
 const HOME: &str = ".codeumbrella";
@@ -65,12 +66,17 @@ struct Cli {
 }
 
 /// Gives each worker step to the tool of the step, or to the tool of the run.
-struct Mixed(Tool, Duration);
+struct Mixed {
+    /// The tool of the run, for a step that picks none.
+    tool: Tool,
+    /// The maximum time for one step.
+    time_limit: Duration,
+}
 
 impl Worker for Mixed {
     fn run(&self, job: &Job) -> Result<Outcome> {
-        let time_limit = self.1;
-        match job.tool.unwrap_or(self.0) {
+        let time_limit = self.time_limit;
+        match job.tool.unwrap_or(self.tool) {
             Tool::Claude => Claude { time_limit }.run(job),
             Tool::Codex => Codex { time_limit }.run(job),
         }
@@ -88,7 +94,12 @@ enum Cmd {
     /// Start a new run for a task.
     Run { task: String },
     /// Show where a run is. Without an id: the newest run.
-    Status { run: Option<String> },
+    Status {
+        run: Option<String>,
+        /// Wait until the run is not `Running`, then show it.
+        #[arg(long, requires = "run")]
+        wait: bool,
+    },
     /// Answer the open question of a run, then continue.
     Answer {
         run: String,
@@ -116,19 +127,39 @@ fn main() -> Result<()> {
         Cmd::Answer { run, .. } | Cmd::Resume { run } => Some(Lock::take(&runs.join(run))?),
         _ => None,
     };
+    let graph = match &cli.command {
+        Cmd::Init { .. } | Cmd::Status { .. } => None,
+        _ => Some(Graph::load(&cli.sheet, &cli.roles)?),
+    };
     let mut run = match &cli.command {
         Cmd::Init { update } => return init(*update),
         Cmd::Run { task } => {
-            let graph = Graph::load(&cli.sheet, &cli.roles)?;
             let seconds = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
-            let mut run = Run::start(runs.join(format!("run-{seconds}")), task, &graph)?;
+            fs::create_dir_all(&runs)
+                .with_context(|| format!("cannot make the folder {}", runs.display()))?;
+            // `create_dir` fails if the id exists, so two runs never share an id.
+            // Only "the folder is there already" makes it try the next id.
+            let mut id = format!("run-{seconds}");
+            for n in 1.. {
+                match fs::create_dir(runs.join(&id)) {
+                    Ok(()) => break,
+                    Err(e) if e.kind() == ErrorKind::AlreadyExists => {
+                        id = format!("run-{seconds}-{n}");
+                    }
+                    Err(e) => bail!("cannot make the folder {}/{id}: {e}", runs.display()),
+                }
+            }
+            let dir = runs.join(id);
+            let mut run = Run::start(dir, task, graph.as_ref().context("no sheet")?)?;
+            // Default is Claude: the factory was built for it, and old notebooks have no tool.
             run.state.tool = Some(cli.tool.unwrap_or(Tool::Claude));
             run
         }
-        Cmd::Status { run: Some(id) } | Cmd::Answer { run: id, .. } | Cmd::Resume { run: id } => {
-            Run::open(runs.join(id))?
-        }
-        Cmd::Status { run: None } => {
+        Cmd::Status { run, wait: true } => wait_for(&runs.join(run.as_deref().unwrap_or("-")))?,
+        Cmd::Status { run: Some(id), .. }
+        | Cmd::Answer { run: id, .. }
+        | Cmd::Resume { run: id } => Run::open(runs.join(id))?,
+        Cmd::Status { run: None, .. } => {
             let newest = fs::read_dir(&runs).context("there are no runs in this folder")?;
             let newest = newest.filter_map(|e| e.ok().map(|e| e.path())).max();
             Run::open(newest.context("there are no runs in this folder")?)?
@@ -139,17 +170,14 @@ fn main() -> Result<()> {
         lock => lock,
     };
     // An old notebook has no tool: `--tool` then sets it.
-    if !matches!(cli.command, Cmd::Status { .. }) {
-        match (cli.tool, run.state.tool) {
-            (Some(new), Some(old)) if new != old => {
-                bail!(
-                    "this run uses the tool {}. Send the command again with no --tool.",
-                    format!("{old:?}").to_lowercase()
-                );
-            }
-            (Some(new), None) => run.state.tool = Some(new),
-            _ => {}
+    // `status` ignores `--tool`: it has no sheet.
+    match (cli.tool.filter(|_| graph.is_some()), run.state.tool) {
+        (Some(new), Some(old)) if new != old => {
+            let old = format!("{old:?}").to_lowercase();
+            bail!("this run uses the tool {old}. Send the command again with no --tool.");
         }
+        (Some(new), None) => run.state.tool = Some(new),
+        _ => {}
     }
     if let Cmd::Answer {
         step, answer, text, ..
@@ -163,22 +191,62 @@ fn main() -> Result<()> {
     if let (Cmd::Resume { .. }, Some(at)) = (&cli.command, &run.state.at) {
         run.state.tries.remove(at);
     }
-    if !matches!(cli.command, Cmd::Status { .. }) {
-        let graph = Graph::load(&cli.sheet, &cli.roles)?;
+    if let Some(graph) = graph {
+        if run.state.tool.is_none() {
+            println!("This run has no tool, so the command uses Claude.");
+        }
         let time_limit = Duration::from_secs(cli.step_minutes * 60);
-        let worker = Mixed(run.state.tool.unwrap_or(Tool::Claude), time_limit);
-        run.go(&graph, &cli.roles, &worker)?;
+        let tool = run.state.tool.unwrap_or(Tool::Claude);
+        run.go(&graph, &cli.roles, &Mixed { tool, time_limit })?;
     }
+    show(&run);
+    Ok(())
+}
+
+/// Waits until the run is not `Running`, then gives it. It changes no file.
+fn wait_for(dir: &Path) -> Result<Run> {
+    let mut no_lock = None;
+    loop {
+        let run = Run::open(dir.to_path_buf())?;
+        if run.state.status != Status::Running {
+            return Ok(run);
+        }
+        let pid = fs::read_to_string(dir.join("lock"));
+        // No lock for 2 seconds in a row: no command works on the run.
+        let since = *no_lock.get_or_insert_with(Instant::now);
+        if pid.is_ok() {
+            no_lock = None;
+        } else if since.elapsed() >= Duration::from_secs(2) {
+            let id = dir.file_name().unwrap_or_default().to_string_lossy();
+            bail!(
+                "the run says Running and no command works on it. Run `codeumbrella resume {id}` only after the person says yes."
+            );
+        }
+        let pid = pid.unwrap_or_default();
+        let kill = Command::new("kill").args(["-0", pid.trim()]).output();
+        let alive = pid.is_empty() || kill.is_ok_and(|o| o.status.success());
+        ensure!(
+            alive,
+            "the command of this run is dead. Remove the file {}/lock",
+            dir.display()
+        );
+        std::thread::sleep(Duration::from_millis(500));
+    }
+}
+
+/// Prints the status text of a run.
+fn show(run: &Run) {
     // The screen gets a short note. The full text is in the log.
     let note: String = run.state.note.chars().take(300).collect();
     let id = run.dir.file_name().unwrap_or_default().to_string_lossy();
     println!("Run: {id}\nStatus: {:?}\n{note}", run.state.status);
-    if run.state.status == Status::Stopped {
+    if run.state.status == Status::Stopped && note.contains("not as its writer left it") {
+        println!("A person must put the paper back first.");
+    } else if run.state.status == Status::Stopped {
         println!("To continue: codeumbrella resume {id}");
         println!("Resume only after the person says yes. An AI must not give this approval.");
     }
     println!("More: {}", run.dir.join("log.jsonl").display());
-    Ok(())
 }
 
 /// Writes each default file that the project does not have. With `update`, it
