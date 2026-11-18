@@ -61,7 +61,7 @@ If the status is `Running` and no `codeumbrella` command is alive on the compute
 
 The output has three parts: the run id, the status, and a note.
 
-- Status `Waiting` at the step `look_at_tests`: read the files in `.codeumbrella/runs/<run id>/papers/tests/`. Tell the person in plain words what each test looks at. Also read `.codeumbrella/runs/<run id>/papers/spec/spec.md`. Tell the person each decision of the planner at its top. Then get a yes or a no from the person.
+- Status `Waiting` at the step `look_at_tests`: read the files in `.codeumbrella/runs/<run id>/papers/tests/`. Tell the person in plain words what each test looks at. Also read `.codeumbrella/runs/<run id>/papers/spec/spec.md`. Tell the person each decision in the list at its top. If the spec has no such list, tell the person that the planner made no decision. Then get a yes or a no from the person.
 - Status `Waiting` at the step `approval`: give the person the PR link from the note. Then get a yes or a no from the person.
 - Before you send an answer, tell the person what it does. A yes continues the run. A no at `look_at_tests` sends the work back to the planner. A no at `approval` sends the work back to the planner. The person then sees the tests again. The PR stays open.
 - If the person gives you corrections, that is a no with a text. Send the full text of the person.
