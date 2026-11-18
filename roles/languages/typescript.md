@@ -5,7 +5,7 @@ This page follows these public documents: `TypeScript Handbook` and `Google Type
 Use it only after the rules of `AGENTS.md` and `CLAUDE.md` of the project.
 
 ## Names
-- Types, interfaces and classes use `PascalCase`. Functions and local names use `camelCase`.
+- Types, interfaces and classes use `PascalCase`. Functions and the names of values use `camelCase`.
 - Do not start the name of an `interface` with `I`.
 - Use `const` as the default. Do not use `var`.
 
@@ -17,7 +17,7 @@ Use it only after the rules of `AGENTS.md` and `CLAUDE.md` of the project.
 - Use `throw` with an `Error` object. Each promise gets a `catch` or an `await`.
 
 ## Structure
-- Give each `export` function clear types for its arguments and its result.
+- Write the types of the arguments and of the result of each `export` function.
 - Use a union of literal types or an `enum` for a closed set of values.
 - Use a union with a tag field, and check each member with the type `never`.
 - Use `readonly`. Keep each `interface` and each `type` small.
