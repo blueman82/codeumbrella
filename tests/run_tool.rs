@@ -217,6 +217,37 @@ fn a_stopped_run_with_a_short_note_prints_the_two_lines() {
     assert!(text.contains(NOTE), "{text}");
 }
 
+/// The output must have the two stop lines, in full, with the id of the run.
+fn has_stop_lines(o: &Output, id: &str) {
+    let text = out(o);
+    let lines: Vec<&str> = text.lines().collect();
+    let from = at(&lines, &format!("To continue: codeumbrella resume {id}"));
+    assert_eq!(lines[from + 1], NOTE, "{text}");
+}
+
+#[test]
+fn a_stopped_run_prints_the_two_lines_also_in_status_and_after_resume() {
+    let dir = setup(CODEX_FAILS);
+    let run = cu(&dir, &["--tool", "codex", "run", "a task"]);
+    says(&run, "Status: Stopped");
+    let id = id(&run);
+    has_stop_lines(&run, &id);
+    // The status command shows them too.
+    let status = cu(&dir, &["status", &id]);
+    says(&status, "Status: Stopped");
+    has_stop_lines(&status, &id);
+    // A resume that stops again shows them again.
+    let resume = cu(&dir, &["resume", &id]);
+    says(&resume, "Status: Stopped");
+    has_stop_lines(&resume, &id);
+    // A resume that goes on does not.
+    fs::write(dir.join("bin/ok"), "").unwrap();
+    let resume = cu(&dir, &["resume", &id]);
+    says(&resume, "Status: Waiting");
+    assert!(!out(&resume).contains("To continue:"), "{}", out(&resume));
+    assert!(!out(&resume).contains("Resume only after"));
+}
+
 #[test]
 fn a_run_that_is_not_stopped_prints_neither_line() {
     // Waiting.
@@ -287,7 +318,10 @@ fn answer_with_a_different_tool_is_an_error_and_changes_nothing() {
     let calls = (count(&dir, "codex"), count(&dir, "claude"));
     let wrong = cu(&dir, &["--tool", "claude", "answer", &id, "ask1", "yes"]);
     assert!(!wrong.status.success(), "{}", out(&wrong));
-    says(&wrong, "codex");
+    says(
+        &wrong,
+        "this run uses the tool codex. Send the command again with no --tool.",
+    );
     assert_eq!(bytes(&dir, &id), before, "the notebook changed");
     assert_eq!((count(&dir, "codex"), count(&dir, "claude")), calls);
     // The same tool, said out loud, is good.
@@ -307,9 +341,67 @@ fn resume_with_a_different_tool_is_an_error_and_changes_nothing() {
     let calls = count(&dir, "codex");
     let wrong = cu(&dir, &["--tool", "claude", "resume", &id]);
     assert!(!wrong.status.success(), "{}", out(&wrong));
-    says(&wrong, "codex");
+    says(
+        &wrong,
+        "this run uses the tool codex. Send the command again with no --tool.",
+    );
     assert_eq!(bytes(&dir, &id), before, "the notebook changed");
     assert_eq!(count(&dir, "codex"), calls, "codex started");
+    assert_eq!(count(&dir, "claude"), 0, "claude started");
+}
+
+/// A simulated `claude` that ends with an error code until the file `ok` is there.
+const CLAUDE_FAILS: &str = r#"echo called > "$PWD/bin/claude.$$"
+[ -f "$PWD/bin/ok" ] || exit 3
+echo '{"is_error":false,"result":"","structured_output":{"ok":true,"summary":"done"}}'"#;
+
+#[test]
+fn a_run_of_the_claude_tool_gives_the_error_for_tool_codex() {
+    let message = "this run uses the tool claude. Send the command again with no --tool.";
+    // `answer`, on a run that waits.
+    let dir = setup(CODEX);
+    let run = cu(&dir, &["run", "a task"]);
+    let first = id(&run);
+    let before = bytes(&dir, &first);
+    let calls = (count(&dir, "claude"), count(&dir, "codex"));
+    let wrong = cu(&dir, &["--tool", "codex", "answer", &first, "ask1", "yes"]);
+    assert!(!wrong.status.success(), "{}", out(&wrong));
+    says(&wrong, message);
+    assert_eq!(bytes(&dir, &first), before, "the notebook changed");
+    assert_eq!((count(&dir, "claude"), count(&dir, "codex")), calls);
+    // `resume`, on a run that stopped.
+    let dir = project();
+    tool(&dir, "claude", CLAUDE_FAILS);
+    tool(&dir, "codex", CODEX);
+    sheet(&dir, "");
+    let run = cu(&dir, &["run", "a task"]);
+    says(&run, "Status: Stopped");
+    let id = id(&run);
+    fs::write(dir.join("bin/ok"), "").unwrap();
+    let before = bytes(&dir, &id);
+    let calls = (count(&dir, "claude"), count(&dir, "codex"));
+    let wrong = cu(&dir, &["--tool", "codex", "resume", &id]);
+    assert!(!wrong.status.success(), "{}", out(&wrong));
+    says(&wrong, message);
+    assert_eq!(bytes(&dir, &id), before, "the notebook changed");
+    assert_eq!((count(&dir, "claude"), count(&dir, "codex")), calls);
+}
+
+#[test]
+fn resume_with_a_tool_writes_it_into_a_notebook_with_no_tool() {
+    let dir = setup(CODEX_FAILS);
+    let run = cu(&dir, &["--tool", "codex", "run", "a task"]);
+    says(&run, "Status: Stopped");
+    let id = id(&run);
+    forget_tool(&dir, &id);
+    fs::write(dir.join("bin/ok"), "").unwrap();
+    let resume = cu(&dir, &["--tool", "codex", "resume", &id]);
+    says(&resume, "Status: Waiting");
+    assert_eq!(saved_tool(&dir, &id).as_deref(), Some("codex"));
+    assert_eq!(count(&dir, "claude"), 0, "claude started");
+    // A command after that, with no `--tool`, uses the tool in the notebook.
+    let last = cu(&dir, &["answer", &id, "ask1", "yes"]);
+    says(&last, "Status: Waiting");
     assert_eq!(count(&dir, "claude"), 0, "claude started");
 }
 

@@ -144,8 +144,9 @@ steps:
     next: simplify
 
   # A simplifier makes the new code simpler, and does not change what it does.
-  # It changes no test file. This is for new runs. An active run keeps its
-  # sheet, so do not change the sheet while a run is active.
+  # It changes no test file. This is for new runs.
+  # A run reads the sheet at each command, so do not change the sheet
+  # while a run is active.
   # For a faster run, remove this step. Then set `next` of `build` to `check`.
   simplify:
     role: simplifier
@@ -175,18 +176,20 @@ steps:
 
   # A reviewer reads the change for errors, hidden errors, tests that show
   # nothing, wrong comments and broken project rules. It cannot write a file.
-  # This is for new runs. An active run keeps its sheet, so do not change the
-  # sheet while a run is active. For a faster run, remove this step and its
-  # name in the `fan` line of `check`.
+  # This is for new runs.
+  # A run reads the sheet at each command, so do not change the sheet
+  # while a run is active. For a faster run, remove this step
+  # and its name in the `fan` line of `check`.
   check_review:
     role: reviewer
     reads: [spec]
 
   # A security checker reads the change for unchecked input, weaker checks of
   # a person, weak keys, new packages and safety settings that are off. It
-  # cannot write a file. This is for new runs. An active run keeps its sheet,
-  # so do not change the sheet while a run is active. For a faster run, remove
-  # this step and its name in the `fan` line of `check`.
+  # cannot write a file. This is for new runs.
+  # A run reads the sheet at each command, so do not change the sheet
+  # while a run is active. For a faster run, remove this step
+  # and its name in the `fan` line of `check`.
   check_security:
     role: security
     reads: [spec]

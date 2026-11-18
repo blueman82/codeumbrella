@@ -143,7 +143,7 @@ fn main() -> Result<()> {
         match (cli.tool, run.state.tool) {
             (Some(new), Some(old)) if new != old => {
                 bail!(
-                    "this run uses the tool {}",
+                    "this run uses the tool {}. Send the command again with no --tool.",
                     format!("{old:?}").to_lowercase()
                 );
             }

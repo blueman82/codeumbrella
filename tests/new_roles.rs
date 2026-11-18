@@ -306,6 +306,9 @@ fn the_comment_of_each_new_step_tells_about_new_and_active_runs() {
         let comment = comment_above(name);
         assert!(comment.contains("new run"), "{name}: {comment}");
         assert!(comment.contains("active"), "{name}: {comment}");
+        let reads = comment.contains("a run reads the sheet at each command");
+        assert!(reads, "{name}: {comment}");
+        assert!(!comment.contains("keeps its sheet"), "{name}: {comment}");
     }
 }
 
