@@ -324,11 +324,10 @@ fn repair(dir: &Path) -> Result<bool> {
     if owner(pid)? == Some(true) {
         return Ok(false);
     }
+    let mut run = Run::open(dir.to_path_buf())?;
     end_workers(dir)?;
     remove(&lock)?;
-    if let Ok(mut run) = Run::open(dir.to_path_buf())
-        && run.state.status == Status::Running
-    {
+    if run.state.status == Status::Running {
         let at = run.state.at.clone().unwrap_or_default();
         run.state.status = Status::Stopped;
         run.state.note = format!("The command of the run ended at the step {at} with no result.");
