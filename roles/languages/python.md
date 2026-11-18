@@ -5,7 +5,7 @@ This page follows these public documents: `PEP 8`, `PEP 20` and `PEP 257`.
 Use it only after the rules of `AGENTS.md` and `CLAUDE.md` of the project.
 
 ## Names
-- Functions and local names use `snake_case`. Classes use `CapWords`. Constants use `UPPER_CASE`.
+- Functions and the names of values use `snake_case`. Classes use `CapWords`. Constants use `UPPER_CASE`.
 - A name tells what a thing is, not how the code makes it.
 - An underscore at the start of a name shows that the name is private.
 

@@ -6,7 +6,7 @@ Use it only after the rules of `AGENTS.md` and `CLAUDE.md` of the project.
 
 ## Names
 - Package names are short, have only small letters and have no underscore.
-- A public name starts with a capital letter. Its comment starts with the name.
+- A public name starts with a capital letter. It has a comment that starts with the name.
 - Short names are good in short functions. Write `ID` and `URL` all in capitals or all in small letters.
 - A function that gets a value has no `Get` at the start of its name.
 
@@ -27,7 +27,7 @@ Use it only after the rules of `AGENTS.md` and `CLAUDE.md` of the project.
 - Use `t.Helper()` in help functions and `t.Fatalf` with a clear message.
 
 ## Usual faults
-- A goroutine that nothing can stop uses memory with no end.
+- A goroutine that nothing can stop keeps its memory until the code ends.
 - In older versions, each function made in a loop can get the same loop value.
 - Close a response body and a file with `defer`.
-- Two goroutines that write to one `map` at the same time give incorrect data.
+- Two goroutines that write to one `map` at the same time stop the code or give incorrect data.

@@ -5,7 +5,7 @@ This page follows these public documents: `Rust API Guidelines` and `Rust Style 
 Use it only after the rules of `AGENTS.md` and `CLAUDE.md` of the project.
 
 ## Names
-- Functions and local names use `snake_case`. Types and traits use `UpperCamelCase`. Constants use `SCREAMING_SNAKE_CASE`.
+- Functions and the names of values use `snake_case`. Types and traits use `UpperCamelCase`. Constants use `SCREAMING_SNAKE_CASE`.
 - A method that changes a type starts with `as_`, `to_` or `into_`. The start shows its cost.
 - A method that gets a value has no `get_` at the start of its name.
 

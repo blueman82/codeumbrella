@@ -79,7 +79,7 @@ To install the command and the chat command on a computer, run `./install.sh`.
 | `tests/walls.rs` | Tests of the safety settings and the safety checks. Each one becomes bad if a wall goes. |
 | `tests/step_tools.rs` | Tests of `tool`, `model` and `effort`, with a simulated `claude` and `codex`. |
 | `tests/attacker.rs` | Tests of the plan attacker: its step, its files, its settings and its rules page. |
-| `tests/scratch_folder.rs` | Tests of version 0.1.14: the scratch folder of the attacker, its Codex entry and the documents. |
+| `tests/scratch_folder.rs` | Tests of the scratch folder of the attacker, its Codex entry and the documents. |
 | `tests/run_tool.rs` | Tests of the stop message and of the tool of the run. |
 | `tests/new_roles.rs` | Tests of the roles `reviewer`, `security` and `simplifier`, the new steps and the documents. |
 | `tests/small_repairs.rs` | Tests of version 0.1.11: the lock number, `status --wait`, the work folder, run ids, the stop message. |
@@ -145,7 +145,7 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - A paper that a step writes is not compared before that step. Thus a writer can run again after a try that broke its paper.
 - After a stop for a changed paper, `resume` stops again. The stop message does not print the `resume` line. A person must put the paper back first.
 - The plan step has 3 tries for one run. The first plan uses one. Thus 2 no answers are possible before a stop.
-- The attacker reads the spec and the tests after the planner. It writes only in a scratch folder in the temp folder of the computer. There it builds the paper tests and runs the checks.
+- The attacker reads the spec and the tests after the planner. It writes only in a scratch folder in the temp folder of the computer. There it builds the paper tests and runs the checks. Then it removes that folder.
 - A bad result of the attacker goes to a step `correct_plan`. The planner corrects the plan, and the attacker looks again.
 - There are 3 attacks at the maximum for each plan. After the third correction, the person sees the tests.
 - The sheet has these six steps in one line, with no path back. Thus a circle is not possible.

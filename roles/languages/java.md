@@ -5,7 +5,7 @@ This page follows these public documents: `Google Java Style Guide` and `Effecti
 Use it only after the rules of `AGENTS.md` and `CLAUDE.md` of the project.
 
 ## Names
-- Classes use `UpperCamelCase`. Methods and local names use `lowerCamelCase`. Constants use `UPPER_SNAKE_CASE`.
+- Classes use `UpperCamelCase`. Methods and the names of values use `lowerCamelCase`. Constants use `UPPER_SNAKE_CASE`.
 - Package names have only small letters and no underscore.
 - A method name is a verb. A name tells the purpose.
 

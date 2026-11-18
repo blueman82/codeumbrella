@@ -5,7 +5,7 @@ This page follows these public documents: `MDN JavaScript Guide` and `Google Jav
 Use it only after the rules of `AGENTS.md` and `CLAUDE.md` of the project.
 
 ## Names
-- Functions and local names use `camelCase`. Classes use `PascalCase`. Constants use `UPPER_CASE`.
+- Functions and the names of values use `camelCase`. Classes use `PascalCase`. Constants use `UPPER_CASE`.
 - Use `const` as the default, and `let` when a value changes. Do not use `var`.
 - A name for a yes or no value reads as a question, such as `isReady`.
 

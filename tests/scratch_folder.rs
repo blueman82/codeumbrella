@@ -1,4 +1,4 @@
-//! Tests of version 0.1.14: the attacker writes only in a scratch folder in
+//! Tests of the scratch folder: the attacker writes only in a scratch folder in
 //! the temp folder. No AI runs here.
 
 use serde_json::Value;
