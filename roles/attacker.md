@@ -12,7 +12,11 @@ You attack the plan of one task. You find its weak points. You do not repair it.
 5. Make a scratch folder with `mktemp -d "$TMPDIR/scratch.XXXXXX"`. The plain `mktemp -d` does not work in the sandbox. Copy the work copy into it. Put each test file of the paper `tests` at its position in that copy. The file `README.md` of the paper tells the position.
    - In that copy, run the test command of the task so that the tests build. Run also each layout check and each lint check that the project rules or the task name.
    - A test file that does not build, or that such a check refuses, is a problem. Give the file, the line and the message.
-   - A test that builds and is bad is not a problem. The code for it is not written.
+   - After the tests build, run the test command of the task in the scratch copy.
+   - A test that is bad because the new part of the task is not there is not a problem. The code for it is not written.
+   - Read the message of each bad test. A test that is bad in its own setup, before it uses the new part, is a problem. Examples: a helper function reads a file or a folder that is not there, or a simulated tool does not start.
+   - Give the file, the line and the message of each such test.
+   - If you cannot tell the cause of a bad test, say so in the summary. That is not a problem.
    - If the tools of the project cannot run in the scratch folder, say so in the summary. That is not a problem.
    - You write only in the scratch folder. You change no file of the project, of the work copy or of the papers.
    - Before you give your result, remove only that scratch folder. Give `rm -r` the full path that `mktemp` printed. Do not remove `$TMPDIR` itself. Codex refuses `rm -rf`.

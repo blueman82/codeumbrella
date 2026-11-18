@@ -97,9 +97,8 @@ fn the_builder_does_not_change_a_paper_test_file() {
         line.contains("does not change") || line.contains("not change"),
         "{line}"
     );
-    assert!(line.contains("rule 8"), "{line}");
+    assert!(line.contains("changes no code"), "{line}");
     assert!(line.contains("ok: false"), "{line}");
-    assert!(line.contains("person must do"), "{line}");
 }
 
 #[test]
@@ -129,8 +128,8 @@ fn each_rules_page_keeps_the_summary_rule() {
 }
 
 #[test]
-fn the_sentences_of_the_three_pages_have_20_words_or_fewer() {
-    for path in ["roles/builder.md", "roles/checker.md"] {
+fn the_sentences_of_the_pages_have_20_words_or_fewer() {
+    for path in ["roles/builder.md", "roles/checker.md", "roles/planner.md"] {
         let t = text(path).replace('`', "");
         for line in t.lines().filter(|l| !l.starts_with('#')) {
             let line = line
