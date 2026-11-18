@@ -44,6 +44,7 @@ codeumbrella --tool codex run "<task>"         # start a run with Codex workers.
 codeumbrella status [run-id]                   # show where a run is
 codeumbrella status --wait <run-id>            # wait until the run is not `Running`, then show it. It does not change the notebook or the lock
 codeumbrella answer <run-id> <step> yes|no ["text"]   # answer the question of that step, then continue
+codeumbrella stop <run-id>                     # end an active run: its command and its workers. Only after the person says stop
 codeumbrella resume <run-id>                   # try a stopped step again, with its count of tries at 0. Only after the person says yes
 ```
 
@@ -83,6 +84,7 @@ To install the command and the chat command on a computer, run `./install.sh`.
 | `tests/run_tool.rs` | Tests of the stop message and of the tool of the run. |
 | `tests/new_roles.rs` | Tests of the roles `reviewer`, `security` and `simplifier`, the new steps and the documents. |
 | `tests/small_repairs.rs` | Tests of version 0.1.11: the lock number, `status --wait`, the work folder, run ids, the stop message. |
+| `tests/stop.rs` | Tests of `stop`, with a simulated `claude`. The last three use `ps` and `pkill`, and skip themselves in a sandbox. |
 | `tests/language_pages.rs` | Tests of the six language pages, `init` and the two rules pages. |
 | `install.sh` | Installs the command and the chat command. |
 | `LICENSE` | The MIT licence. Do not change its text. |
@@ -115,7 +117,11 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - The clean copy gets the code of GitHub from GitHub. It gets only the `branch` of the run from `../work`. The push sends the commit that the step compared.
 - The push gives the full name of the run `branch` two times. Thus it cannot go to a different `branch`. Tests on 16 November 2026 showed these attacks with git.
 - An answer names its step. An answer for a different step is an error. Thus a yes for the tests cannot become a yes for the merge.
-- Only one command can work on a run at a time. The file `lock` in the run folder shows this. It holds the number that the computer gives to that command. After a kill, a person removes that file.
+- Only one command can work on a run at a time. The file `lock` in the run folder shows this. It holds the number that the computer gives to that command. After a kill, `stop` removes that file. A person can also remove it by hand.
+- `stop` works only on a run with status Running. It ends the workers and the command, removes `lock`, and writes Stopped. `resume` then tries the same step.
+- `stop` ends a command only if `ps` shows that its name is `codeumbrella`. The computer can give a dead number to a different command.
+- If the command is alive and `ps` cannot tell its name, `stop` gives an error and changes no file. A sandbox blocks `ps`, so the person runs `stop` with no sandbox.
+- The chat runs `stop` only after the person says stop, with no sandbox. An AI does not stop a run by its own decision.
 - An answer and a resume get the lock before they read the notebook. Thus a second command cannot write an answer into a run that is active.
 - The clean copy reads the `origin` settings from `.git/config` of the project. Thus the factory does not work in a linked git worktree.
 - `model` and `effort` have only letters, digits, `.`, `-` and `_`. Thus no quote or brace can get to the tool command.

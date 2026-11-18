@@ -123,6 +123,8 @@ enum Cmd {
     },
     /// Try the stopped step of a run again.
     Resume { run: String },
+    /// End an active run. Only after the person says to stop it.
+    Stop { run: String },
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, ValueEnum)]
@@ -134,6 +136,9 @@ enum YesNo {
 fn main() -> Result<()> {
     let cli = Cli::parse();
     let runs = env::current_dir()?.join(HOME).join("runs");
+    if let Cmd::Stop { run } = &cli.command {
+        return stop(&runs.join(run));
+    }
     // An answer and a resume take the lock before they read the notebook.
     let lock = match &cli.command {
         Cmd::Answer { run, .. } | Cmd::Resume { run } => Some(Lock::take(&runs.join(run))?),
@@ -171,6 +176,7 @@ fn main() -> Result<()> {
         Cmd::Status { run: Some(id), .. }
         | Cmd::Answer { run: id, .. }
         | Cmd::Resume { run: id } => Run::open(runs.join(id))?,
+        Cmd::Stop { .. } => bail!("stop must return before this point"),
         Cmd::Status { run: None, .. } => {
             let newest = fs::read_dir(&runs).context("there are no runs in this folder")?;
             let newest = newest.filter_map(|e| e.ok().map(|e| e.path())).max();
@@ -244,6 +250,76 @@ fn wait_for(dir: &Path) -> Result<Run> {
         );
         std::thread::sleep(Duration::from_millis(500));
     }
+}
+
+/// Looks at the command with this number: `None` if it is dead, else if it is `codeumbrella`.
+/// It gives an error if `ps` cannot tell.
+fn owner(pid: &str) -> Result<Option<bool>> {
+    if !Command::new("kill")
+        .args(["-0", pid])
+        .output()
+        .is_ok_and(|o| o.status.success())
+    {
+        return Ok(None);
+    }
+    let ps = Command::new("ps")
+        .args(["-o", "stat=,comm=", "-p", pid])
+        .output();
+    let text = ps
+        .ok()
+        .filter(|o| o.status.success())
+        .map(|o| String::from_utf8_lossy(&o.stdout).into_owned());
+    let text = text.filter(|t| !t.trim().is_empty()).with_context(|| {
+        format!("cannot see the command {pid} with `ps`. Run `codeumbrella stop` with no sandbox.")
+    })?;
+    let (stat, name) = text
+        .trim()
+        .split_once(char::is_whitespace)
+        .unwrap_or((&text, ""));
+    let ours = Path::new(name.trim())
+        .file_name()
+        .is_some_and(|n| n == "codeumbrella");
+    Ok((!stat.starts_with('Z')).then_some(ours))
+}
+
+/// Ends the command of an active run and its workers, removes the lock and writes Stopped.
+fn stop(dir: &Path) -> Result<()> {
+    let run = Run::open(dir.to_path_buf())?;
+    ensure!(
+        run.state.status == Status::Running,
+        "the run has the status {:?}, not Running, so there is nothing to stop",
+        run.state.status
+    );
+    let lock = dir.join("lock");
+    let pid = fs::read_to_string(&lock).unwrap_or_default();
+    let pid = pid.trim();
+    if pid.parse::<u32>().is_ok() && owner(pid)? == Some(true) {
+        let _ = Command::new("pkill").args(["-TERM", "-P", pid]).output();
+        let _ = Command::new("kill").arg(pid).output();
+        let end = Instant::now() + Duration::from_secs(10);
+        while owner(pid)?.is_some() {
+            ensure!(
+                Instant::now() < end,
+                "the command {pid} did not end in 10 seconds"
+            );
+            std::thread::sleep(Duration::from_millis(50));
+        }
+    }
+    // The ended command can write the notebook, so read it again.
+    let mut run = Run::open(dir.to_path_buf())?;
+    if let Err(e) = fs::remove_file(&lock) {
+        ensure!(
+            e.kind() == std::io::ErrorKind::NotFound,
+            "cannot remove {}: {e}",
+            lock.display()
+        );
+    }
+    let at = run.state.at.clone().unwrap_or_default();
+    run.state.status = Status::Stopped;
+    run.state.note = format!("A person stopped the run at the step {at}.");
+    run.save()?;
+    show(&run);
+    Ok(())
 }
 
 /// Prints the status text of a run.
