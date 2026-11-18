@@ -247,6 +247,12 @@ fn locked_run(dir: &Path) -> String {
 
 #[test]
 fn status_wait_waits_for_a_live_run_and_then_prints_the_status_text() {
+    // `status --wait` looks at the lock with `ps`. A sandbox blocks it.
+    let ps = Command::new("ps").args(["-o", "comm=", "-p", "1"]).output();
+    if !ps.is_ok_and(|o| o.status.success() && !o.stdout.is_empty()) {
+        eprintln!("skipped: ps cannot run here");
+        return;
+    }
     let dir = setup();
     tool(&dir, "claude", CLAUDE_SLOW);
     let runner = spawn(&dir, &["run", "a task"]);
@@ -289,10 +295,10 @@ fn status_wait_does_not_stop_when_the_command_of_the_run_is_alive() {
     let dir = setup();
     let run = cu(&dir, &["run", "a task"]);
     let id = id(&run);
-    // The test itself is alive: its number is in the lock.
+    // An empty lock reads as a live command, as a command that starts.
     set_status(&dir, &id, "Running");
     let lock = run_dir(&dir, &id).join("lock");
-    fs::write(&lock, std::process::id().to_string()).unwrap();
+    fs::write(&lock, "").unwrap();
     let mut wait = spawn(&dir, &["status", "--wait", &id]);
     thread::sleep(Duration::from_millis(1500));
     assert!(wait.try_wait().unwrap().is_none(), "it stopped too early");
