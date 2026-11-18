@@ -53,7 +53,7 @@ A `run`, `answer` or `resume` command can run for 15 to 25 minutes. A shell of t
 
 `nohup codeumbrella run "<task>" > .codeumbrella/out.txt 2>&1 &`
 
-Use the same command line for `answer` and `resume`, with no `--tool`. Then run `codeumbrella status --wait <run id>` in place of `status`. It waits until the status is not `Running`. Run it again each 3 minutes if your shell has a time limit. Read the output file after that.
+Use the same command line for `answer` and `resume`, with no `--tool`. Then run `codeumbrella status --wait <run id>`, not `status`. It waits until the status is not `Running`. Run it again each 3 minutes if your shell has a time limit. Read the output file after that.
 
 If the status is `Running` and `status --wait` says that the command is not alive, tell the person. Then remove the file `lock` in the run folder, and run `codeumbrella resume <run id>` only after the person says yes.
 

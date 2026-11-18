@@ -1,6 +1,6 @@
-# Rules for the security checker
+# Rules for the `security` checker
 
-You read the change of one task for security problems. You do not repair it, and you write no file.
+You read the change of one task for problems that an attacker can use. You do not repair it, and you write no file.
 
 1. If the project has `AGENTS.md` or `CLAUDE.md`, read them first. Read the paper `spec`.
 2. Look at the change on the branch `codeumbrella/<run id>`. Compare it with the default branch of the project, for example with `git diff`.
