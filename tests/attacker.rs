@@ -116,7 +116,7 @@ fn list(value: &Value) -> Vec<&str> {
 }
 
 #[test]
-fn the_attacker_has_a_shell_in_the_sandbox_and_cannot_write_a_file() {
+fn the_attacker_has_a_shell_in_the_sandbox_and_writes_only_in_the_temp_folder() {
     let file = json("roles/attacker.claude.json");
     let allow = list(&file["permissions"]["allow"]);
     assert_eq!(allow, ["Read", "Glob", "Grep", "Bash"]);
@@ -144,8 +144,11 @@ fn the_attacker_has_a_shell_in_the_sandbox_and_cannot_write_a_file() {
     assert_eq!(file, json("roles/safety.claude.json"));
     let codex = text("roles/attacker.codex.txt");
     assert!(codex.starts_with("{extends=\":read-only\""), "{codex}");
-    assert!(!codex.contains("\"write\"") && !codex.contains("danger"));
-    assert_eq!(codex, text("roles/safety.codex.txt"));
+    // One more entry than the safety checker: write in the temp folder.
+    assert_eq!(codex.matches("\"write\"").count(), 1, "{codex}");
+    assert!(!codex.contains("danger"));
+    let safety = text("roles/safety.codex.txt");
+    assert_eq!(codex.replace(", \":tmpdir\"=\"write\"", ""), safety);
 }
 
 /// The numbers at the start of the rules of a page.

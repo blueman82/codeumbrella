@@ -1,1 +1,1 @@
-{extends=":read-only", filesystem={":workspace_roots"={".codeumbrella"="read"}, "{home}/.ssh"="deny", "{home}/.config/gh"="deny", "{home}/.netrc"="deny", "{home}/.git-credentials"="deny", "{home}/Library/Keychains"="deny"}}
+{extends=":read-only", filesystem={":workspace_roots"={".codeumbrella"="read"}, ":tmpdir"="write", "{home}/.ssh"="deny", "{home}/.config/gh"="deny", "{home}/.netrc"="deny", "{home}/.git-credentials"="deny", "{home}/Library/Keychains"="deny"}}
