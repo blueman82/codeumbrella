@@ -307,7 +307,13 @@ fn stop(dir: &Path) -> Result<()> {
     }
     // The ended command can write the notebook, so read it again.
     let mut run = Run::open(dir.to_path_buf())?;
-    let _ = fs::remove_file(&lock);
+    if let Err(e) = fs::remove_file(&lock) {
+        ensure!(
+            e.kind() == std::io::ErrorKind::NotFound,
+            "cannot remove {}: {e}",
+            lock.display()
+        );
+    }
     let at = run.state.at.clone().unwrap_or_default();
     run.state.status = Status::Stopped;
     run.state.note = format!("A person stopped the run at the step {at}.");
