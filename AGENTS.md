@@ -21,7 +21,8 @@ The supervisor knows nothing about software work. All knowledge of the steps is 
 | Fan | A step that starts two or more worker steps at the same time, and waits for all of them. |
 | Supervisor | The code in `src/graph.rs`, `src/engine.rs`, `src/main.rs`, `src/log.rs` and `src/lib.rs`. |
 | Tool part | The code that starts one type of worker. `src/claude.rs` is the part for Claude. `src/codex.rs` is the part for Codex. |
-| Notebook | `.codeumbrella/runs/<run-id>/state.json`: where the run is. |
+| Notebook | `.codeumbrella/runs/<run-id>/state.json`: where the run is, and the tool of the run. |
+| Tool of the run | The tool that `run` got from `--tool` (default Claude). The notebook keeps it. `answer` and `resume` use it. |
 | Log | `log.jsonl` in the run folder: one line for each step that ended. |
 | `trace` | `<step>.<number>.trace.jsonl` in the run folder: all that one worker did in one try. |
 | Paper | A folder in `.codeumbrella/runs/<run-id>/papers/` that one step writes and other steps read. |
@@ -39,10 +40,10 @@ cargo deny check && cargo audit                # look for bad packages, after a 
 codeumbrella init                              # put the default sheet and rules pages into a project
 codeumbrella init --update                     # replace changed factory files with the new defaults, keep a copy of each as `.before`
 codeumbrella run "<task>"                      # start a run with Claude workers
-codeumbrella --tool codex run "<task>"         # start a run with Codex workers
+codeumbrella --tool codex run "<task>"         # start a run with Codex workers. The run keeps this tool
 codeumbrella status [run-id]                   # show where a run is
 codeumbrella answer <run-id> <step> yes|no ["text"]   # answer the question of that step, then continue
-codeumbrella resume <run-id>                   # try a stopped step again, with its count of tries at 0
+codeumbrella resume <run-id>                   # try a stopped step again, with its count of tries at 0. Only after the person says yes
 ```
 
 Run all four `cargo` commands before you say that work is complete.
@@ -76,6 +77,8 @@ To install the command and the chat command on a computer, run `./install.sh`.
 | `tests/walls.rs` | Tests of the safety settings and the safety checks. Each one becomes bad if a wall goes. |
 | `tests/step_tools.rs` | Tests of `tool`, `model` and `effort`, with a simulated `claude` and `codex`. |
 | `tests/attacker.rs` | Tests of the plan attacker: its step, its files, its settings and its rules page. |
+| `tests/run_tool.rs` | Tests of the stop message and of the tool of the run. |
+| `tests/new_roles.rs` | Tests of the roles `reviewer`, `security` and `simplifier`, the new steps and the documents. |
 | `install.sh` | Installs the command and the chat command. |
 | `LICENSE` | The MIT licence. Do not change its text. |
 
@@ -86,7 +89,7 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - A step with `type: person` stops the run until the person answers yes or no.
 - A step with `type: fan` has a `fan` line: a list of worker steps. The supervisor does them at the same time and waits for all of them. The result is good only if all of them are good.
 - A step in a `fan` line has only `role`, `reads`, `tool`, `model` and `effort`. It writes no paper.
-- Only a worker step can have `tool`, `model` and `effort`. `tool` is `claude` or `codex`; with no line, the step uses `--tool`.
+- Only a worker step can have `tool`, `model` and `effort`. `tool` is `claude` or `codex`; with no line, the step uses the tool of the run.
 - The step gives `model` and `effort` to its tool. The role needs the settings file of that tool.
 - A step with `type: command` has a `run` line: a list of commands. The supervisor runs them itself, with no shell and no worker. In a word, `{run}` is the id of the run. If a command gives an error, the result is bad.
 - `next` is the step after a good result. `on_bad` is the step after a bad result.
@@ -144,11 +147,15 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - A live test on 17 November 2026 showed the cause. A Codex attacker gave 5 bad results for a small task, and the run stopped.
 - The settings of the attacker are the same as those of the safety checker.
 - Each role has one rules page.
-- The chat starts `run`, `answer` and `resume` with `nohup`, so a command lives after the shell ends. If the status is `Running` and no command is alive, the chat removes `lock` and runs `resume`.
+- The chat starts `run`, `answer` and `resume` with `nohup`, and adds `--tool codex` to `run` only, so a command lives after the shell ends. If the status is `Running` and no command is alive, the chat removes `lock` and runs `resume` only after the person says yes.
 - The checker compares each test file of the paper `tests` with the project in each try. A file that is different or not there gets the paper version, because the person approved the paper. The builder does not change such a file.
-- The default check step is a fan of two checkers. One runs the tests. One reads the change for safety problems, and it cannot write a file.
+- The default check step is a fan of four checkers. `check_tests` runs the tests. `check_safety`, `check_review` and `check_security` read the change. They cannot write a file.
+- The step `simplify` follows `build`. The simplifier changes no test file, and it commits only if the test command passes. The step `repair` does not go through it.
+- The reviewer and the security checker have the same settings as the safety checker. The simplifier has the same settings as the builder.
+- The stopped run prints `To continue: codeumbrella resume <run id>` and a line that says: resume only after the person says yes. An AI must not give this approval. The limit for the note does not cut them.
+- `answer` and `resume` with a `--tool` that is different from the tool of the run give an error. They give it before a step starts and before the answer is written. A notebook with no tool uses Claude, and `--tool` writes it. `status` never changes the notebook.
 - The safety checker also reads the files that use the changed lines, for example settings files. A run on 17 November 2026 showed the cause.
-- The two checkers work in the same copy. Only the tests checker writes there.
+- The four checkers work in the same copy. Only the tests checker writes there.
 - The safety checker does not read the commit that the tests checker makes at the same time. The person sees that commit in the PR.
 
 ## Rust rules
@@ -189,8 +196,8 @@ A new package gets into this list only when all of these are correct:
 
 ## Limits for lines of code
 
-- The supervisor (`src/graph.rs`, `src/engine.rs`, `src/main.rs`, `src/log.rs`, `src/lib.rs`): 580 lines of code.
-- Each tool part: 100 lines of code.
+- The supervisor (`src/graph.rs`, `src/engine.rs`, `src/main.rs`, `src/log.rs`, `src/lib.rs`): 650 lines of code.
+- Each tool part: 200 lines of code.
 - Empty lines, comment lines and tests do not count.
 - Count with: `grep -v -E '^\s*(//|$)' <file> | wc -l`
 

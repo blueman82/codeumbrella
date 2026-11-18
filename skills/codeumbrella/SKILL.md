@@ -14,7 +14,7 @@ You are the window between the person and that command. You do not do the task.
 1. Do not answer a question of the run. Only the person says yes or no.
 2. Do not change the code or the folder `.codeumbrella` during a run. But you can change a paper while the run waits for the person. Do this only if the person tells you to. Do it before you send the answer.
 3. Do not push and do not merge. The command does that after the yes of the person.
-4. If you are Codex, put `--tool codex` immediately after the word `codeumbrella` in each command. If you are Claude, add nothing.
+4. If you are Codex, put `--tool codex` immediately after the word `codeumbrella` in the command `run` only. The run keeps its tool, so `answer` and `resume` need no `--tool`. If you are Claude, add nothing.
 5. The command starts workers and uses the network. If your sandbox stops the command, get the permission of the person to run it with no sandbox.
 
 ## Before the first command
@@ -40,7 +40,7 @@ Before you start a run, you must put all that the task uses into the project fol
 - Run the test command of the project one time. This shows that the tools start with no download.
 - Put that test command at the end of the task text, for example: `Test command: <command>`. The workers then use the same command.
 
-If a run stops because a package is not on the computer, install that package. Then run `codeumbrella resume <run id>`.
+If a run stops because a package is not on the computer, install that package. Then run `codeumbrella resume <run id>` only after the person says yes.
 
 ## The command to run
 
@@ -53,9 +53,9 @@ A `run`, `answer` or `resume` command can run for 15 to 25 minutes. A shell of t
 
 `nohup codeumbrella run "<task>" > .codeumbrella/out.txt 2>&1 &`
 
-Use the same command line for `answer` and `resume`. Then run `codeumbrella status` each 3 minutes until the status is not `Running`. Read the output file after that.
+Use the same command line for `answer` and `resume`, with no `--tool`. Then run `codeumbrella status` each 3 minutes until the status is not `Running`. Read the output file after that.
 
-If the status is `Running` and no `codeumbrella` command is alive on the computer, tell the person. Then remove the file `lock` in the run folder, and run `codeumbrella resume <run id>`.
+If the status is `Running` and no `codeumbrella` command is alive on the computer, tell the person. Then remove the file `lock` in the run folder, and run `codeumbrella resume <run id>` only after the person says yes.
 
 ## After each command
 
@@ -69,7 +69,7 @@ The output has three parts: the run id, the status, and a note.
 - After a yes, run `codeumbrella answer <run id> <step> yes`.
 - After a no, run `codeumbrella answer <run id> <step> no "<what the person said>"`.
 - If the command says that a different command works on the run, do not send the answer again. Run `codeumbrella status` and tell the person.
-- Status `Stopped`: show the note to the person. After the person corrects the cause, run `codeumbrella resume <run id>`.
+- Status `Stopped`: show the note to the person. After the person corrects the cause, run `codeumbrella resume <run id>` only after the person says yes.
 - If the note says that a paper is not as its writer left it, `resume` does not help. A person must put the paper back first, or start a new run.
 - If the step `no_locked_files` stopped the run, the work changes `.github`, `.claude` or `.codeumbrella`. Show this to the person. Do not go around it.
 - Status `Done`: tell the person that the merge of the PR is complete. Tell the person to run `git pull`. The workers wrote in a copy, so the project branch did not change.

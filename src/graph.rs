@@ -1,7 +1,7 @@
 //! The instruction sheet: the steps of the factory and the rules between them.
 
 use anyhow::{Context, Result, bail, ensure};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, fs, path::Path};
 
 /// Who does a step.
@@ -20,7 +20,7 @@ pub enum Kind {
 }
 
 /// The tool that does a worker step.
-#[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq, clap::ValueEnum)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, clap::ValueEnum)]
 #[serde(rename_all = "snake_case")]
 pub enum Tool {
     /// The `claude` command.
@@ -56,7 +56,7 @@ pub struct Step {
     pub on_bad: Option<String>,
     /// The maximum number of times that the run can do this step.
     pub max_tries: Option<u32>,
-    /// The tool of a worker step. Without it, the tool of the command.
+    /// The tool of a worker step. Without it, the tool of the run.
     pub tool: Option<Tool>,
     /// The model of the tool. Without it, the tool uses its default.
     pub model: Option<String>,
