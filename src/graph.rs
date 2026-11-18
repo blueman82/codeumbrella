@@ -19,6 +19,16 @@ pub enum Kind {
     Fan,
 }
 
+/// The tool that does a worker step.
+#[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq, clap::ValueEnum)]
+#[serde(rename_all = "snake_case")]
+pub enum Tool {
+    /// The `claude` command.
+    Claude,
+    /// The `codex` command.
+    Codex,
+}
+
 /// One step of the work.
 #[derive(Debug, Clone, Default, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -46,6 +56,12 @@ pub struct Step {
     pub on_bad: Option<String>,
     /// The maximum number of times that the run can do this step.
     pub max_tries: Option<u32>,
+    /// The tool of a worker step. Without it, the tool of the command.
+    pub tool: Option<Tool>,
+    /// The model of the tool. Without it, the tool uses its default.
+    pub model: Option<String>,
+    /// How much the AI thinks. The tool knows the values.
+    pub effort: Option<String>,
 }
 
 /// The full instruction sheet.
@@ -79,7 +95,8 @@ impl Graph {
     /// Gives an error for a step that does not exist, a worker step with no
     /// rules page, a command step with no commands, a way back with no maximum,
     /// a maximum of 0, a name that is a path, a fan part that is not a plain
-    /// worker step, or `next` lines with no end.
+    /// worker step, a bad `model` or `effort`, `tool`, `model` or `effort`
+    /// on a step that is not a worker step, or `next` lines with no end.
     pub fn check(&self, roles: &Path) -> Result<()> {
         self.step(&self.start).context("the start line")?;
         for (name, step) in &self.steps {
@@ -101,6 +118,16 @@ impl Graph {
                 }
                 _ => {}
             }
+            let own = [&step.model, &step.effort];
+            let safe = |c: char| c.is_ascii_alphanumeric() || ".-_".contains(c);
+            let good = |v: &String| !v.is_empty() && !v.starts_with('-') && v.chars().all(safe);
+            let fine = own.into_iter().flatten().all(good);
+            let set = step.tool.is_some() || own.iter().any(|o| o.is_some());
+            let wrong = set && step.kind != Kind::Worker;
+            ensure!(
+                fine && !wrong,
+                "step {name}: a bad tool, model or effort line"
+            );
             if (step.kind == Kind::Command) == step.run.is_empty() {
                 bail!("step {name}: a command step, and only a command step, has run lines");
             }

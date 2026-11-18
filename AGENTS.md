@@ -8,7 +8,7 @@ Codeumbrella is a software factory. A person gives it a task. It puts code into 
 
 The factory is written in Rust. The projects that go through it can be in each language. Put no knowledge of one language into the supervisor, the default sheet or the default rules pages.
 
-The heart is an instruction sheet (`.codeumbrella/graph.yaml` in each project) and a small supervisor that reads the sheet and does what it says. The supervisor starts workers (Claude first, Codex after), keeps a notebook, and stops for the person.
+The heart is an instruction sheet (`.codeumbrella/graph.yaml` in each project) and a small supervisor that reads the sheet and does what it says. The supervisor starts workers (Claude first, Codex after; a step can pick its tool), keeps a notebook, and stops for the person.
 
 The supervisor knows nothing about software work. All knowledge of the steps is in the sheet and in the rules pages.
 
@@ -74,17 +74,20 @@ To install the command and the chat command on a computer, run `./install.sh`.
 | `.agents/plugins/` | The Codex marketplace file `marketplace.json`. |
 | `tests/packaging.rs` | Tests of the plugin files and the README. |
 | `tests/walls.rs` | Tests of the safety settings and the safety checks. Each one becomes bad if a wall goes. |
+| `tests/step_tools.rs` | Tests of `tool`, `model` and `effort`, with a simulated `claude` and `codex`. |
 | `tests/attacker.rs` | Tests of the plan attacker: its step, its files, its settings and its rules page. |
 | `install.sh` | Installs the command and the chat command. |
 | `LICENSE` | The MIT licence. Do not change its text. |
 
 ## The sheet
 
-The file `graph.example.yaml` tells what each line does. A step can have only these lines: `role`, `type`, `run`, `reads`, `writes`, `next`, `on_bad`, `max_tries`, `fan`. The sheet also has one `start` line.
+The file `graph.example.yaml` tells what each line does. A step can have only these lines: `role`, `type`, `run`, `reads`, `writes`, `next`, `on_bad`, `max_tries`, `fan`, `tool`, `model`, `effort`. The sheet also has one `start` line.
 
 - A step with `type: person` stops the run until the person answers yes or no.
 - A step with `type: fan` has a `fan` line: a list of worker steps. The supervisor does them at the same time and waits for all of them. The result is good only if all of them are good.
-- A step in a `fan` line has only `role` and `reads`. It writes no paper.
+- A step in a `fan` line has only `role`, `reads`, `tool`, `model` and `effort`. It writes no paper.
+- Only a worker step can have `tool`, `model` and `effort`. `tool` is `claude` or `codex`; with no line, the step uses `--tool`.
+- The step gives `model` and `effort` to its tool. The role needs the settings file of that tool.
 - A step with `type: command` has a `run` line: a list of commands. The supervisor runs them itself, with no shell and no worker. In a word, `{run}` is the id of the run. If a command gives an error, the result is bad.
 - `next` is the step after a good result. `on_bad` is the step after a bad result.
 - A step that an `on_bad` line goes to must have `max_tries`.
@@ -107,6 +110,8 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - Only one command can work on a run at a time. The file `lock` in the run folder shows this. After a kill, a person removes that file.
 - An answer and a resume get the lock before they read the notebook. Thus a second command cannot write an answer into a run that is active.
 - The clean copy reads the `origin` settings from `.git/config` of the project. Thus the factory does not work in a linked git worktree.
+- `model` and `effort` have only letters, digits, `.`, `-` and `_`. Thus no quote or brace can reach the tool command.
+- `model` and `effort` cannot start with `-`. Thus the tool never reads them as an option.
 - A worker that ends with an error code gives no good result.
 - A worker does not get the values `GH_TOKEN` and `GITHUB_TOKEN` of the person.
 - For a Claude worker, only the settings file of its role counts. The worker uses no settings, hooks or tool servers of the project or of the person.
@@ -184,7 +189,7 @@ A new package gets into this list only when all of these are correct:
 
 ## Limits for lines of code
 
-- The supervisor (`src/graph.rs`, `src/engine.rs`, `src/main.rs`, `src/log.rs`, `src/lib.rs`): 560 lines of code.
+- The supervisor (`src/graph.rs`, `src/engine.rs`, `src/main.rs`, `src/log.rs`, `src/lib.rs`): 580 lines of code.
 - Each tool part: 100 lines of code.
 - Empty lines, comment lines and tests do not count.
 - Count with: `grep -v -E '^\s*(//|$)' <file> | wc -l`
@@ -200,7 +205,7 @@ An AI in a chat runs the command most of the time. Keep the output of the comman
 3. Each time you add a part, look for a part to remove.
 4. If a rule is too complex for the sheet, the worker makes that decision, not the supervisor.
 5. Copy no part from a different project until a run shows that it is necessary.
-6. One source for Claude and Codex. Only the tool parts and the settings files of the roles are different for each tool.
+6. One source for Claude and Codex. Only the tool parts and the settings files of the roles are different for each tool. A step can pick its tool.
 
 ## Not in version 1
 

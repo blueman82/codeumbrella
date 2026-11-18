@@ -22,7 +22,14 @@
 #   fan        Only for a fan step. A list of worker steps. They run at the
 #              same time. The fan step waits for all of them. Its result is
 #              good only if all of them are good. A step in this list has
-#              only `role` and `reads`.
+#              only `role`, `reads`, `tool`, `model` and `effort`.
+#   tool       Only for a worker step. `claude` or `codex`. With no line, the
+#              step uses the tool of the command (`--tool`, default claude).
+#   model      Only for a worker step. A model name of that tool. With no line,
+#              the tool uses its default. Letters, digits, `.`, `-`, `_`; no `-` first.
+#   effort     Only for a worker step. How much the AI thinks, for example
+#              `low`, `medium`, `high` or `xhigh`. With no line, the tool uses
+#              its default. Same characters as `model`.
 #   reads      The papers that the step reads. A paper is a folder of files
 #              that one step writes for other steps.
 #   writes     The papers that the step writes. No other worker can change them.
@@ -36,6 +43,27 @@
 #   max_tries  The maximum number of times that the run does this step.
 #              At the maximum, the run stops and tells you. The count is for
 #              the full run. The command `resume` sets it to 0 for that step.
+
+# Guide for `model` and `effort`. Set them in a step only when you need them.
+#   Claude models: `fable` for the hardest work with many steps; `opus` for
+#     hard work; `sonnet` for usual coding; `haiku` for simple work that
+#     occurs many times.
+#   Codex models: `gpt-6.2-astra` for the hardest work; `gpt-6.2-sol` for usual
+#     coding; `gpt-6.1-sol` for long work at a lower cost; `gpt-6-luna` for
+#     focused work that occurs many times.
+#   Effort, for both tools: `low` for fast tasks with clear limits; `medium`
+#     for tasks that have some planning; `high` for hard work with many steps;
+#     `xhigh` for the hardest work, when time is not important.
+#   Start in the middle. Go higher only when a run shows a better result.
+#   Model names change. The pages of Anthropic and OpenAI have the current names.
+# Example step:
+#   build:
+#     role: builder
+#     tool: codex
+#     model: gpt-6.2-sol
+#     effort: medium
+#     reads: [spec]
+#     next: check
 
 # The name of the first step.
 start: copy

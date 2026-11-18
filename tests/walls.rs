@@ -484,3 +484,96 @@ fn the_check_of_the_default_sheet_is_a_fan_with_the_tests_and_the_safety_checker
     assert_eq!(role("check_tests"), "checker");
     assert_eq!(role("check_safety"), "safety");
 }
+
+/// True if the sheet text is refused: by the reader or by the check.
+fn refused(text: &str) -> bool {
+    match yaml_serde::from_str::<Graph>(text) {
+        Err(_) => true,
+        Ok(graph) => graph.check(&root().join("roles")).is_err(),
+    }
+}
+
+/// A sheet with one worker step that has the line `line`.
+fn worker(line: &str) -> String {
+    format!("start: a\nsteps:\n  a:\n    role: planner\n    {line}\n")
+}
+
+/// A sheet with a fan step and one part. `ONE` and `TWO` get the lines of each step.
+const FAN: &str = r"start: a
+steps:
+  a:
+    type: fan
+    fan: [b]
+    ONE
+  b:
+    role: planner
+    TWO
+";
+
+/// The characters that `model` and `effort` must not have.
+const BAD: &str = " \"}{'\\/;$=,\t\n:#é*";
+
+#[test]
+fn a_model_or_effort_with_a_bad_character_is_an_error() {
+    for good in ["opus", "gpt-6.2-sol", "a_b.c-1", "xhigh", "A9"] {
+        for line in ["model", "effort"] {
+            let text = worker(&format!("{line}: '{good}'"));
+            assert!(!refused(&text), "{line} {good} is refused");
+        }
+    }
+    for line in ["model", "effort"] {
+        let empty = worker(&format!("{line}: \"\""));
+        assert!(refused(&empty), "{line} is empty");
+        for c in BAD.chars() {
+            // A double-quoted YAML text can hold each of these characters.
+            let value = format!("a{c}b").replace('\\', "\\\\").replace('"', "\\\"");
+            let value = value.replace('\n', "\\n").replace('\t', "\\t");
+            let text = worker(&format!("{line}: \"{value}\""));
+            assert!(refused(&text), "{line} with {c:?} is not refused");
+        }
+        // A value that starts with `-` would look like an option to the tool.
+        for bad in ["-x", "--dangerous", "-", "-1"] {
+            let text = worker(&format!("{line}: \"{bad}\""));
+            assert!(refused(&text), "{line} {bad:?} is not refused");
+        }
+        // A `-` inside the value is good.
+        assert!(!refused(&worker(&format!("{line}: \"a-b\""))));
+    }
+}
+
+#[test]
+fn a_tool_that_is_not_claude_or_codex_is_an_error() {
+    for good in ["claude", "codex"] {
+        assert!(!refused(&worker(&format!("tool: {good}"))), "{good}");
+    }
+    for bad in [
+        "gemini", "Claude", "CODEX", "claude ", "", " codex", "codex}",
+    ] {
+        let text = worker(&format!("tool: \"{bad}\""));
+        assert!(refused(&text), "{bad:?} is not refused");
+    }
+}
+
+#[test]
+fn only_a_worker_step_can_have_tool_model_or_effort() {
+    let person = "start: a\nsteps:\n  a:\n    type: person\n";
+    let command = "start: a\nsteps:\n  a:\n    type: command\n    run: [[true]]\n";
+    for (base, name) in [(person, "person"), (command, "command")] {
+        assert!(!refused(base), "{name} base");
+        for line in ["tool: claude", "model: opus", "effort: high"] {
+            let text = format!("{base}    {line}\n");
+            assert!(refused(&text), "a {name} step with {line}");
+        }
+    }
+    assert!(!refused(&FAN.replace("ONE", "").replace("TWO", "")));
+    for line in ["tool: claude", "model: opus", "effort: high"] {
+        let text = FAN.replace("ONE", line).replace("TWO", "");
+        assert!(refused(&text), "a fan step with {line}");
+    }
+}
+
+#[test]
+fn a_part_of_a_fan_can_have_tool_model_and_effort() {
+    let lines = "tool: codex\n    model: gpt-6.2-sol\n    effort: high";
+    assert!(!refused(&FAN.replace("ONE", "").replace("TWO", lines)));
+}

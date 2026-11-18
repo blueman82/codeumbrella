@@ -1,6 +1,6 @@
 //! The supervisor: it does the sheet one step at a time and keeps the notebook.
 
-use crate::graph::{Graph, Kind, Step};
+use crate::graph::{Graph, Kind, Step, Tool};
 use crate::log;
 use anyhow::{Context, Result, bail};
 use serde::{Deserialize, Serialize};
@@ -34,6 +34,12 @@ pub struct Job<'a> {
     pub reads: &'a [String],
     /// The papers that the worker writes.
     pub writes: &'a [String],
+    /// The tool of the step. `None` means the tool of the command.
+    pub tool: Option<Tool>,
+    /// The model of the step. `None` means the default of the tool.
+    pub model: Option<&'a str>,
+    /// The effort of the step. `None` means the default of the tool.
+    pub effort: Option<&'a str>,
     /// The result of the step before this one.
     pub before: Option<&'a Outcome>,
 }
@@ -291,6 +297,9 @@ impl Run {
             dir: &self.dir,
             reads: &step.reads,
             writes: &step.writes,
+            tool: step.tool,
+            model: step.model.as_deref(),
+            effort: step.effort.as_deref(),
             before,
         })
     }
