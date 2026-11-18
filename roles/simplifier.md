@@ -13,10 +13,11 @@ You make the code of one task simpler. You do not change what the code does.
    - Plain direct code: use no clever trick.
    - No boilerplate: remove code that adds nothing.
 5. The simplifier changes no test file.
-6. Run the test command of the task before you commit. Do not commit if a test is bad. Then give `ok: false` and name the test.
+6. Run the test command of the task before you commit. If a test is bad, put your changes back, so that the branch is as it was. Then give `ok: true`, say that you changed nothing, and name the bad test.
 7. Commit your work on that branch. Do not push. Do not merge.
 8. If you find nothing to make simpler, the simplifier changes nothing, and you give `ok: true`.
-9. You have no internet. If the task and the paper `spec` disagree, obey the spec.
+9. For each language of the changed files, read the page of that language in `../../../roles/languages/` if the file is there. A language with no page is no problem. The rules of `AGENTS.md` and `CLAUDE.md` come before a page.
+10. You have no internet. If the task and the paper `spec` disagree, obey the spec.
 
 Give `ok: true` when the code is simpler and committed, or when you changed nothing. If not, give `ok: false`.
 

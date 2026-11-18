@@ -148,6 +148,8 @@ steps:
   # A run reads the sheet at each command, so do not change the sheet
   # while a run is active.
   # For a faster run, remove this step. Then set `next` of `build` to `check`.
+  # The simplifier reads the language pages in `roles/languages/` for the
+  # languages of the changed files.
   simplify:
     role: simplifier
     reads: [spec]
@@ -180,6 +182,7 @@ steps:
   # A run reads the sheet at each command, so do not change the sheet
   # while a run is active. For a faster run, remove this step
   # and its name in the `fan` line of `check`.
+  # The reviewer reads the language pages in `roles/languages/` too.
   check_review:
     role: reviewer
     reads: [spec]

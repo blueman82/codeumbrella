@@ -6,7 +6,7 @@ This file is the one source of the project rules for all agents. `CLAUDE.md` imp
 
 Codeumbrella is a software factory. A person gives it a task. It puts code into `main` only after two things. First, the code agrees with the tests that the person gave approval for. Second, the person gave approval for the PR.
 
-The factory is written in Rust. The projects that go through it can be in each language. Put no knowledge of one language into the supervisor, the default sheet or the default rules pages.
+The factory is written in Rust. The projects that go through it can be in each language. Knowledge of one language is only in the language pages (`roles/languages/`). The supervisor, the default sheet and the rules pages of the roles have none. Only the six page file names in the file list of `init` are permitted.
 
 The heart is an instruction sheet (`.codeumbrella/graph.yaml` in each project) and a small supervisor that reads the sheet and does what it says. The supervisor starts workers (Claude first, Codex after; a step can pick its tool), keeps a notebook, and stops for the person.
 
@@ -58,6 +58,7 @@ To install the command and the chat command on a computer, run `./install.sh`.
 | `graph.example.yaml` | The default sheet, with a comment for each option. `init` copies it into a project. |
 | `default.gitignore` | The default ignore file. `init` gives it to a project that has no `.gitignore`. |
 | `roles/<role>.md` | The default rules page of each role, written by hand. |
+| `roles/languages/<language>.md` | The good practice of one language: Python, Go, JavaScript, TypeScript, Java, Rust. Only the reviewer and the simplifier read them. `init` copies them. |
 | `roles/<role>.claude.json` | The Claude permissions and the sandbox settings of each role. In this file, `{project}` is the full path of the project folder and `{run}` is the id of the run. |
 | `src/graph.rs` | Reads the sheet and finds its errors before a run. |
 | `src/engine.rs` | Does one step at a time, keeps the notebook, keeps the papers safe. |
@@ -81,6 +82,7 @@ To install the command and the chat command on a computer, run `./install.sh`.
 | `tests/run_tool.rs` | Tests of the stop message and of the tool of the run. |
 | `tests/new_roles.rs` | Tests of the roles `reviewer`, `security` and `simplifier`, the new steps and the documents. |
 | `tests/small_repairs.rs` | Tests of version 0.1.11: the lock number, `status --wait`, the work folder, run ids, the stop message. |
+| `tests/language_pages.rs` | Tests of version 0.1.12: the six language pages, `init`, the two rules pages and the version. |
 | `install.sh` | Installs the command and the chat command. |
 | `LICENSE` | The MIT licence. Do not change its text. |
 
@@ -127,11 +129,11 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - A role with no settings file is an error. A worker does not start with no settings.
 - A paper can change only in a step that lists it in `writes`. The supervisor keeps a fingerprint of each paper. Before each step, the supervisor compares all the papers with their fingerprints. If a paper is different, the run stops. The person can change a paper while the run waits for an answer. The answer makes the fingerprints again.
 - All factory files of a project are in the folder `.codeumbrella`: the sheet, the rules pages and the runs. The folder has its own `.gitignore`, so git does not see it.
-- The Claude planner has no shell. The builder and the checker can run all commands, but only in the sandbox.
-- The builder and the checker can connect to a server on the same computer, for example a test database. A test on 16 November 2026 showed that the internet and GitHub stay closed with this setting. A worker can thus talk to each server that runs on the computer of the person.
+- The Claude planner has no shell. The builder, the checker and the simplifier can run all commands, but only in the sandbox.
+- The builder, the checker and the simplifier can connect to a server on the same computer, for example a test database. A test on 16 November 2026 showed that the internet and GitHub stay closed with this setting. A worker can thus talk to each server that runs on the computer of the person.
 - The Codex part always turns on the Codex network proxy. Without the proxy, a Codex role that has network settings gets the full internet.
 - Workers have no internet. The packages of a project must be on the computer before a run. A test on 16 November 2026 showed the cause. With internet, a worker can use the GitHub key of the person.
-- The builder and the checker run in the Claude sandbox. They cannot write to `.codeumbrella`, `.claude`, `.github`, `.git/hooks` or `.git/config`. They write only in the work copy of their run.
+- The builder, the checker and the simplifier run in the Claude sandbox. They cannot write to `.codeumbrella`, `.claude`, `.github`, `.git/hooks` or `.git/config`. They write only in the work copy of their run.
 - They also cannot write the files `.git/commondir` and `.git/config.worktree`. With such a file, a worker can give git its own settings. Then git runs a script of the worker with no sandbox.
 - The steps with `gh` read the clean copy, not the `.git` folder of the project. The word `GIT_DIR` in the sheet does this.
 - A deny rule such as `Edit(.codeumbrella/**)` is what makes the sandbox lock a path. The tests of 15 November 2026 showed this. The setting `sandbox.filesystem.denyWrite` with a relative path did nothing in those tests.
