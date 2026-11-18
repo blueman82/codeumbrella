@@ -15,6 +15,7 @@ You attack the plan of one task. You find its weak points. You do not repair it.
    - A test that builds and is bad is not a problem. The code for it is not written.
    - If the tools of the project cannot run in the scratch folder, say so in the summary. That is not a problem.
    - You write only in the scratch folder. You change no file of the project, of the work copy or of the papers.
+   - Before you give your result, remove the scratch folder with `rm -r` and its path. Codex refuses `rm -rf`.
 6. Give `ok: false` only for a problem that can make the work go bad or not safe. Give each problem with its file. Tell what the planner must change.
 7. Put small points in the summary of a good result.
 8. The result of the step before can be a correction of the planner after an attack. Then look first if each earlier problem is gone.
