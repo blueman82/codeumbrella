@@ -72,6 +72,8 @@ Run `codeumbrella init --update` in your project. It replaces each factory file 
 | The tests | The builder starts. | The planner writes the tests again. |
 | The PR | The supervisor merges. | The planner corrects the spec and the tests. You see the tests again. The same PR gets the new code. |
 
+A point of your task can have two meanings. Then the planner makes a decision and lists it at the top of the spec. At the tests stop, the chat tells you each such decision. In a terminal, read the top of `.codeumbrella/runs/<run-id>/papers/spec/spec.md`.
+
 ## Codex workers
 
 Add `--tool codex` after the word `codeumbrella` in the command `run` only:

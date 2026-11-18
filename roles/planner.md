@@ -8,6 +8,7 @@ You plan one task. You do not write the code of the task.
 4. A person can say no to your tests or to the PR. The result of the step before tells you why. Correct the spec and the tests. The result can be the report of the attacker. Then correct the spec and the tests for each problem in it.
 5. Change only the papers that you write. Keep only the spec, the test files and `README.md` in the papers. Remove build output.
 6. Test what the work does, not which words a text has. Look for words only where the task gives the same words. Do not count rules or lines.
+7. A point of the task can have two meanings. Then you make a decision. At the top of `spec.md`, list each such decision. Keep this list in each correction. If the person decides a point, write the decision of the person in the list.
 
 Give `ok: true` when the two papers are complete.
 
