@@ -317,14 +317,15 @@ steps:
   # Is there a PR for this run? Yes: put the title and the text of the paper
   # `pr` into it, so the PR has no text of an earlier try. Go to your approval.
   # No: open one.
-  # The script of `find_pr` and `open_pr` refuses the paper `pr` if its folder
-  # or one of its two files is a link. Thus no file outside the paper goes to
+  # The command `check_pr` of `find_pr` and `open_pr` refuses the paper `pr`
+  # if its folder or one of its two files is a link. Thus no file outside the paper goes to
   # GitHub. A refused paper gives a bad result, and the run stops at `open_pr`.
   find_pr:
     type: command
     run:
       - [env, "GIT_DIR=.codeumbrella/runs/{run}/clean/.git", gh, pr, view, "codeumbrella/{run}", --json, url, --jq, .url]
-      - [env, "GIT_DIR=.codeumbrella/runs/{run}/clean/.git", sh, -c, 'd=.codeumbrella/runs/{run}/papers/pr; [ -d "$d" ] && [ ! -L "$d" ] || { echo "the paper pr is not a folder: $d" >&2; exit 1; }; for f in .codeumbrella/runs/{run}/papers/pr/title.txt .codeumbrella/runs/{run}/papers/pr/body.md; do [ -f "$f" ] && [ ! -L "$f" ] && [ -n "$(find "$f" -prune -links 1)" ] || { echo "refused, not a plain file with one link: $f" >&2; exit 1; }; done; gh pr edit "codeumbrella/{run}" --title "$(cat .codeumbrella/runs/{run}/papers/pr/title.txt)" --body-file .codeumbrella/runs/{run}/papers/pr/body.md']
+      - &check_pr [sh, -c, 'd=.codeumbrella/runs/{run}/papers/pr; [ -d "$d" ] && [ ! -L "$d" ] || { echo "the paper pr is not a folder: $d" >&2; exit 1; }; for f in .codeumbrella/runs/{run}/papers/pr/title.txt .codeumbrella/runs/{run}/papers/pr/body.md; do [ -f "$f" ] && [ ! -L "$f" ] && [ -n "$(find "$f" -prune -links 1)" ] || { echo "refused, not a plain file with one link: $f" >&2; exit 1; }; done']
+      - [env, "GIT_DIR=.codeumbrella/runs/{run}/clean/.git", sh, -c, 'gh pr edit "codeumbrella/{run}" --title "$(cat .codeumbrella/runs/{run}/papers/pr/title.txt)" --body-file .codeumbrella/runs/{run}/papers/pr/body.md']
     on_bad: open_pr
     next: approval
 
@@ -333,7 +334,8 @@ steps:
   open_pr:
     type: command
     run:
-      - [env, "GIT_DIR=.codeumbrella/runs/{run}/clean/.git", sh, -c, 'd=.codeumbrella/runs/{run}/papers/pr; [ -d "$d" ] && [ ! -L "$d" ] || { echo "the paper pr is not a folder: $d" >&2; exit 1; }; for f in .codeumbrella/runs/{run}/papers/pr/title.txt .codeumbrella/runs/{run}/papers/pr/body.md; do [ -f "$f" ] && [ ! -L "$f" ] && [ -n "$(find "$f" -prune -links 1)" ] || { echo "refused, not a plain file with one link: $f" >&2; exit 1; }; done; gh pr create --head "codeumbrella/{run}" --title "$(cat .codeumbrella/runs/{run}/papers/pr/title.txt)" --body-file .codeumbrella/runs/{run}/papers/pr/body.md']
+      - *check_pr
+      - [env, "GIT_DIR=.codeumbrella/runs/{run}/clean/.git", sh, -c, 'gh pr create --head "codeumbrella/{run}" --title "$(cat .codeumbrella/runs/{run}/papers/pr/title.txt)" --body-file .codeumbrella/runs/{run}/papers/pr/body.md']
     max_tries: 2
     next: approval
 
