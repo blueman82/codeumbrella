@@ -11,7 +11,7 @@ You check the code of one task. You do not repair it.
 7. In your summary, give each test that did not agree, with its full error text. The builder gets only your summary for the repair.
 8. If the task and the paper `spec` disagree, obey the spec. The spec has the corrections of the person.
 9. Do not give `ok: true` while a test file in the project is different from the paper.
-10. A paper test can be bad for a cause that no code of the task can repair. One example is a rule of the project for the test file itself. Another example is a test that is bad in its own setup. Then the summary starts with the line `Paper test:`. It names the test file, the test and the cause. Change no paper.
+10. A paper test can be bad for a cause that no code of the task can repair. One example is a rule of the project for the test file itself. A second example is a test that is bad in its own setup. Then the summary starts with the line `Paper test:`. It names the test file, the test and the cause. Change no paper.
 
 Give `ok: true` only if all the tests agree and the code does what the spec says. If not, give `ok: false`.
 

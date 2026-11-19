@@ -51,7 +51,7 @@ If a run stops because a package is not on the computer, install that package. T
 | A task | `codeumbrella run "<task>"` |
 | No task | `codeumbrella status` |
 
-A `run`, `answer` or `resume` command can run for 15 to 25 minutes. A shell of the chat can end, or a time limit of the chat can stop it. The command then stops, and the file `lock` stays. So start each of these commands so that it continues after the shell ends and after a time limit. Send the output to a file. For a usual shell:
+A `run`, `answer` or `resume` command can run longer than the time limit of a chat shell. A shell of the chat can end, or a time limit of the chat can stop it. The command then stops, and the file `lock` stays. So start each of these commands so that it continues after the shell ends and after a time limit. Send the output to a file. For a usual shell:
 
 `nohup codeumbrella run "<task>" > .codeumbrella/out.txt 2>&1 &`
 
@@ -67,7 +67,7 @@ The output has three parts: the run id, the status, and a note.
 
 - Status `Waiting` at the step `look_at_tests`: read the files in `.codeumbrella/runs/<run id>/papers/tests/`. Tell the person in plain words what each test looks at. Also read `.codeumbrella/runs/<run id>/papers/spec/spec.md`. Tell the person each decision in the list at its top. If the spec has no such list, tell the person that the planner made no decision. Then get a yes or a no from the person.
 - If the note at `look_at_tests` names a bad build, tell the person what test the planner changed.
-- At `look_at_tests`, the result before can start with `Not complete:`. Then tell the person that no worker ran that check on the paper tests. Offer to run that check yourself before the person answers.
+- At `look_at_tests`, the result before can start with `Not complete:`. Then tell the person that no worker ran that check on the paper tests. Offer to run that check before the person answers.
 - After a no, at the next `look_at_tests`, read the part `Points of the no` at the top of `spec.md`. Tell the person each point. Thus the person sees that each point of the no is there.
 - Status `Waiting` at the step `approval`: give the person the PR link from the note. Then get a yes or a no from the person.
 - At the question `approval`, read the lines of `check_use` in `log.jsonl` of the run. Tell the person each `Not run:` line before the person answers. Such an example did not run in the sandbox.
