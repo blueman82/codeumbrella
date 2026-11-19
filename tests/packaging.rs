@@ -279,3 +279,27 @@ fn agents_structure_table_lists_the_packaging_files() {
         );
     }
 }
+
+/// Lesson of run-1795113806: a test with the version of today in quote
+/// marks breaks at the next version. So no test file names it.
+#[test]
+fn no_test_file_names_the_version_of_today() {
+    let toml = text("Cargo.toml");
+    let line = toml
+        .lines()
+        .find(|l| l.starts_with("version = "))
+        .expect("Cargo.toml has a version line");
+    let quoted = line.trim_start_matches("version = ");
+    let dir = root().join("tests");
+    for entry in std::fs::read_dir(&dir).expect("tests folder") {
+        let path = entry.expect("entry").path();
+        let read = std::fs::read_to_string(&path);
+        let msg = format!("read {}", path.display());
+        let body = read.expect(&msg);
+        assert!(
+            !body.contains(quoted),
+            "{} names the version {quoted}",
+            path.display()
+        );
+    }
+}

@@ -170,17 +170,20 @@ fn main() -> Result<()> {
     let mut run = match &cli.command {
         Cmd::Init { update } => return init(*update),
         Cmd::Run { task } => {
-            let seconds = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
+            // Four digits from the clock and the command number make a same id in two folders rare.
+            let now = SystemTime::now().duration_since(UNIX_EPOCH)?;
+            let digits = (u64::from(now.subsec_nanos()) + u64::from(std::process::id())) % 10_000;
+            let stamp = format!("{}-{digits:04}", now.as_secs());
             fs::create_dir_all(&runs)
                 .with_context(|| format!("cannot make the folder {}", runs.display()))?;
             // `create_dir` fails if the id exists, so two runs never share an id.
             // Only "the folder is there already" makes it try the next id.
-            let mut id = format!("run-{seconds}");
+            let mut id = format!("run-{stamp}");
             for n in 1.. {
                 match fs::create_dir(runs.join(&id)) {
                     Ok(()) => break,
                     Err(e) if e.kind() == ErrorKind::AlreadyExists => {
-                        id = format!("run-{seconds}-{n}");
+                        id = format!("run-{stamp}-{n}");
                     }
                     Err(e) => bail!("cannot make the folder {}/{id}: {e}", runs.display()),
                 }

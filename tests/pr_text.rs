@@ -1081,15 +1081,3 @@ fn the_chat_shows_the_title_and_each_open_item_at_approval() {
     assert!(item.contains("approval"), "{item}");
     assert!(item.contains("[ ]"), "{item}");
 }
-
-#[test]
-fn the_version_is_0_1_26_in_the_four_files() {
-    let toml = text("Cargo.toml");
-    assert!(toml.contains("\nversion = \"0.1.26\"\n"), "Cargo.toml");
-    let lock = text("Cargo.lock");
-    let entry = "name = \"codeumbrella\"\nversion = \"0.1.26\"\n";
-    assert!(lock.contains(entry), "Cargo.lock");
-    for rel in [".claude-plugin/plugin.json", ".codex-plugin/plugin.json"] {
-        assert_eq!(json(rel)["version"], "0.1.26", "{rel}");
-    }
-}
