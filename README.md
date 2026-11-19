@@ -12,7 +12,9 @@ An attacker looks for weak points in the plan before you see the tests. A simpli
 
 A `security` checker reads it for weak points that a person can use to do damage. A user checker builds the work in a scratch folder. It runs the examples of the spec as a user does.
 
-The learner turns each problem of a run into a lesson. A lesson that a test can show becomes a lesson test on the branch. Each other lesson becomes a short entry. After the merge, the step `save_lessons` copies the entries to `.codeumbrella/lessons.md`. Git does not see that file. The workers of the next run read it. Then the step `clean_up` removes the two copies of the run.
+The learner turns each problem of a run into a lesson. A lesson that a test can show becomes a lesson test on the branch. Each other lesson becomes a short entry. After the merge, the step `save_lessons` copies the entries to `.codeumbrella/lessons.md`. Git does not see that file.
+
+The workers of the next run read it. Then the step `clean_up` removes the two copies of the run.
 
 If the builder finds a bad paper test, the planner corrects only that test, and you see the tests again.
 
