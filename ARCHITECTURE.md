@@ -25,7 +25,7 @@ SUPERVISOR ── uses your GitHub key ──► GITHUB: push · PR · merge (me
 │ security  in a sandbox · gets the plan             ──►  reads the change, security       │
 │ user      in a sandbox · gets the plan             ──►  runs the examples, scratch only  │
 │ learner   in a sandbox · gets the plan             ──►  writes lessons, lesson tests     │
-│ writer    in a sandbox · gets the plan + the PR    ──►  completes the PR text only      │
+│ writer    in a sandbox · gets the plan + the PR    ──►  completes the PR text only       │
 └──────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -77,7 +77,7 @@ work_was_done: a commit after mark? no ──► repair       │
   ▼ yes                                                 │
 no change in a locked folder? (clean copy)              │
   ▼ yes                                                 │
-push ──► find the PR and give it the new text, or open one │
+push ──► find the PR, give it the new text, or open one │
   ▼                                                     │
 YOU: PR? ───────────────────────────────────────────────┘
   ▼ yes
