@@ -281,13 +281,16 @@ fn remove(path: &Path) -> Result<()> {
 
 /// Ends the workers of the files `worker.<number>`, then removes the files.
 /// A number is a worker only if its start time is the one in the file.
+/// It first looks at each file and changes nothing. An error changes no file.
 fn end_workers(dir: &Path) -> Result<()> {
     let files = fs::read_dir(dir).with_context(|| format!("cannot read {}", dir.display()))?;
+    let mut found = Vec::new();
     for path in files.filter_map(|e| e.ok().map(|e| e.path())) {
         let name = path.file_name().unwrap_or_default().to_string_lossy();
         let Some(pid) = name.strip_prefix("worker.").and_then(number) else {
             continue;
         };
+        let mut ours = false;
         if alive(pid) {
             let start = Command::new("ps")
                 .args(["-o", "lstart=", "-p", &pid.to_string()])
@@ -299,12 +302,16 @@ fn end_workers(dir: &Path) -> Result<()> {
             })?;
             let start = String::from_utf8_lossy(&start.stdout);
             let held = fs::read_to_string(&path).unwrap_or_default();
-            if start.trim() == held.trim() {
-                let _ = Command::new("pkill")
-                    .args(["-TERM", "-P", &pid.to_string()])
-                    .output();
-                let _ = Command::new("kill").arg(pid.to_string()).output();
-            }
+            ours = start.trim() == held.trim();
+        }
+        found.push((path, pid, ours));
+    }
+    for (path, pid, ours) in found {
+        if ours {
+            let _ = Command::new("pkill")
+                .args(["-TERM", "-P", &pid.to_string()])
+                .output();
+            let _ = Command::new("kill").arg(pid.to_string()).output();
         }
         remove(&path)?;
     }

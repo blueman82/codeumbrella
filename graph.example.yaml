@@ -136,6 +136,16 @@ steps:
   look_at_tests:
     type: person
     on_bad: plan
+    next: mark
+
+  # No AI. This step writes the commit of this moment into the git name
+  # `refs/codeumbrella/before` of the work copy. The step `work_was_done`
+  # looks for a new commit after it. After each yes for the tests, it runs
+  # again. Thus a commit from before a no does not count.
+  mark:
+    type: command
+    run:
+      - [git, -C, ".codeumbrella/runs/{run}/work", update-ref, refs/codeumbrella/before, HEAD]
     next: build
 
   # A builder writes the code and commits it.
@@ -168,6 +178,22 @@ steps:
   check:
     type: fan
     fan: [check_tests, check_safety, check_review, check_security]
+    on_bad: repair
+    next: work_was_done
+
+  # No AI. This step looks for a commit after the step `mark`. It writes the
+  # new commits into `new-work.bundle` in the run folder. No step reads that
+  # file. With no new commit, git gives an error, so the result is bad. A bad
+  # result means no commit after your yes for the tests. The builder in
+  # `repair` then gets the error text. The step comes after `check`, because
+  # after a no for one paper test only the tests checker makes a commit.
+  # A worker can write in `.git` of its work copy. So this step is not a wall
+  # against a worker that cheats. It is a check for a worker that did nothing
+  # by error.
+  work_was_done:
+    type: command
+    run:
+      - [git, -C, ".codeumbrella/runs/{run}/work", bundle, create, ../new-work.bundle, "refs/codeumbrella/before..HEAD"]
     on_bad: repair
     next: no_locked_files
 

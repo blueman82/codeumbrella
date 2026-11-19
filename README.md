@@ -14,6 +14,8 @@ A `security` checker reads it for weak points that a person can use to do damage
 
 If the builder finds a bad paper test, the planner corrects only that test, and you see the tests again.
 
+Two steps with no AI look for work. After your yes for the tests, the step `mark` keeps the commit of that moment. After a good check, the step `work_was_done` looks for a new commit after `mark`. With no new commit, the builder must repair the work.
+
 ## Requirements: what the computer must have
 
 - Rust with `cargo`, to build the `codeumbrella` command. Check: `cargo --version`

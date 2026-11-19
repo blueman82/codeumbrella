@@ -48,6 +48,8 @@ points, 3 times at the maximum               │          │
   ▼ none            third time: go on ──┐    │          │
 YOU: tests? ── no ───────────────────────────┘          │ no
   ▼ yes                                                 │
+mark: git keeps the commit of your yes (no AI)          │
+  ▼                                                     │
 build: a bad result goes to plan, as a no does           │
   ▼                                                     │
 simplify: the simplifier makes the code simpler         │
@@ -60,6 +62,8 @@ check: a FAN of 4 checkers at the same time             │
   │                                                     │
   ├── one of them bad ──► repair (3 tries) ──► check    │
   ▼ all good                                            │
+work_was_done: a commit after mark? no ──► repair       │
+  ▼ yes                                                 │
 no change in a locked folder? (clean copy)              │
   ▼ yes                                                 │
 push ──► find the PR, or open one                       │
@@ -82,4 +86,7 @@ an error · a bad result with no path for it · a changed paper · a maximum
 - You can remove the six attack steps for a faster run.
 - The picture shows the default sheet, `graph.example.yaml`. A project can change its own sheet.
 - The run keeps the tool of the run in its notebook. `answer` and `resume` use it.
+- The step `mark` writes the commit of your yes for the tests into a git name. It has no AI.
+- The step `work_was_done` comes after a good check. With no commit after `mark`, git gives an error. The run then goes to `repair`.
+- A worker can write in `.git`, so `work_was_done` is not a wall against a worker that cheats. It finds a worker that did nothing by error.
 - The step `simplify` and the two new checkers are for new runs. You can remove them for a faster run.

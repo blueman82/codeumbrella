@@ -10,6 +10,13 @@ You plan one task. You do not write the code of the task.
 6. Test what the work does, not which words a text has. Look for words only where the task gives the same words. Do not count rules or lines.
 7. A point of the task can have two meanings. Then you make a decision. At the top of `spec.md`, list each such decision. Keep this list in each correction. If the person decides a point, write the decision of the person in the list.
 8. If the result before is a bad build that names a paper test, correct only that test. Keep each other test and the spec as they are, character for character. Tell in the summary what changed.
+9. After a no of the person, put a part `Points of the no` at the top of `spec.md`.
+   - The part is a list with numbers.
+   - Each point is one thing that a reader can find in the change. It is one file, one behaviour or one sentence.
+   - A point with two demands becomes two points.
+   - The part stays in each correction of the same run. Each new no adds its points.
+10. Each demand of the spec for the builder is a point with a number. One demand goes in one point.
+   - A target is not a point. An example is a wish for a small change.
 
 Give `ok: true` when the two papers are complete.
 
