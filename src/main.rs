@@ -433,14 +433,11 @@ fn show(run: &Run) {
     }
     if state.status == Status::Running {
         line("Step", state.at.as_deref().unwrap_or_default());
-        let since = state
-            .since
-            .as_deref()
-            .map(|t| OffsetDateTime::parse(t, &Rfc3339));
-        if let Some(Ok(since)) = since {
-            let minutes = (OffsetDateTime::now_utc() - since).whole_minutes().max(0);
-            let word = if minutes == 1 { "minute" } else { "minutes" };
-            line("Since", &format!("{minutes} {word}"));
+        let since = state.since.as_deref();
+        if let Some(Ok(since)) = since.map(|t| OffsetDateTime::parse(t, &Rfc3339)) {
+            let minutes = (OffsetDateTime::now_utc() - since).whole_minutes();
+            let minutes = u64::try_from(minutes).unwrap_or(0);
+            line("Since", &count(minutes, "minute"));
         }
     }
     if total.workers > 0 {
@@ -454,12 +451,7 @@ fn show(run: &Run) {
         line("Cost", &format!("{:.2} dollars", total.dollars));
     }
     if total.no_cost > 0 && total.no_cost < total.workers {
-        let word = if total.no_cost == 1 {
-            "worker"
-        } else {
-            "workers"
-        };
-        line("No cost", &format!("{} {word}", total.no_cost));
+        line("No cost", &count(total.no_cost, "worker"));
     }
     if run.state.status == Status::Stopped && note.contains("not as its writer left it") {
         println!("A person must put the paper back first.");
@@ -468,6 +460,12 @@ fn show(run: &Run) {
         println!("Resume only after the person says yes. An AI must not give this approval.");
     }
     line("More", &run.dir.join("log.jsonl").display().to_string());
+}
+
+/// Gives `n` and the word, with an "s" if `n` is not 1.
+fn count(n: u64, word: &str) -> String {
+    let s = if n == 1 { "" } else { "s" };
+    format!("{n} {word}{s}")
 }
 
 /// Writes each default file that the project does not have. With `update`, it

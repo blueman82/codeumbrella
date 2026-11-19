@@ -412,10 +412,9 @@ impl Run {
         before: Option<&Outcome>,
     ) -> Result<Outcome> {
         let start = Instant::now();
-        let this = &*self;
         let results: Vec<(Result<Outcome>, Numbers)> = thread::scope(|scope| {
             let part = |name| match graph.step(name) {
-                Ok(s) => this.work(name, s, roles, worker, before),
+                Ok(s) => self.work(name, s, roles, worker, before),
                 Err(e) => (Err(e), Numbers::default()),
             };
             let fan = step.fan.iter();
