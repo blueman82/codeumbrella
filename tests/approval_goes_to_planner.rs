@@ -1,5 +1,5 @@
 //! Tests: a no at the PR stop goes to the planner. The worker is simulated.
-//! A bad build goes to the planner too.
+//! A bad build goes to the planner too. A bad repair goes to the planner too.
 
 use anyhow::Result;
 use codeumbrella::engine::{Job, Outcome, Run, Status, Worker};
@@ -8,6 +8,15 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::{env, fs, process};
+
+/// The fan parts of `check` that the call lists do not show. They run at
+/// the same time, so their order is not fixed.
+const OTHER_PARTS: [&str; 4] = [
+    "check_safety",
+    "check_review",
+    "check_security",
+    "check_use",
+];
 
 /// A worker that always gives a good result and records the steps that it did.
 #[derive(Default)]
@@ -97,6 +106,74 @@ impl Worker for BadBuilds {
     }
 }
 
+/// A worker whose step `check_tests` gives a bad result `checks` times,
+/// and whose step `repair` gives a bad result `repairs` times.
+struct BadRepairs {
+    checks: Mutex<u32>,
+    repairs: Mutex<u32>,
+    calls: Mutex<Vec<String>>,
+    before_plan: Mutex<Vec<String>>,
+}
+
+impl BadRepairs {
+    fn new(checks: u32, repairs: u32) -> Self {
+        Self {
+            checks: Mutex::new(checks),
+            repairs: Mutex::new(repairs),
+            calls: Mutex::default(),
+            before_plan: Mutex::default(),
+        }
+    }
+
+    fn count(&self, step: &str) -> usize {
+        let calls = self.calls.lock().unwrap();
+        calls.iter().filter(|c| c.as_str() == step).count()
+    }
+
+    fn calls(&self) -> Vec<String> {
+        self.calls.lock().unwrap().clone()
+    }
+}
+
+/// Takes one from the count. Tells if the count was above 0.
+fn take_one(left: &Mutex<u32>) -> bool {
+    let mut left = left.lock().unwrap();
+    let bad = *left > 0;
+    if bad {
+        *left -= 1;
+    }
+    bad
+}
+
+impl Worker for BadRepairs {
+    fn run(&self, job: &Job) -> Result<Outcome> {
+        if !OTHER_PARTS.contains(&job.step) {
+            self.calls.lock().unwrap().push(job.step.to_owned());
+        }
+        if job.step == "plan" {
+            let before = job.before.map(|o| o.summary.clone());
+            let mut list = self.before_plan.lock().unwrap();
+            list.push(before.unwrap_or_default());
+        }
+        for paper in job.writes {
+            let path = job.dir.join("papers").join(paper);
+            fs::write(path.join("file.md"), job.step)?;
+        }
+        let bad = match job.step {
+            "check_tests" => take_one(&self.checks),
+            "repair" => take_one(&self.repairs),
+            _ => false,
+        };
+        let summary = if bad && job.step == "repair" {
+            "test is bad in line 9".to_owned()
+        } else {
+            format!("{} ran", job.step)
+        };
+        let ok = !bad;
+        Ok(Outcome { ok, summary })
+    }
+}
+
 fn root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
 }
@@ -124,6 +201,24 @@ fn text(rel: &str) -> String {
     fs::read_to_string(root().join(rel)).unwrap()
 }
 
+/// The rule with this number of a page, with its sub-points.
+fn rule_text(path: &str, number: usize) -> String {
+    let head = format!("{number}. ");
+    let next = format!("{}. ", number + 1);
+    let page = text(path);
+    let mut found = Vec::new();
+    let mut inside = false;
+    for line in page.lines() {
+        let goes_on = inside && !line.is_empty() && !line.starts_with(&next);
+        inside = line.starts_with(&head) || goes_on;
+        if inside {
+            found.push(line);
+        }
+    }
+    assert!(!found.is_empty(), "{path}: no rule {number}");
+    found.join("\n")
+}
+
 #[test]
 fn the_sheet_sends_a_no_at_the_approval_to_the_plan() {
     let graph = Graph::load(&root().join("graph.example.yaml"), &root().join("roles")).unwrap();
@@ -143,10 +238,13 @@ fn the_step_check_still_goes_to_repair() {
 }
 
 #[test]
-fn the_default_sheet_sends_a_bad_build_to_the_plan_and_a_bad_repair_nowhere() {
+fn the_default_sheet_sends_a_bad_build_and_a_bad_repair_to_the_plan() {
     let graph = Graph::load(&root().join("graph.example.yaml"), &root().join("roles")).unwrap();
     assert_eq!(graph.step("build").unwrap().on_bad.as_deref(), Some("plan"));
-    assert_eq!(graph.step("repair").unwrap().on_bad, None);
+    let repair = graph.step("repair").unwrap();
+    assert_eq!(repair.on_bad.as_deref(), Some("plan"));
+    assert_eq!(repair.max_tries, Some(3));
+    assert_eq!(repair.next.as_deref(), Some("check"));
     assert_eq!(graph.step("plan").unwrap().max_tries, Some(3));
 }
 
@@ -272,6 +370,83 @@ fn three_bad_builds_stop_the_run_because_the_plan_has_no_try_left() {
 }
 
 #[test]
+fn a_bad_repair_goes_to_the_planner_and_waits_at_look_at_tests() {
+    let (graph, roles) = sheet();
+    let worker = BadRepairs::new(1, 1);
+    let mut run = Run::start(folder(), "a task", &graph).unwrap();
+    fs::write(run.dir.join("work/file"), "x").unwrap();
+    run.go(&graph, &roles, &worker).unwrap();
+    assert_eq!(run.state.at.as_deref(), Some("look_at_tests"));
+    run.answer(true, "").unwrap();
+    run.go(&graph, &roles, &worker).unwrap();
+
+    // The run does not stop. The planner and the attacker work again.
+    assert_eq!(run.state.status, Status::Waiting, "{}", run.state.note);
+    assert_eq!(run.state.at.as_deref(), Some("look_at_tests"));
+    let calls = [
+        "plan",
+        "attack_plan",
+        "build",
+        "simplify",
+        "check_tests",
+        "repair",
+        "plan",
+        "attack_plan",
+    ];
+    assert_eq!(worker.calls(), calls);
+    // The planner gets the bad result of the builder in `repair`.
+    let before = worker.before_plan.lock().unwrap().clone();
+    assert_eq!(before.len(), 2);
+    assert_eq!(before[1], "test is bad in line 9");
+    // A bad repair uses one try of the plan, as a bad build does.
+    assert_eq!(run.state.tries.get("plan"), Some(&2));
+    assert_eq!(run.state.tries.get("repair"), Some(&1));
+    assert!(!run.state.results.contains_key("merge"));
+}
+
+#[test]
+fn after_a_yes_after_a_bad_repair_the_run_does_the_build_again() {
+    let (graph, roles) = sheet();
+    let worker = BadRepairs::new(1, 1);
+    let mut run = Run::start(folder(), "a task", &graph).unwrap();
+    fs::write(run.dir.join("work/file"), "x").unwrap();
+    run.go(&graph, &roles, &worker).unwrap();
+    for _ in 0..2 {
+        run.answer(true, "").unwrap();
+        run.go(&graph, &roles, &worker).unwrap();
+    }
+
+    // After the second yes: the build, the simplifier and a good check.
+    let calls = worker.calls();
+    assert_eq!(calls.len(), 11, "{calls:?}");
+    let after = calls[8..].to_vec();
+    assert_eq!(after, ["build", "simplify", "check_tests"]);
+    assert_eq!(worker.count("build"), 2);
+    assert_eq!(worker.count("repair"), 1);
+    assert_eq!(run.state.status, Status::Waiting, "{}", run.state.note);
+    assert_eq!(run.state.at.as_deref(), Some("approval"));
+}
+
+#[test]
+fn three_good_repairs_with_a_bad_check_each_time_stop_the_run_at_repair() {
+    let (graph, roles) = sheet();
+    let worker = BadRepairs::new(4, 0);
+    let mut run = Run::start(folder(), "a task", &graph).unwrap();
+    fs::write(run.dir.join("work/file"), "x").unwrap();
+    run.go(&graph, &roles, &worker).unwrap();
+    run.answer(true, "").unwrap();
+    run.go(&graph, &roles, &worker).unwrap();
+
+    // The end of the tries of `repair` stops the run. It does not go to the plan.
+    assert_eq!(run.state.status, Status::Stopped);
+    assert_eq!(run.state.at.as_deref(), Some("repair"));
+    assert!(run.state.note.contains("maximum of 3 tries"));
+    assert_eq!(worker.count("repair"), 3);
+    assert_eq!(worker.count("check_tests"), 4);
+    assert_eq!(worker.count("plan"), 1);
+}
+
+#[test]
 fn the_builder_and_the_checker_obey_the_spec_over_the_task() {
     let rule = "If the task and the paper `spec` disagree, obey the spec. The spec has the corrections of the person.";
     for path in ["roles/builder.md", "roles/checker.md"] {
@@ -286,13 +461,10 @@ fn the_builder_has_no_rule_about_a_new_test_file() {
 
 #[test]
 fn the_builder_gives_a_bad_paper_test_to_the_planner() {
-    let page = text("roles/builder.md");
-    let rule = page.lines().find(|l| l.starts_with("9. ")).unwrap();
-    assert!(rule.contains("ok: false"), "{rule}");
-    assert!(rule.contains("planner"), "{rule}");
-    assert!(rule.contains("line"), "{rule}");
-    assert!(rule.contains("cause"), "{rule}");
-    assert!(rule.contains("commit"), "{rule}");
+    let rule = rule_text("roles/builder.md", 9);
+    for word in ["ok: false", "planner", "line", "cause", "commit"] {
+        assert!(rule.contains(word), "{word}: {rule}");
+    }
     assert!(!rule.contains("what the person must do"), "{rule}");
 }
 
@@ -303,6 +475,7 @@ fn the_planner_corrects_only_the_bad_test_after_a_bad_build() {
     assert!(rule.contains("only that test"), "{rule}");
     assert!(rule.contains("character for character"), "{rule}");
     assert!(rule.contains("summary"), "{rule}");
+    assert!(rule.contains("bad repair"), "{rule}");
 }
 
 #[test]

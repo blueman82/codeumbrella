@@ -29,7 +29,7 @@ SUPERVISOR ── uses your GitHub key ──► GITHUB: push · PR · merge (me
 
 - The plan paper has the name `spec`.
 - The reviewer and the simplifier read the language pages in `roles/languages/` for each language in the change. No other role reads them.
-- The builder, the checker, the simplifier and the user checker can connect to a server on the same computer, for example a database.
+- The builder, the checker, the simplifier and the user checker can connect to a server on the same computer. An example is a database.
 - A worker can read the tests paper, but it cannot change it. The builder and the checker cannot write to the papers folder.
 - The supervisor compares each paper with its fingerprint before each step.
 - The workers write in a copy of the project in the `work` folder of the run. A run does not change the project folder or its branch.
@@ -51,7 +51,7 @@ YOU: tests? ── no ───────────────────�
   ▼ yes                                                 │
 mark: git keeps the commit of your yes (no AI)          │
   ▼                                                     │
-build: a bad result goes to plan, as a no does           │
+build: a bad result goes to plan, as a no does          │
   ▼                                                     │
 simplify: the simplifier makes the code simpler         │
   ▼                                                     │
@@ -60,9 +60,10 @@ check: a FAN of 5 checkers at the same time             │
   ├──► check_safety   reads the change for problems     │
   ├──► check_review   reads the change for errors       │
   ├──► check_security reads the change for security     │
-  └──► check_use      runs the examples as a user        │
+  └──► check_use      runs the examples as a user       │
   │                                                     │
   ├── one of them bad ──► repair (3 tries) ──► check    │
+  │                   a bad repair goes to plan         │
   ▼ all good                                            │
 work_was_done: a commit after mark? no ──► repair       │
   ▼ yes                                                 │
@@ -80,8 +81,9 @@ an error · a bad result with no path for it · a changed paper · a maximum
 
 - A fan is a step that starts two or more worker steps at the same time. It waits for all of them.
 - `resume` tries a stopped step again. The person must say yes first. After a changed paper, a person must put the paper back first.
-- The plan step has 3 tries for one run, and the first plan uses one. A no or a bad build uses one more. The third bad build stops the run.
+- The plan step has 3 tries for one run, and the first plan uses one. A no, a bad build or a bad repair uses one more. After the third try the run stops.
 - A bad build goes to `plan`. The planner corrects only the bad paper test. The attacker looks, you see the tests again, and `build` runs again.
+- A bad repair also goes to `plan`, on the same path. After the third try of `repair`, the run stops.
 - A bad result of the attacker goes to a step `correct_plan`. The planner corrects the plan, and the attacker looks again.
 - There are 3 attacks at the maximum for each plan. After the third correction, the person sees the tests.
 - The six steps go in one line, with no path back. Thus the two workers cannot go in a circle.

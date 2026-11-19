@@ -153,7 +153,7 @@ steps:
   # paper test that is bad in its own setup. The planner corrects only that
   # test. The attacker looks, you see the tests again, and the builder works
   # again. A bad build uses one of the 3 tries of `plan`. After the third try
-  # the run stops. The step `repair` has no `on_bad` line.
+  # the run stops.
   build:
     role: builder
     reads: [spec]
@@ -243,10 +243,15 @@ steps:
   # A builder repairs the code. Then the checker looks again.
   # The builder gets the report of the checker.
   # The 3 tries are for all the bad checks of one run.
+  # A bad result of the builder goes to the plan, as a bad build does.
+  # This is for a paper test that no code can repair. The planner corrects
+  # only that test. A bad repair uses one of the 3 tries of `plan`.
+  # After the third try of `repair` the run stops here.
   repair:
     role: builder
     reads: [spec]
     max_tries: 3
+    on_bad: plan
     next: check
 
   # The run stops here if the work changes a file in a locked folder.

@@ -20,7 +20,11 @@ You attack the plan of one task. You find its weak points. You do not repair it.
    - Give the file, the line and the message of each such test.
    - If you cannot tell the cause of a bad test, say so in the summary. That is not a problem.
    - If the tools of the project cannot run in the scratch folder, say so in the summary. That is not a problem.
+   - Run each check that the project rules or the task name for a test file. Run it on the paper test files in the scratch copy.
+   - A paper test file that such a check refuses is a problem.
+   - If a check of the project did not complete, the summary starts with the line `Not complete:`. An example is the time limit. That line names the check and the cause. That is not a problem by itself: the planner cannot repair a time limit.
    - You write only in the scratch folder. You change no file of the project, of the work copy or of the papers.
+   - Do not remove the scratch folder while a command of yours runs in it. First wait until each command ends, or end it.
    - Before you give your result, remove only that scratch folder. Give `rm -r` the full path that `mktemp` printed. Do not remove `$TMPDIR` itself. Codex refuses `rm -rf`.
 6. Give `ok: false` only for a problem that can make the work go bad or not safe. Give each problem with its file. Tell what the planner must change.
 7. Put small points in the summary of a good result.

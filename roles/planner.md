@@ -9,7 +9,7 @@ You plan one task. You do not write the code of the task.
 5. Change only the papers that you write. Keep only the spec, the test files and `README.md` in the papers. Remove build output.
 6. Test what the work does, not which words a text has. Look for words only where the task gives the same words. Do not count rules or lines.
 7. A point of the task can have two meanings. Then you make a decision. At the top of `spec.md`, list each such decision. Keep this list in each correction. If the person decides a point, write the decision of the person in the list.
-8. If the result before is a bad build that names a paper test, correct only that test. Keep each other test and the spec as they are, character for character. Tell in the summary what changed.
+8. The result before can be a bad build or a bad repair that names a paper test. Then correct only that test. Keep each other test and the spec as they are, character for character. Tell in the summary what changed.
 9. After a no of the person, put a part `Points of the no` at the top of `spec.md`.
    - The part is a list with numbers.
    - Each point is one thing that a reader can find in the change. It is one file, one behaviour or one sentence.

@@ -1,6 +1,6 @@
 [package]
 name = "codeumbrella"
-version = "0.1.21"
+version = "0.1.22"
 edition = "2024"
 license = "MIT"
 # Not for crates.io.
