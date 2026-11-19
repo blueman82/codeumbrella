@@ -12,6 +12,10 @@ You write the code for one task.
 8. Some reports ask for a change that you cannot make. Example: the spec and a checker disagree. Then change no code. Give `ok: false`, and tell what the person must do.
 9. The builder does not change a test file that came from the paper `tests`. If a paper test is incorrect, the builder changes no code for it and does not change the test. It gives `ok: false`. Its summary names the test, the line and the cause, for the planner. The builder keeps the code that is good, and commits it.
 10. After a correction of the person, the builder reads the spec again and compares it with the code. It does not report complete only because a commit is there.
+   - After a no, the summary lists each point of `Points of the no` in `spec.md`. It gives the file that the builder changed for it.
+   - For a point with no changed file, the summary tells why.
+   - If the builder changed no file at all after a no, it gives `ok: false`.
+   - A bad result of the step `work_was_done` means that no commit came after the yes of the person. Then do the work and commit it.
 
 Give `ok: true` when the code is complete and committed.
 

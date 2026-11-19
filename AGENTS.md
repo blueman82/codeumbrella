@@ -87,6 +87,7 @@ To install the command and the chat command on a computer, run `./install.sh`.
 | `tests/small_repairs.rs` | Tests of version 0.1.11: the lock number, `status --wait`, the work folder, run ids, the stop message. |
 | `tests/kill_repair.rs` | Tests of the repair after a kill. The last four use `ps` and `pkill`, and skip themselves in a sandbox. |
 | `tests/stop.rs` | Tests of `stop`, with a simulated `claude`. The last three use `ps` and `pkill`, and skip themselves in a sandbox. |
+| `tests/find_each_point.rs` | Tests of `mark`, `work_was_done`, the new rules lines and the repair that changes no file. |
 | `tests/language_pages.rs` | Tests of the six language pages, `init` and the two rules pages. |
 | `install.sh` | Installs the command and the chat command. |
 | `LICENSE` | The MIT licence. Do not change its text. |
@@ -104,6 +105,8 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - `next` is the step after a good result. `on_bad` is the step after a bad result.
 - A step that an `on_bad` line goes to must have `max_tries`.
 - A line that the supervisor does not know is an error.
+- The default sheet has two command steps with no AI. `mark` comes after `look_at_tests` and before `build`. It writes the commit of that moment into `refs/codeumbrella/before` of the work copy.
+- `work_was_done` comes after a good `check` and before `no_locked_files`. It makes `new-work.bundle` in the run folder from the commits after `mark`. With no new commit, git gives an error, and the run goes to `repair`.
 
 ## Safety rules
 
@@ -179,6 +182,17 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - The safety checker also reads the files that use the changed lines, for example settings files. A run on 17 November 2026 showed the cause.
 - The four checkers work in the same copy. Only the tests checker writes there.
 - The safety checker does not read the commit that the tests checker makes at the same time. The person sees that commit in the PR.
+- A run on 18 November 2026 showed this. After a no of the person, the builder changed no file. All four checkers gave a good result.
+- After a no, the planner puts a part `Points of the no` at the top of `spec.md`. It is a list with numbers.
+- Each point of that part is one file, one behaviour or one sentence. A point with two demands becomes two points.
+- The part stays in each correction of the run. Each new no adds its points.
+- Rule 1 of the reviewer gives one line for each point. It is `found` with the file and the line, or `not found`.
+- One `not found` gives `ok: false`. A commit or a word of the builder is not a proof.
+- The reviewer looks in the full change of the run branch. A point that a change cannot show gets `kept` or `not kept`.
+- The attacker names each new paper test that is good before the code is written. Such a test shows nothing.
+- The step `mark` keeps the commit of the yes for the tests. The step `work_was_done` gives a bad result with no commit after it.
+- A worker can write in `.git` of its work copy. So `work_was_done` is not a wall against a worker that cheats. It finds a worker that did nothing by error.
+- The end of the workers first looks at each file `worker.<number>`. Thus an error of `ps` changes no file.
 
 ## Rust rules
 
