@@ -66,7 +66,7 @@ Use the same command line for `answer` and `resume`, with no `--tool`. Then run 
 
 The output has one fact on each line: `Run:`, `Status:`, `Note:` and more. A run with status `Running` also shows `Step:` and `Since:`. The lines `Workers:`, `Time:` and `Cost:` give the total of the workers. `More:` gives the path of the log.
 
-- At each question, and at the status `Done` or `Stopped`, tell the person the lines `Workers:`, `Time:` and `Cost:`.
+- Tell the person the lines `Workers:`, `Time:` and `Cost:`. Do this at each question, and at the status `Done` or `Stopped`.
 - Also tell each limit of the numbers that fits the run. `AGENTS.md` of the factory has the list "Limits of the numbers". Example: a run with Codex workers has no full cost. The line `No cost:` shows such workers.
 - `Time:` is in worker minutes. It is a sum of worker times, not the time on the clock. The workers of a fan work at the same time.
 - `Cost:` is the number that the Claude tool writes. With a subscription, the person pays a different sum.
