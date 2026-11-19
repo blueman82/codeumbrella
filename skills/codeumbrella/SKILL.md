@@ -77,6 +77,7 @@ The output has one fact on each line: `Run:`, `Status:`, `Note:` and more. A run
 - At `look_at_tests`, the result before can start with `Not complete:`. Then tell the person that no worker ran that check on the paper tests. Offer to run that check before the person answers.
 - After a no, at the next `look_at_tests`, read the part `Points of the no` at the top of `spec.md`. Tell the person each point. Thus the person sees that each point of the no is there.
 - Status `Waiting` at the step `approval`: give the person the PR link from the note. Then get a yes or a no from the person.
+- At the question `approval`, read `.codeumbrella/runs/<run id>/papers/pr/title.txt` and `body.md` of the same paper. Show the person the title from `title.txt`. Show each `[ ]` line of the checklist in `body.md`, with its cause. If no line has `[ ]`, tell the person that.
 - At the question `approval`, read the lines of `check_use` in `log.jsonl` of the run. Tell the person each `Not run:` line before the person answers. Such an example did not run in the sandbox.
 - At the question `approval`, compare `.codeumbrella/runs/<run id>/papers/lessons/lessons.md` with `.codeumbrella/lessons.md` of the project. Show the person the change of the paper `lessons`. Also tell the person if the PR adds a lesson test. The file `tests.txt` of that paper names each lesson test.
 - Before you send an answer, tell the person what it does. A yes continues the run. A no at `look_at_tests` sends the work back to the planner. A no at `approval` sends the work back to the planner. The person then sees the tests again. The PR stays open.
@@ -87,6 +88,7 @@ The output has one fact on each line: `Run:`, `Status:`, `Note:` and more. A run
 - If the command says that a different command works on the run, do not send the answer again. Run `codeumbrella status` and tell the person.
 - Status `Stopped`: show the note to the person. After the person corrects the cause, run `codeumbrella resume <run id>` only after the person says yes.
 - If the note says that a paper is not as its writer left it, `resume` does not help. A person must put the paper back first, or start a new run.
+- If the step `open_pr` stopped the run after a bad `find_pr`, read the note. A paper `pr` with a link is refused, so no file outside the paper goes to GitHub. Show this to the person.
 - If the step `no_locked_files` stopped the run, the work changes `.github`, `.claude` or `.codeumbrella`. Show this to the person. Do not go around it.
 - Status `Done`: tell the person that the merge of the PR is complete. Tell the person to run `git pull`. The workers wrote in a copy, so the project branch did not change. The step `clean_up` removed the copies `work` and `clean`. The record stays: `state.json`, `log.jsonl` and the papers.
 

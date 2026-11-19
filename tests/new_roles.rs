@@ -254,7 +254,7 @@ fn the_default_sheet_has_the_step_simplify_between_build_and_learn() {
     assert_eq!(simplify.next.as_deref(), Some("learn"));
     assert_eq!(simplify.on_bad, None);
     let repair = graph.step("repair").unwrap();
-    assert_eq!(repair.next.as_deref(), Some("check"));
+    assert_eq!(repair.next.as_deref(), Some("write_pr"));
     // Only `build` goes to `simplify`. The repair does not go through it.
     for (name, step) in &graph.steps {
         let to = [&step.next, &step.on_bad].contains(&&Some("simplify".to_owned()));
@@ -284,7 +284,12 @@ fn the_fan_of_the_check_has_five_parts() {
     ] {
         let part = graph.step(name).unwrap();
         assert_eq!(part.role.as_deref(), Some(role), "{name}");
-        assert_eq!(part.reads, ["spec"], "{name}");
+        let reads: &[&str] = if name == "check_review" {
+            &["spec", "pr"]
+        } else {
+            &["spec"]
+        };
+        assert_eq!(part.reads, reads, "{name}");
         assert_eq!(part.writes, [] as [String; 0], "{name}");
     }
 }

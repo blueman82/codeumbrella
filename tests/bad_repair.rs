@@ -249,7 +249,7 @@ fn only_the_step_repair_gets_a_new_line_in_the_sheet() {
     let repair = graph.step("repair").unwrap();
     assert_eq!(repair.role.as_deref(), Some("builder"));
     assert_eq!(repair.reads, ["spec"]);
-    assert_eq!(repair.next.as_deref(), Some("check"));
+    assert_eq!(repair.next.as_deref(), Some("write_pr"));
     let build = graph.step("build").unwrap();
     assert_eq!(build.next.as_deref(), Some("simplify"));
 }

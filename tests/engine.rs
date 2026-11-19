@@ -118,6 +118,7 @@ fn a_good_run_stops_two_times_for_the_person_and_then_ends() {
             "build",
             "simplify",
             "learn",
+            "write_pr",
             "check_tests"
         ]
     );
@@ -150,10 +151,13 @@ fn a_bad_check_goes_to_repair_and_back() {
             "build",
             "simplify",
             "learn",
+            "write_pr",
             "check_tests",
             "repair",
+            "write_pr",
             "check_tests",
             "repair",
+            "write_pr",
             "check_tests"
         ]
     );
@@ -212,7 +216,7 @@ fn the_repair_stops_at_its_maximum() {
     // After `resume`, the run can do the stopped step again.
     run.state.tries.remove("repair");
     run.go(&graph, &roles, &worker).unwrap();
-    assert_eq!(worker.calls.lock().unwrap().len(), 6 + 2 * 3 + 2 * 3);
+    assert_eq!(worker.calls.lock().unwrap().len(), 7 + 3 * 3 + 3 * 3);
 }
 
 #[test]
@@ -253,6 +257,7 @@ fn a_no_at_the_approval_sends_the_work_back_to_the_planner() {
             "build",
             "simplify",
             "learn",
+            "write_pr",
             "check_tests",
             "plan",
             "attack_plan"

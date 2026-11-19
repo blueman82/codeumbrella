@@ -5,7 +5,8 @@
       "Glob",
       "Grep",
       "Edit(/{project}/.codeumbrella/runs/{run}/papers/spec/**)",
-      "Edit(/{project}/.codeumbrella/runs/{run}/papers/tests/**)"
+      "Edit(/{project}/.codeumbrella/runs/{run}/papers/tests/**)",
+      "Edit(/{project}/.codeumbrella/runs/{run}/papers/pr/**)"
     ],
     "deny": [
       "Bash",
