@@ -95,6 +95,7 @@ an error · a bad result with no path for it · a changed paper · a maximum
 - You can remove the six attack steps for a faster run.
 - The picture shows the default sheet, `graph.example.yaml`. A project can change its own sheet.
 - The run keeps the tool of the run in its notebook. `answer` and `resume` use it.
+- The notebook also keeps the total of the numbers of the workers. `status` shows it.
 - The step `mark` writes the commit of your yes for the tests into a git name. It has no AI.
 - The step `work_was_done` comes after a good check. With no commit after `mark`, git gives an error. The run then goes to `repair`.
 - A worker can write in `.git`, so `work_was_done` is not a wall against a worker that cheats. It finds a worker that did nothing by error.

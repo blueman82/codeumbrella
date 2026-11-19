@@ -157,7 +157,7 @@ fn a_step_with_model_and_effort_gives_them_to_claude() {
     tool(&dir, "claude", CLAUDE);
     sheet(&dir, TWO_STEPS, "model: opus\n    effort: high", "");
     let run = cu(&dir, &["run", "a task"]);
-    assert!(out(&run).contains("Status: Done"), "{}", out(&run));
+    assert!(out(&run).contains("Status:   Done"), "{}", out(&run));
     let all = calls(&dir, "claude");
     let (one, other) = split(&all, "--model", "opus");
     assert!(pair(one, "--effort", "high"), "{one:?}");
@@ -171,7 +171,7 @@ fn a_step_with_only_one_of_the_two_lines_gives_only_that_option() {
     tool(&dir, "claude", CLAUDE);
     sheet(&dir, TWO_STEPS, "effort: xhigh", "model: haiku");
     let run = cu(&dir, &["run", "a task"]);
-    assert!(out(&run).contains("Status: Done"), "{}", out(&run));
+    assert!(out(&run).contains("Status:   Done"), "{}", out(&run));
     let all = calls(&dir, "claude");
     let (effort, model) = split(&all, "--effort", "xhigh");
     assert!(!effort.iter().any(|w| w == "--model"), "{effort:?}");
@@ -186,7 +186,7 @@ fn a_step_with_model_and_effort_gives_them_to_codex() {
     let lines = "model: gpt-6.2-sol\n    effort: medium";
     sheet(&dir, TWO_STEPS, lines, "");
     let run = cu(&dir, &["--tool", "codex", "run", "a task"]);
-    assert!(out(&run).contains("Status: Done"), "{}", out(&run));
+    assert!(out(&run).contains("Status:   Done"), "{}", out(&run));
     let all = calls(&dir, "codex");
     let (one, other) = split(&all, "-m", "gpt-6.2-sol");
     let effort = "model_reasoning_effort=\"medium\"";
@@ -204,7 +204,7 @@ fn a_run_with_the_claude_tool_starts_codex_for_a_step_with_tool_codex() {
     tool(&dir, "codex", CODEX);
     sheet(&dir, TWO_STEPS, "tool: codex\n    model: gpt-6-luna", "");
     let run = cu(&dir, &["run", "a task"]);
-    assert!(out(&run).contains("Status: Done"), "{}", out(&run));
+    assert!(out(&run).contains("Status:   Done"), "{}", out(&run));
     let claude = calls(&dir, "claude");
     let codex = calls(&dir, "codex");
     assert_eq!((claude.len(), codex.len()), (1, 1));
@@ -220,7 +220,7 @@ fn a_run_with_the_codex_tool_starts_claude_for_a_step_with_tool_claude() {
     tool(&dir, "codex", CODEX);
     sheet(&dir, TWO_STEPS, "", "tool: claude\n    model: sonnet");
     let run = cu(&dir, &["--tool", "codex", "run", "a task"]);
-    assert!(out(&run).contains("Status: Done"), "{}", out(&run));
+    assert!(out(&run).contains("Status:   Done"), "{}", out(&run));
     let claude = calls(&dir, "claude");
     let codex = calls(&dir, "codex");
     assert_eq!((claude.len(), codex.len()), (1, 1));
@@ -235,7 +235,7 @@ fn the_role_of_a_step_needs_the_settings_file_of_the_tool_that_the_step_uses() {
     fs::remove_file(dir.join(".codeumbrella/roles/builder.codex.txt")).unwrap();
     sheet(&dir, TWO_STEPS, "", "tool: codex");
     let run = cu(&dir, &["run", "a task"]);
-    assert!(out(&run).contains("Status: Stopped"), "{}", out(&run));
+    assert!(out(&run).contains("Status:   Stopped"), "{}", out(&run));
     assert!(out(&run).contains("cannot read the settings"));
     assert!(calls(&dir, "codex").is_empty(), "codex started");
     // With the Claude tool for that step, the same role works. A new project
@@ -246,7 +246,7 @@ fn the_role_of_a_step_needs_the_settings_file_of_the_tool_that_the_step_uses() {
     fs::remove_file(dir.join(".codeumbrella/roles/builder.codex.txt")).unwrap();
     sheet(&dir, TWO_STEPS, "", "tool: claude");
     let run = cu(&dir, &["run", "a task"]);
-    assert!(out(&run).contains("Status: Done"), "{}", out(&run));
+    assert!(out(&run).contains("Status:   Done"), "{}", out(&run));
 }
 
 #[test]
@@ -255,7 +255,7 @@ fn a_part_of_a_fan_gets_its_own_model_and_effort() {
     tool(&dir, "claude", CLAUDE);
     sheet(&dir, A_FAN, "model: opus\n    effort: high", "");
     let run = cu(&dir, &["run", "a task"]);
-    assert!(out(&run).contains("Status: Done"), "{}", out(&run));
+    assert!(out(&run).contains("Status:   Done"), "{}", out(&run));
     let all = calls(&dir, "claude");
     // One call for `one`, and one for each part of the fan.
     assert_eq!(all.len(), 3);

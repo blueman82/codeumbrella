@@ -21,9 +21,9 @@ The supervisor knows nothing about software work. All knowledge of the steps is 
 | Fan | A step that starts two or more worker steps at the same time, and waits for all of them. |
 | Supervisor | The code in `src/graph.rs`, `src/engine.rs`, `src/main.rs`, `src/log.rs` and `src/lib.rs`. |
 | Tool part | The code that starts one type of worker. `src/claude.rs` is the part for Claude. `src/codex.rs` is the part for Codex. |
-| Notebook | `.codeumbrella/runs/<run-id>/state.json`: where the run is, and the tool of the run. |
+| Notebook | `.codeumbrella/runs/<run-id>/state.json`: where the run is, and the tool of the run. `since` is the start time of the step of this moment. `total` has the sum of the numbers of the workers: `workers`, `seconds`, `dollars`, `tokens_in`, `tokens_out` and `no_cost`. |
 | Tool of the run | The tool that `run` got from `--tool` (default Claude). The notebook keeps it. `answer` and `resume` use it. |
-| Log | `log.jsonl` in the run folder: one line for each step that ended. |
+| Log | `log.jsonl` in the run folder: one line for each step that ended. The line of a worker step also has the numbers of its worker: `worker_seconds`, `dollars`, `turns`, `model`, `tokens_in` and `tokens_out`. A field is there only if the tool gives it. |
 | `worker.<number>` | A file in the run folder. It holds the start time of the worker with that process number. |
 | `trace` | `<step>.<number>.trace.jsonl` in the run folder: all that one worker did in one try. |
 | Paper | A folder in `.codeumbrella/runs/<run-id>/papers/` that one step writes and other steps read. |
@@ -44,7 +44,7 @@ codeumbrella init                              # put the default sheet and rules
 codeumbrella init --update                     # replace changed factory files with the new defaults, keep a copy of each as `.before`
 codeumbrella run "<task>"                      # start a run with Claude workers
 codeumbrella --tool codex run "<task>"         # start a run with Codex workers. The run keeps this tool
-codeumbrella status [run-id]                   # show where a run is. After a kill, it repairs the run first (see Safety rules)
+codeumbrella status [run-id]                   # show where a run is: the step of this moment and the total of the workers. After a kill, it repairs the run first (see Safety rules)
 codeumbrella status --wait <run-id>            # wait until the run is not `Running`, then show it
 codeumbrella answer <run-id> <step> yes|no ["text"]   # answer the question of that step, then continue
 codeumbrella stop <run-id>                     # end an active run: its command and its workers. Only after the person says stop
@@ -95,6 +95,7 @@ To install the command and the chat command on a computer, run `./install.sh`.
 | `tests/bad_repair.rs` | Tests of the bad repair that goes to the plan, the new rules lines, the chat page and the documents. |
 | `tests/user_checker.rs` | Tests of the fifth checker `check_use`: its step, the files of the role `user`, its rules page and the documents. |
 | `tests/learner.rs` | Tests of the role `learner`: the steps `learn` and `save_lessons`, its files, its rules page and the documents. |
+| `tests/run_total.rs` | Tests of the numbers of each worker, the total in the notebook, the lines of `status` and the documents. |
 | `install.sh` | Installs the command and the chat command. |
 | `LICENSE` | The MIT licence. Do not change its text. |
 
@@ -273,6 +274,25 @@ A new package gets into this list only when all of these are correct:
 ## Output for a chat
 
 An AI in a chat runs the command most of the time. Keep the output of the command short, so the chat keeps its context. The command prints one short line for each step and a note of 300 characters maximum. The full text goes into the log and the `trace` files.
+
+The status text has one fact on each line. Each value starts at character 11. The lines are `Run:`, `Status:` and `Note:`. A run with status Running also gets `Step:` and `Since:`. Then come `Workers:`, `Time:`, `Cost:` and `No cost:`. `More:` with the path of the log is the last line. A line with no value is not there.
+
+- `Workers:` is the count of the workers that gave their time. Each try counts.
+- `Time:` is in worker minutes. It is a sum of worker times, not the time on the clock. The workers of a fan work at the same time.
+- `Cost:` is the sum of the dollars that the Claude tool writes. With a subscription, the person pays a different sum.
+- `No cost:` is the count of the workers with no cost. A Codex worker gives tokens and no cost, because the Codex tool writes no cost.
+
+### Limits of the numbers
+
+The factory keeps each number that a tool gives. The documents tell each limit.
+
+- A Codex worker has no cost, no turns and no model, because the Codex tool writes none.
+- The dollars of a Claude worker are the number of the Claude tool. With a subscription they are not the money that the person pays.
+- The factory calculates no cost from tokens, because it has no price list.
+- Worker minutes are a sum. The workers of a fan work at the same time.
+- A worker that a kill or the time limit ended can have no numbers.
+- A run from before version 0.1.24 has no total.
+- The time that a run waits for the person is not in the numbers.
 
 ## Rules for growth
 

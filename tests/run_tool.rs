@@ -73,8 +73,11 @@ fn out(o: &Output) -> String {
 /// The id of the run that an output names.
 fn id(o: &Output) -> String {
     let all = out(o);
-    let line = all.lines().find(|l| l.starts_with("Run: ")).expect("a run");
-    line["Run: ".len()..].to_owned()
+    let line = all
+        .lines()
+        .find(|l| l.starts_with("Run:      "))
+        .expect("a run");
+    line["Run:      ".len()..].to_owned()
 }
 
 /// A simulated `claude`. Each call writes a file of its own.
@@ -195,12 +198,12 @@ fn a_stopped_run_prints_the_two_lines_in_full_also_after_a_long_note() {
     fs::write(dir.join(".codeumbrella/graph.yaml"), long_stop_sheet()).unwrap();
     let run = cu(&dir, &["run", "a task"]);
     let text = out(&run);
-    assert!(text.contains("Status: Stopped"), "{text}");
+    assert!(text.contains("Status:   Stopped"), "{text}");
     let lines: Vec<&str> = text.lines().collect();
     let first = format!("To continue: codeumbrella resume {}", id(&run));
     let from = at(&lines, &first);
     assert_eq!(lines[from + 1], NOTE);
-    let status = at(&lines, "Status: Stopped");
+    let status = at(&lines, "Status:   Stopped");
     assert!(status < from, "{text}");
 }
 
@@ -211,7 +214,7 @@ fn a_stopped_run_with_a_short_note_prints_the_two_lines() {
     fs::write(dir.join(".codeumbrella/graph.yaml"), text).unwrap();
     let run = cu(&dir, &["run", "a task"]);
     let text = out(&run);
-    assert!(text.contains("Status: Stopped"), "{text}");
+    assert!(text.contains("Status:   Stopped"), "{text}");
     let first = format!("To continue: codeumbrella resume {}\n", id(&run));
     assert!(text.contains(&first), "{text}");
     assert!(text.contains(NOTE), "{text}");
@@ -229,21 +232,21 @@ fn has_stop_lines(o: &Output, id: &str) {
 fn a_stopped_run_prints_the_two_lines_also_in_status_and_after_resume() {
     let dir = setup(CODEX_FAILS);
     let run = cu(&dir, &["--tool", "codex", "run", "a task"]);
-    says(&run, "Status: Stopped");
+    says(&run, "Status:   Stopped");
     let id = id(&run);
     has_stop_lines(&run, &id);
     // The status command shows them too.
     let status = cu(&dir, &["status", &id]);
-    says(&status, "Status: Stopped");
+    says(&status, "Status:   Stopped");
     has_stop_lines(&status, &id);
     // A resume that stops again shows them again.
     let resume = cu(&dir, &["resume", &id]);
-    says(&resume, "Status: Stopped");
+    says(&resume, "Status:   Stopped");
     has_stop_lines(&resume, &id);
     // A resume that goes on does not.
     fs::write(dir.join("bin/ok"), "").unwrap();
     let resume = cu(&dir, &["resume", &id]);
-    says(&resume, "Status: Waiting");
+    says(&resume, "Status:   Waiting");
     assert!(!out(&resume).contains("To continue:"), "{}", out(&resume));
     assert!(!out(&resume).contains("Resume only after"));
 }
@@ -254,7 +257,7 @@ fn a_run_that_is_not_stopped_prints_neither_line() {
     let dir = setup(CODEX);
     let run = cu(&dir, &["run", "a task"]);
     let waiting = out(&run);
-    assert!(waiting.contains("Status: Waiting"), "{waiting}");
+    assert!(waiting.contains("Status:   Waiting"), "{waiting}");
     // The status command shows the same, with no stop lines.
     let status = out(&cu(&dir, &["status", &id(&run)]));
     // Done.
@@ -263,7 +266,7 @@ fn a_run_that_is_not_stopped_prints_neither_line() {
     let text = "start: a\nsteps:\n  a:\n    type: command\n    run: [[true]]\n";
     fs::write(dir.join(".codeumbrella/graph.yaml"), text).unwrap();
     let done = out(&cu(&dir, &["run", "a task"]));
-    assert!(done.contains("Status: Done"), "{done}");
+    assert!(done.contains("Status:   Done"), "{done}");
     for text in [waiting, status, done] {
         assert!(!text.contains("To continue:"), "{text}");
         assert!(!text.contains("Resume only after"), "{text}");
@@ -287,10 +290,10 @@ fn answer_with_no_tool_uses_the_tool_of_the_run() {
     let id = id(&run);
     assert_eq!((count(&dir, "codex"), count(&dir, "claude")), (1, 0));
     let answer = cu(&dir, &["answer", &id, "ask1", "yes"]);
-    says(&answer, "Status: Waiting");
+    says(&answer, "Status:   Waiting");
     assert_eq!((count(&dir, "codex"), count(&dir, "claude")), (2, 0));
     let answer = cu(&dir, &["answer", &id, "ask2", "yes"]);
-    says(&answer, "Status: Done");
+    says(&answer, "Status:   Done");
     assert_eq!((count(&dir, "codex"), count(&dir, "claude")), (3, 0));
 }
 
@@ -298,13 +301,13 @@ fn answer_with_no_tool_uses_the_tool_of_the_run() {
 fn resume_with_no_tool_uses_the_tool_of_the_run() {
     let dir = setup(CODEX_FAILS);
     let run = cu(&dir, &["--tool", "codex", "run", "a task"]);
-    says(&run, "Status: Stopped");
+    says(&run, "Status:   Stopped");
     let id = id(&run);
     let before = count(&dir, "codex");
     assert!(before >= 1);
     fs::write(dir.join("bin/ok"), "").unwrap();
     let resume = cu(&dir, &["resume", &id]);
-    says(&resume, "Status: Waiting");
+    says(&resume, "Status:   Waiting");
     assert!(count(&dir, "codex") > before);
     assert_eq!(count(&dir, "claude"), 0, "claude started");
 }
@@ -326,7 +329,7 @@ fn answer_with_a_different_tool_is_an_error_and_changes_nothing() {
     assert_eq!((count(&dir, "codex"), count(&dir, "claude")), calls);
     // The same tool, said out loud, is good.
     let same = cu(&dir, &["--tool", "codex", "answer", &id, "ask1", "yes"]);
-    says(&same, "Status: Waiting");
+    says(&same, "Status:   Waiting");
     assert_eq!(count(&dir, "codex"), calls.0 + 1);
 }
 
@@ -334,7 +337,7 @@ fn answer_with_a_different_tool_is_an_error_and_changes_nothing() {
 fn resume_with_a_different_tool_is_an_error_and_changes_nothing() {
     let dir = setup(CODEX_FAILS);
     let run = cu(&dir, &["--tool", "codex", "run", "a task"]);
-    says(&run, "Status: Stopped");
+    says(&run, "Status:   Stopped");
     let id = id(&run);
     fs::write(dir.join("bin/ok"), "").unwrap();
     let before = bytes(&dir, &id);
@@ -375,7 +378,7 @@ fn a_run_of_the_claude_tool_gives_the_error_for_tool_codex() {
     tool(&dir, "codex", CODEX);
     sheet(&dir, "");
     let run = cu(&dir, &["run", "a task"]);
-    says(&run, "Status: Stopped");
+    says(&run, "Status:   Stopped");
     let id = id(&run);
     fs::write(dir.join("bin/ok"), "").unwrap();
     let before = bytes(&dir, &id);
@@ -391,17 +394,17 @@ fn a_run_of_the_claude_tool_gives_the_error_for_tool_codex() {
 fn resume_with_a_tool_writes_it_into_a_notebook_with_no_tool() {
     let dir = setup(CODEX_FAILS);
     let run = cu(&dir, &["--tool", "codex", "run", "a task"]);
-    says(&run, "Status: Stopped");
+    says(&run, "Status:   Stopped");
     let id = id(&run);
     forget_tool(&dir, &id);
     fs::write(dir.join("bin/ok"), "").unwrap();
     let resume = cu(&dir, &["--tool", "codex", "resume", &id]);
-    says(&resume, "Status: Waiting");
+    says(&resume, "Status:   Waiting");
     assert_eq!(saved_tool(&dir, &id).as_deref(), Some("codex"));
     assert_eq!(count(&dir, "claude"), 0, "claude started");
     // A command after that, with no `--tool`, uses the tool in the notebook.
     let last = cu(&dir, &["answer", &id, "ask1", "yes"]);
-    says(&last, "Status: Waiting");
+    says(&last, "Status:   Waiting");
     assert_eq!(count(&dir, "claude"), 0, "claude started");
 }
 
@@ -414,12 +417,12 @@ fn a_notebook_with_no_tool_loads_and_a_command_with_no_tool_writes_none() {
     assert_eq!(count(&dir, "claude"), 1);
     // No `--tool`: Claude, for this command only.
     let answer = cu(&dir, &["answer", &id, "ask1", "yes"]);
-    says(&answer, "Status: Waiting");
+    says(&answer, "Status:   Waiting");
     assert_eq!((count(&dir, "claude"), count(&dir, "codex")), (2, 0));
     assert_eq!(saved_tool(&dir, &id), None, "a tool was written");
     // A command with `--tool codex` then works.
     let last = cu(&dir, &["--tool", "codex", "answer", &id, "ask2", "yes"]);
-    says(&last, "Status: Done");
+    says(&last, "Status:   Done");
     assert_eq!((count(&dir, "claude"), count(&dir, "codex")), (2, 1));
 }
 
@@ -430,12 +433,12 @@ fn a_command_with_a_tool_writes_it_into_a_notebook_with_no_tool() {
     let id = id(&run);
     forget_tool(&dir, &id);
     let answer = cu(&dir, &["--tool", "codex", "answer", &id, "ask1", "yes"]);
-    says(&answer, "Status: Waiting");
+    says(&answer, "Status:   Waiting");
     assert_eq!(saved_tool(&dir, &id).as_deref(), Some("codex"));
     assert_eq!((count(&dir, "claude"), count(&dir, "codex")), (1, 1));
     // A command after that, with no `--tool`, starts codex.
     let last = cu(&dir, &["answer", &id, "ask2", "yes"]);
-    says(&last, "Status: Done");
+    says(&last, "Status:   Done");
     assert_eq!((count(&dir, "claude"), count(&dir, "codex")), (1, 2));
 }
 
@@ -453,7 +456,7 @@ fn status_reads_the_notebook_and_does_not_change_it() {
     for args in all {
         let status = cu(&dir, args);
         assert!(status.status.success(), "{}", out(&status));
-        says(&status, "Status: Waiting");
+        says(&status, "Status:   Waiting");
         assert_eq!(bytes(&dir, &id), before, "{args:?} changed the notebook");
     }
     // A notebook with no tool stays as it is, also with `--tool`.
@@ -476,7 +479,7 @@ fn a_step_with_its_own_tool_keeps_it_in_a_run_of_the_claude_tool() {
     assert_eq!((count(&dir, "claude"), count(&dir, "codex")), (1, 0));
     cu(&dir, &["answer", &id, "ask1", "yes"]);
     let last = cu(&dir, &["answer", &id, "ask2", "yes"]);
-    says(&last, "Status: Done");
+    says(&last, "Status:   Done");
     // Steps `one` and `two` used claude. Step `three` used codex.
     assert_eq!((count(&dir, "claude"), count(&dir, "codex")), (2, 1));
     assert_eq!(saved_tool(&dir, &id).as_deref(), Some("claude"));

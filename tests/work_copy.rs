@@ -93,8 +93,11 @@ fn out(o: &Output) -> String {
 /// The id of the run that an output names.
 fn id(o: &Output) -> String {
     let all = out(o);
-    let line = all.lines().find(|l| l.starts_with("Run: ")).expect("a run");
-    line["Run: ".len()..].to_owned()
+    let line = all
+        .lines()
+        .find(|l| l.starts_with("Run:      "))
+        .expect("a run");
+    line["Run:      ".len()..].to_owned()
 }
 
 /// A simulated `claude`: it records where it started and what it got, writes
@@ -137,7 +140,7 @@ fn a_claude_worker_starts_in_the_work_folder_and_the_project_stays_as_it_was() {
     let branch = git(&dir, &["branch", "--show-current"]);
     let head = git(&dir, &["rev-parse", "HEAD"]);
     let run = cu(&dir, &tools, &["run", "a task"]);
-    assert!(out(&run).contains("Status: Waiting"), "{}", out(&run));
+    assert!(out(&run).contains("Status:   Waiting"), "{}", out(&run));
     let id = id(&run);
     let work = dir.join(".codeumbrella/runs").join(&id).join("work");
     let cwd = fs::read_to_string(tools.join("cwd.txt")).unwrap();
@@ -180,7 +183,7 @@ fn a_codex_worker_starts_in_the_work_folder_with_the_full_project_path_in_its_se
     let (dir, tools) = project();
     tool(&tools, "codex", &codex(&tools));
     let run = cu(&dir, &tools, &["--tool", "codex", "run", "a task"]);
-    assert!(out(&run).contains("Status: Waiting"), "{}", out(&run));
+    assert!(out(&run).contains("Status:   Waiting"), "{}", out(&run));
     let id = id(&run);
     let work = dir.join(".codeumbrella/runs").join(&id).join("work");
     let cwd = fs::read_to_string(tools.join("cwd.txt")).unwrap();
@@ -213,7 +216,7 @@ fn a_codex_worker_does_not_start_in_a_project_path_with_a_bad_character() {
         );
         let run = cu(&dir, &tools, &["--tool", "codex", "run", "a task"]);
         assert!(
-            out(&run).contains("Status: Stopped"),
+            out(&run).contains("Status:   Stopped"),
             "{bad:?}: {}",
             out(&run)
         );

@@ -426,9 +426,9 @@ fn tool(dir: &Path, name: &str, script: &str) {
 /// The id of the run that an output names.
 fn id(out: &Output) -> String {
     let text = all(out);
-    let line = text.lines().find(|l| l.starts_with("Run: "));
+    let line = text.lines().find(|l| l.starts_with("Run:      "));
     let line = line.unwrap_or_else(|| panic!("no run: {text}"));
-    line["Run: ".len()..].to_owned()
+    line["Run:      ".len()..].to_owned()
 }
 
 /// The text that the simulated learner writes into the paper `lessons`.
@@ -506,7 +506,7 @@ fn lessons_run(gh: &str) -> (PathBuf, String) {
     let sheet = dir.join(".codeumbrella/graph.yaml");
     fs::write(sheet, lessons_sheet()).unwrap();
     let run = cu(&dir, &["run", "a task"]);
-    assert!(all(&run).contains("Status: Waiting"), "{}", all(&run));
+    assert!(all(&run).contains("Status:   Waiting"), "{}", all(&run));
     let id = id(&run);
     (dir, id)
 }
@@ -520,7 +520,7 @@ fn after_a_yes_at_approval_the_project_gets_the_text_of_the_paper() {
     assert_eq!(fs::read_to_string(dir.join(&paper)).unwrap(), LESSONS);
 
     let yes = cu(&dir, &["answer", &id, "approval", "yes"]);
-    assert!(all(&yes).contains("Status: Done"), "{}", all(&yes));
+    assert!(all(&yes).contains("Status:   Done"), "{}", all(&yes));
     assert_eq!(fs::read_to_string(&saved).unwrap(), LESSONS);
     let gh = fs::read_to_string(dir.join("bin/gh.txt")).unwrap();
     assert!(gh.contains("pr merge"), "{gh}");
@@ -537,7 +537,7 @@ fn after_a_yes_at_approval_the_project_gets_the_text_of_the_paper() {
 fn a_bad_merge_writes_no_lessons_file_into_the_project() {
     let (dir, id) = lessons_run(GH_BAD);
     let yes = cu(&dir, &["answer", &id, "approval", "yes"]);
-    assert!(all(&yes).contains("Status: Stopped"), "{}", all(&yes));
+    assert!(all(&yes).contains("Status:   Stopped"), "{}", all(&yes));
     let saved = dir.join(".codeumbrella/lessons.md");
     assert!(!saved.exists(), "lessons.md after a bad merge");
     let steps = logged(&dir, &id);

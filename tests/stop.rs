@@ -72,9 +72,9 @@ fn out(o: &Output) -> String {
 
 fn id(o: &Output) -> String {
     let all = out(o);
-    let line = all.lines().find(|l| l.starts_with("Run: "));
+    let line = all.lines().find(|l| l.starts_with("Run:      "));
     let line = line.expect("a run");
-    line["Run: ".len()..].to_owned()
+    line["Run:      ".len()..].to_owned()
 }
 
 fn says(o: &Output, needle: &str) {
@@ -155,7 +155,7 @@ fn listing(dir: &Path) -> Vec<(String, u64)> {
 /// A run that waits at the question. Gives the id.
 fn waiting(dir: &Path) -> String {
     let run = cu(dir, &["run", "a task"]);
-    says(&run, "Status: Waiting");
+    says(&run, "Status:   Waiting");
     id(&run)
 }
 
@@ -168,12 +168,12 @@ fn six_lines(dir: &Path, id: &str, at: &str) -> String {
     let log = run_dir(dir, id).join("log.jsonl");
     let rule = "Resume only after the person says yes. An AI must not give this approval.";
     let lines = [
-        format!("Run: {id}"),
-        "Status: Stopped".to_owned(),
-        note(at),
+        format!("Run:      {id}"),
+        "Status:   Stopped".to_owned(),
+        format!("Note:     {}", note(at)),
         format!("To continue: codeumbrella resume {id}"),
         rule.to_owned(),
-        format!("More: {}", log.display()),
+        format!("More:     {}", log.display()),
     ];
     format!("{}\n", lines.join("\n"))
 }
@@ -181,7 +181,11 @@ fn six_lines(dir: &Path, id: &str, at: &str) -> String {
 /// The output of `stop` is the six lines.
 fn shows(stop: &Output, dir: &Path, id: &str, at: &str) {
     let shown = String::from_utf8_lossy(&stop.stdout).into_owned();
-    assert_eq!(shown, six_lines(dir, id, at));
+    // The lines of the numbers of the workers come from `tests/run_total.rs`.
+    let numbers = ["Workers:", "Time:", "Cost:", "No cost:"];
+    let fact = |l: &&str| !numbers.iter().any(|n| l.starts_with(n));
+    let shown: Vec<&str> = shown.lines().filter(fact).collect();
+    assert_eq!(format!("{}\n", shown.join("\n")), six_lines(dir, id, at));
 }
 
 /// The notebook says Stopped with the note of the person, and `at` is the same.
@@ -366,7 +370,7 @@ fn stop_with_text_that_is_not_a_number_in_the_lock_stops_the_run() {
     let stop = cu(&dir, &["stop", &id]);
     assert!(stop.status.success(), "{}", out(&stop));
     assert_stopped(&dir, &id, &at);
-    says(&stop, "Status: Stopped");
+    says(&stop, "Status:   Stopped");
 }
 
 #[test]
@@ -508,7 +512,7 @@ fn resume_after_stop_starts_the_same_step_again() {
     tool(&dir, "claude", CLAUDE);
     let resume = finish(spawn(&dir, &["resume", &id]), 60);
     assert!(resume.status.success(), "{}", out(&resume));
-    says(&resume, "Status: Waiting");
+    says(&resume, "Status:   Waiting");
     assert_eq!(calls(&dir), 1, "the worker of the step did not start again");
 }
 

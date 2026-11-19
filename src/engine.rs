@@ -2,7 +2,7 @@
 
 use crate::graph::{Graph, Kind, Step, Tool};
 use crate::log;
-use anyhow::{Context, Result, bail, ensure};
+use anyhow::{Context, Result, anyhow, bail};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::hash::{DefaultHasher, Hash, Hasher};
@@ -55,6 +55,61 @@ pub trait Worker: Sync {
     /// Gives an error if the tool does not start, does not end in time, or
     /// gives no result.
     fn run(&self, job: &Job) -> Result<Outcome>;
+
+    /// Does one step, and gives its result and the numbers of its worker.
+    /// The default gives no numbers.
+    fn run_counted(&self, job: &Job) -> (Result<Outcome>, Numbers) {
+        (self.run(job), Numbers::default())
+    }
+}
+
+/// The numbers of one worker. A number is there only if the tool gives it.
+#[derive(Debug, Default, Clone)]
+pub struct Numbers {
+    /// The time of the worker, from the start of its command to its end.
+    pub seconds: Option<f64>,
+    /// The cost that the tool wrote.
+    pub dollars: Option<f64>,
+    /// The number of turns of the worker.
+    pub turns: Option<u64>,
+    /// The model of the worker.
+    pub model: Option<String>,
+    /// The tokens that went into the model.
+    pub tokens_in: Option<u64>,
+    /// The tokens that came out of the model.
+    pub tokens_out: Option<u64>,
+}
+
+/// The total of the numbers of the workers of a run.
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Total {
+    /// The count of the workers that gave their time. Each try counts.
+    pub workers: u64,
+    /// The sum of the worker times.
+    pub seconds: f64,
+    /// The sum of the costs.
+    pub dollars: f64,
+    /// The sum of the tokens into the model.
+    pub tokens_in: u64,
+    /// The sum of the tokens out of the model.
+    pub tokens_out: u64,
+    /// The count of the workers that gave their time but no cost.
+    pub no_cost: u64,
+}
+
+impl Total {
+    /// Adds the numbers of one worker.
+    pub fn add(&mut self, n: &Numbers) {
+        if let Some(seconds) = n.seconds {
+            self.workers += 1;
+            self.seconds += seconds;
+            self.no_cost += u64::from(n.dollars.is_none());
+        }
+        self.dollars += n.dollars.unwrap_or_default();
+        self.tokens_in += n.tokens_in.unwrap_or_default();
+        self.tokens_out += n.tokens_out.unwrap_or_default();
+    }
 }
 
 /// Where a run is.
@@ -95,6 +150,12 @@ pub struct State {
     pub prints: BTreeMap<String, u64>,
     /// The result of the last step that ended.
     pub last: Option<Outcome>,
+    /// The start time of the step of this moment. An older notebook has none.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub since: Option<String>,
+    /// The total of the numbers of the workers. An older notebook has none.
+    #[serde(default)]
+    pub total: Total,
 }
 
 /// The lock of one run: the file `lock` in the run folder. Only one command
@@ -133,6 +194,8 @@ pub struct Run {
     pub dir: PathBuf,
     /// The notebook.
     pub state: State,
+    /// The numbers of the worker of the last worker step, for its log line.
+    numbers: Option<Numbers>,
 }
 
 impl Run {
@@ -146,6 +209,7 @@ impl Run {
         let mut run = Self {
             dir,
             state: State::default(),
+            numbers: None,
         };
         task.clone_into(&mut run.state.task);
         run.state.at = Some(graph.start.clone());
@@ -162,7 +226,11 @@ impl Run {
         let text = fs::read_to_string(&path)
             .with_context(|| format!("there is no notebook at {}", path.display()))?;
         let state = serde_json::from_str(&text).context("the notebook has an error")?;
-        Ok(Self { dir, state })
+        Ok(Self {
+            dir,
+            state,
+            numbers: None,
+        })
     }
 
     /// Writes the notebook.
@@ -208,16 +276,28 @@ impl Run {
         while let Some(name) = self.state.at.clone() {
             let step = graph.step(&name)?;
             let start = Instant::now();
-            let outcome = match self.step(&name, step, graph, roles, worker) {
+            self.state.since = Some(log::now()?);
+            self.save()?;
+            let result = self.step(&name, step, graph, roles, worker);
+            let numbers = self.numbers.take();
+            let outcome = match result {
                 Ok(Some(outcome)) => outcome,
                 Ok(None) => return self.save(),
                 Err(error) => {
                     let note = format!("Step {name}: {error:#}");
-                    log::record(&self.dir, &name, false, &note, start)?;
+                    log::record(&self.dir, &name, false, &note, start, numbers.as_ref())?;
                     return self.halt(Status::Stopped, note);
                 }
             };
-            log::record(&self.dir, &name, outcome.ok, &outcome.summary, start)?;
+            let summary = &outcome.summary;
+            log::record(
+                &self.dir,
+                &name,
+                outcome.ok,
+                summary,
+                start,
+                numbers.as_ref(),
+            )?;
             let target = if outcome.ok { &step.next } else { &step.on_bad };
             if !outcome.ok && target.is_none() {
                 let note = format!("Step {name} gave a bad result: {}", outcome.summary);
@@ -280,7 +360,10 @@ impl Run {
         for paper in &step.writes {
             fs::create_dir_all(self.paper(paper))?;
         }
-        let outcome = self.work(name, step, roles, worker, before.as_ref())?;
+        let (outcome, numbers) = self.work(name, step, roles, worker, before.as_ref());
+        self.state.total.add(&numbers);
+        self.numbers = Some(numbers);
+        let outcome = outcome?;
         for paper in &step.writes {
             let print = fingerprint(&self.paper(paper))?;
             self.state.prints.insert(paper.clone(), print);
@@ -296,11 +379,13 @@ impl Run {
         roles: &Path,
         worker: &dyn Worker,
         before: Option<&Outcome>,
-    ) -> Result<Outcome> {
+    ) -> (Result<Outcome>, Numbers) {
         let role = step.role.as_deref().unwrap_or_default();
         let filled = fs::read_dir(self.dir.join("work")).is_ok_and(|mut d| d.next().is_some());
-        ensure!(filled, EMPTY);
-        worker.run(&Job {
+        if !filled {
+            return (Err(anyhow!(EMPTY)), Numbers::default());
+        }
+        worker.run_counted(&Job {
             task: &self.state.task,
             step: name,
             rules: &roles.join(format!("{role}.md")),
@@ -319,7 +404,7 @@ impl Run {
     /// has the result of each part.
     // ponytail: the log gives each part the time of the full fan.
     fn fan(
-        &self,
+        &mut self,
         step: &Step,
         graph: &Graph,
         roles: &Path,
@@ -327,18 +412,26 @@ impl Run {
         before: Option<&Outcome>,
     ) -> Result<Outcome> {
         let start = Instant::now();
-        let results: Vec<Result<Outcome>> = thread::scope(|scope| {
-            let part = |name| self.work(name, graph.step(name)?, roles, worker, before);
+        let results: Vec<(Result<Outcome>, Numbers)> = thread::scope(|scope| {
+            let part = |name| match graph.step(name) {
+                Ok(s) => self.work(name, s, roles, worker, before),
+                Err(e) => (Err(e), Numbers::default()),
+            };
             let fan = step.fan.iter();
             let parts: Vec<_> = fan.map(|n| scope.spawn(move || part(n))).collect();
-            let end =
-                |p: thread::ScopedJoinHandle<_>| p.join().unwrap_or_else(|_| bail!("it broke"));
+            let broke = || (Err(anyhow!("it broke")), Numbers::default());
+            let end = |p: thread::ScopedJoinHandle<_>| p.join().unwrap_or_else(|_| broke());
             parts.into_iter().map(end).collect()
         });
+        // All the parts ended. Their numbers go into the total in one thread.
+        for (_, numbers) in &results {
+            self.state.total.add(numbers);
+        }
         let (mut ok, mut summary) = (true, String::new());
-        for (name, result) in step.fan.iter().zip(results) {
+        for (name, (result, numbers)) in step.fan.iter().zip(results) {
             let outcome = result.with_context(|| format!("the fan part {name}"))?;
-            log::record(&self.dir, name, outcome.ok, &outcome.summary, start)?;
+            let text = &outcome.summary;
+            log::record(&self.dir, name, outcome.ok, text, start, Some(&numbers))?;
             ok &= outcome.ok;
             let word = if outcome.ok { "good" } else { "bad" };
             let _ = writeln!(summary, "{name} ({word}): {}", outcome.summary);
