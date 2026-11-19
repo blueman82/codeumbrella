@@ -12,7 +12,9 @@ An attacker looks for weak points in the plan before you see the tests. A simpli
 
 A `security` checker reads it for weak points that a person can use to do damage. A user checker builds the work in a scratch folder. It runs the examples of the spec as a user does.
 
-The learner turns each problem of a run into a lesson. A lesson that a test can show becomes a lesson test on the branch. Each other lesson becomes a short entry. After the merge, the step `save_lessons` copies the entries to `.codeumbrella/lessons.md`. Git does not see that file. The workers of the next run read it.
+The learner turns each problem of a run into a lesson. A lesson that a test can show becomes a lesson test on the branch. Each other lesson becomes a short entry. After the merge, the step `save_lessons` copies the entries to `.codeumbrella/lessons.md`. Then the step `clean_up` removes the two copies of the run.
+
+Git does not see the file `.codeumbrella/lessons.md`. The workers of the next run read it.
 
 If the builder finds a bad paper test, the planner corrects only that test, and you see the tests again.
 
@@ -54,7 +56,7 @@ The plugin brings only the chat command `/codeumbrella`. The `codeumbrella` comm
 - Put the test command at the end of the task: `Test command: <command>`
 - A tool in your project folder, for example in `.venv`, needs its full path in the test command.
 - The workers write in a copy in the run folder. A run does not change your project folder or its branch.
-- After status Done, get the code with `git pull`.
+- After status Done, get the code with `git pull`. The step `clean_up` removed the copies of the run. Its record stays.
 
 ## First run
 
@@ -80,7 +82,7 @@ Run `codeumbrella init --update` in your project. It replaces each factory file 
 | Stop | Yes | No, with your text |
 |---|---|---|
 | The tests | The builder starts. | The planner writes the tests again. |
-| The PR | The supervisor merges. Then it copies the lessons to `.codeumbrella/lessons.md`. | The planner corrects the spec and the tests. You see the tests again. The same PR gets the new code. |
+| The PR | The supervisor merges. Then it copies the lessons to `.codeumbrella/lessons.md`. Then `clean_up` removes the two copies of the run. | The planner corrects the spec and the tests. You see the tests again. The same PR gets the new code. |
 
 A point of your task can have two meanings. Then the planner makes a decision and lists it at the top of the spec. At the tests stop, the chat tells you each such decision. In a terminal, read the top of `.codeumbrella/runs/<run-id>/papers/spec/spec.md`.
 

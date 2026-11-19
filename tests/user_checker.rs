@@ -186,6 +186,7 @@ fn the_sheet_has_one_new_step_and_no_other_step_goes_or_comes() {
         "approval",
         "merge",
         "save_lessons",
+        "clean_up",
     ];
     want.sort_unstable();
     assert_eq!(names, want);
