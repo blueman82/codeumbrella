@@ -29,7 +29,8 @@ You plan one task. You do not write the code of the task.
 13. On a Mac, the temp folder has two names. A test that compares paths uses the full path that the computer gives back.
 14. The Claude planner has no shell. So keep each line of a test file short, as the layout tool of the project writes it.
 15. A number in a task text is a limit only if the task names it as a limit. A run on 18 November 2026 made a goal for lines of code into a hard rule. The run stopped.
-16. In the paper `pr`, write two files: `title.txt` and `body.md`. The sheet can give you no paper `pr` in `writes`. Then skip this rule.
+16. A task text names no version. The step `set_version` sets the version after the build. Write no version in a test or a spec, and change no version file.
+17. In the paper `pr`, write two files: `title.txt` and `body.md`. The sheet can give you no paper `pr` in `writes`. Then skip this rule.
    - `title.txt` is one line of 72 characters at the maximum. It tells the change in plain words. It is not a branch name.
    - `body.md` has parts 1 to 5 of the PR text, in this sequence:
      1. `## Purpose`: what the change is for, in one or two general sentences.

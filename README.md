@@ -53,6 +53,12 @@ The plugin brings only the chat command `/codeumbrella`. The `codeumbrella` comm
      ```
      Then open Codex, type `/plugins`, and install `codeumbrella`.
 
+## The queue
+
+The folder `.codeumbrella/queue/` holds one text file for each task that waits. The file name sets the sequence, for example `01-clean-up.txt` before `02-pr-text.txt`. A line `Files: a.rs, b.rs` in a file names the files of the task. `codeumbrella queue` shows the tasks. `codeumbrella run --next` starts the first one and moves its file into the run. It gives an error if the queue is empty or a run is active.
+
+The step `set_version` sets the version of the project before the PR text. It runs the script `.codeumbrella/set-version`. `init` writes a script that does nothing. Put your own version commands in it. A task text names no version.
+
 ## Before a run
 
 - Workers have no internet. Install the packages of your project first.

@@ -32,6 +32,7 @@ The supervisor knows nothing about software work. All knowledge of the steps is 
 | `.codeumbrella/lessons.md` | The entries of the lessons of a project. The step `save_lessons` writes it after the merge. Git does not see it. |
 | Role | The type of a worker. Its rules page is `.codeumbrella/roles/<role>.md` in a project. The folder `roles` holds the defaults. |
 | Writer | The role `writer`. It reads the change with git. It adds the version line, the areas of the change and the checklist to `body.md` of the paper `pr`. |
+| Queue | The folder `.codeumbrella/queue/`: one text file for each task that waits. The file name sets the sequence. `run --next` starts the first one. |
 
 ## Commands
 
@@ -45,6 +46,8 @@ cargo deny check && cargo audit                # look for bad packages, after a 
 codeumbrella init                              # put the default sheet and rules pages into a project
 codeumbrella init --update                     # replace changed factory files with the new defaults, keep a copy of each as `.before`
 codeumbrella run "<task>"                      # start a run with Claude workers
+codeumbrella run --next                        # start the first task of the queue `.codeumbrella/queue/`. An error if the queue is empty or a run is `Running` or `Waiting`
+codeumbrella queue                             # show the tasks that wait: the file name and its `Files:` line
 codeumbrella --tool codex run "<task>"         # start a run with Codex workers. The run keeps this tool
 codeumbrella status [run-id]                   # show where a run is: the step of this moment and the total of the workers. After a kill, it repairs the run first (see Safety rules)
 codeumbrella status --wait <run-id>            # wait until the run is not `Running`, then show it
@@ -62,6 +65,10 @@ To install the command and the chat command on a computer, run `./install.sh`.
 | Path | Contents |
 |---|---|
 | `graph.example.yaml` | The default sheet, with a comment for each option. `init` copies it into a project. |
+| `default.set-version` | The default script of the step `set_version`. It does nothing. `init` writes it to `.codeumbrella/set-version`, and `init --update` keeps a script that is there. |
+| `scripts/set-version` | The script of this project. The person copies it to `.codeumbrella/set-version`. It sets the next patch version in the four version files. |
+| `.codeumbrella/queue/` | The queue: one text file for each task that waits. The file name sets the sequence. A line `Files:` names the files of the task. `run --next` moves the first file into the run as `task.txt`. |
+| `tests/queue.rs` | Tests of the queue, `run --next`, `set_version`, `files.txt`, the default script, the script of this project and the documents. |
 | `default.gitignore` | The default ignore file. `init` gives it to a project that has no `.gitignore`. |
 | `roles/<role>.md` | The default rules page of each role, written by hand. |
 | `roles/learner.md` | The rules page of the learner. It reads the logs of the runs and writes the paper `lessons`. |
@@ -120,6 +127,8 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - `next` is the step after a good result. `on_bad` is the step after a bad result.
 - A step that an `on_bad` line goes to must have `max_tries`.
 - A line that the supervisor does not know is an error.
+- The command step `set_version` comes after `learn` and before `write_pr`. It runs `.codeumbrella/set-version` on the work copy. A bad result stops the run. A task text names no version: only the script sets it.
+- `work_was_done` also writes the changed files into `files.txt` in the run folder.
 - The default sheet has two command steps with no AI. `mark` comes after `look_at_tests` and before `build`. It writes the commit of that moment into `refs/codeumbrella/before` of the work copy.
 - The steps of the planner write the papers `spec`, `tests` and `pr`.
 - The worker step `write_pr` comes after `learn` and after `repair`, before `check`. The writer completes the PR text in the paper `pr`.
@@ -129,6 +138,7 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 
 - The supervisor opens the PR. Then the run always stops for the approval of the person. The merge comes only after a yes. A no with a text sends the work back to the planner. The person then sees the tests again.
 - No worker can push, open a PR or merge. Only the command steps `push`, `find_pr`, `open_pr` and `merge` can, with the set commands in the sheet.
+- The script `.codeumbrella/set-version` of the step `set_version` runs with no sandbox, as each command step does. Only the person writes it, because workers cannot write in `.codeumbrella`. The step `work_was_done` and the commit of the script run git in the work copy, where a worker can write. So the diff has `--no-ext-diff` and `--no-textconv`, and the commit has `-c core.hooksPath=/dev/null` and `--no-verify`. `set_version` does not push.
 - The step `no_locked_files` stops the run if the work changes `.github`, `.claude` or `.codeumbrella`. A worker cannot write to these folders, but git can put such a file into a commit.
 - That step reads a capital letter and a small letter as the same letter. A test on 16 November 2026 showed the cause. On a Mac, a commit with `.Claude/settings.json` got through the step and changed `.claude/settings.json`.
 - The push does not send tags.
@@ -294,7 +304,7 @@ A new package gets into this list only when all of these are correct:
 
 ## Limits for lines of code
 
-- The supervisor (`src/graph.rs`, `src/engine.rs`, `src/main.rs`, `src/log.rs`, `src/lib.rs`): 1000 lines of code.
+- The supervisor (`src/graph.rs`, `src/engine.rs`, `src/main.rs`, `src/log.rs`, `src/lib.rs`): 1100 lines of code.
 - Each tool part: 200 lines of code.
 - Empty lines, comment lines and tests do not count.
 - Count with: `grep -v -E '^\s*(//|$)' <file> | wc -l`

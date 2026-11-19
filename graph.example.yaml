@@ -185,6 +185,21 @@ steps:
     role: learner
     reads: [spec]
     writes: [lessons]
+    next: set_version
+
+  # No AI. This step runs the script `.codeumbrella/set-version` of your
+  # project on the work copy. The script sets the version of the project and
+  # commits it, only if a file changed. It does not push. `init` writes a
+  # default script that does nothing, and `init --update` keeps your script.
+  # Without a script, the run stops here. A bad result stops the run. The
+  # writer then reads the version for the PR text from the branch.
+  # The script runs with no sandbox, as each command step does. Only you
+  # write it: a worker cannot write in `.codeumbrella`. A commit in it should
+  # have `-c core.hooksPath=/dev/null` and `--no-verify`.
+  set_version:
+    type: command
+    run:
+      - [sh, .codeumbrella/set-version, ".codeumbrella/runs/{run}/work"]
     next: write_pr
 
   # A writer reads the change with git and adds parts 6 to 8 to the PR text
@@ -213,6 +228,10 @@ steps:
   # result means no commit after your yes for the tests. The builder in
   # `repair` then gets the error text. The step comes after `check`, because
   # after a no for one paper test only the tests checker makes a commit.
+  # The second command writes the names of the changed files into `files.txt`
+  # in the run folder. A task after this one can read it. The two options
+  # `--no-ext-diff` and `--no-textconv` keep a program of the work copy from
+  # running.
   # A worker can write in `.git` of its work copy. So this step is not a wall
   # against a worker that cheats. It is a check for a worker that did nothing
   # by error.
@@ -220,6 +239,7 @@ steps:
     type: command
     run:
       - [git, -C, ".codeumbrella/runs/{run}/work", bundle, create, ../new-work.bundle, "refs/codeumbrella/before..HEAD"]
+      - [git, -C, ".codeumbrella/runs/{run}/work", diff, --name-only, --no-ext-diff, --no-textconv, --output, ../files.txt, "refs/codeumbrella/before", HEAD]
     on_bad: repair
     next: no_locked_files
 

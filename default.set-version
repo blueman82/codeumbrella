@@ -1,0 +1,8 @@
+#!/bin/sh
+# The step `set_version` runs this script after `learn` and before `write_pr`.
+# It gets one argument: the path of the work copy of the run.
+# Put here the commands that set the version of your project in the work copy.
+# Commit the change there, only if a file changed, so that two runs give the
+# same result. Do not push: the step `push` does that.
+# This default script does nothing and ends with a good result.
+exit 0

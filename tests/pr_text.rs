@@ -188,7 +188,7 @@ fn write_pr_is_a_worker_step_of_the_writer_after_learn_and_repair() {
     assert!(step.on_bad.is_none(), "{:?}", step.on_bad);
     assert!(step.max_tries.is_none(), "{:?}", step.max_tries);
     let learn = graph.step("learn").unwrap();
-    assert_eq!(learn.next.as_deref(), Some("write_pr"));
+    assert_eq!(learn.next.as_deref(), Some("set_version"));
     let repair = graph.step("repair").unwrap();
     assert_eq!(repair.next.as_deref(), Some("write_pr"));
     assert_eq!(repair.on_bad.as_deref(), Some("plan"));
@@ -197,7 +197,7 @@ fn write_pr_is_a_worker_step_of_the_writer_after_learn_and_repair() {
     assert_eq!(repair.reads, ["spec"]);
     for name in graph.steps.keys() {
         let goes = goes_to(&graph, name, "write_pr");
-        let want = name == "learn" || name == "repair";
+        let want = name == "set_version" || name == "repair";
         assert_eq!(goes, want, "{name}");
     }
 }
@@ -417,6 +417,7 @@ fn a_run_does_write_pr_after_learn_and_before_check() {
         ("build", true),
         ("simplify", true),
         ("learn", true),
+        ("set_version", true),
         ("write_pr", true),
         ("check", true),
         ("work_was_done", true),
@@ -444,6 +445,7 @@ fn a_repair_goes_to_write_pr_and_then_to_check() {
         ("build", true),
         ("simplify", true),
         ("learn", true),
+        ("set_version", true),
         ("write_pr", true),
         ("check", false),
         ("repair", true),
