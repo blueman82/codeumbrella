@@ -18,7 +18,9 @@ Git does not see the file `.codeumbrella/lessons.md`. The workers of the next ru
 
 If the builder finds a bad paper test, the planner corrects only that test, and you see the tests again.
 
-Each PR has a set PR text, so you see what the change is for. The planner writes the title and the purpose, the cause, an example and the fix. After the build, the role `writer` adds the version line, the files of each area of the change, and a checklist. Its step is `write_pr`. It runs again after each repair, so the text agrees with the change. Each item of the checklist has `[x]`, or `[ ]` with a cause. The reviewer compares the PR text with the change. At the PR stop, the chat shows you the title and each `[ ]` line.
+Each PR has a set PR text, so you see what the change is for. The planner writes the title and the purpose, the cause, an example and the fix. After the build, the role `writer` adds the version line, the files of each area of the change, and a checklist. Its step is `write_pr`. It runs again after each repair, so the text agrees with the change.
+
+Each item of the checklist has `[x]`, or `[ ]` with a cause. The reviewer compares the PR text with the change. At the PR stop, the chat shows you the title and each `[ ]` line.
 
 Two steps with no AI look for work. After your yes for the tests, the step `mark` keeps the commit of that moment. After a good check, the step `work_was_done` looks for a new commit after `mark`. With no new commit, the builder must repair the work.
 

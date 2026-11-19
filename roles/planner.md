@@ -34,7 +34,7 @@ You plan one task. You do not write the code of the task.
    - `body.md` has parts 1 to 5 of the PR text, in this sequence:
      1. `## Purpose`: what the change is for, in one or two general sentences.
      2. `## Cause`: the general problem that the change removes. No run id, no date.
-     3. `Example:` one real case, with its facts. No run id, no date.
+     3. `Example:` one example of the problem, with its facts. No run id, no date.
      4. `## How this PR prevents it`: one line for each part of the fix.
      5. One line for each other correction in the PR.
    - Write only these parts. After the build, the writer adds parts 6 to 8: the version, the areas and the checklist.
