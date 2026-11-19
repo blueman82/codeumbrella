@@ -155,7 +155,7 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - The clean copy reads the `origin` settings from `.git/config` of the project. Thus the factory does not work in a linked git worktree. The chat page stops there before the first command.
 - The id of a new run is `run-<Unix seconds>-<four digits>`. The four digits come from the clock and the command number.
 - Two runs in two folders got the same id on 19 November 2026. The two runs pushed to one branch.
-- The chance of the same id in two folders is small but not zero. `run` makes no call to GitHub.
+- The same id in two folders is possible, but the chance is small. `run` makes no call to GitHub.
 - The chat tells the person about a run that is not complete before it starts a new run.
 - `model` and `effort` have only letters, digits, `.`, `-` and `_`. Thus no quote or brace can get to the tool command.
 - `model` and `effort` cannot start with `-`. Thus the tool does not read them as an option.
