@@ -23,12 +23,13 @@ SUPERVISOR ── uses your GitHub key ──► GITHUB: push · PR · merge (me
 │ simplifier in a sandbox · gets the plan            ──►  makes the new code simpler       │
 │ reviewer  in a sandbox · gets the plan             ──►  reads the change for errors      │
 │ security  in a sandbox · gets the plan             ──►  reads the change, security       │
+│ user      in a sandbox · gets the plan             ──►  runs the examples, scratch only  │
 └──────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 - The plan paper has the name `spec`.
 - The reviewer and the simplifier read the language pages in `roles/languages/` for each language in the change. No other role reads them.
-- The builder, the checker and the simplifier can connect to a server on the same computer, for example a database.
+- The builder, the checker, the simplifier and the user checker can connect to a server on the same computer, for example a database.
 - A worker can read the tests paper, but it cannot change it. The builder and the checker cannot write to the papers folder.
 - The supervisor compares each paper with its fingerprint before each step.
 - The workers write in a copy of the project in the `work` folder of the run. A run does not change the project folder or its branch.
@@ -54,11 +55,12 @@ build: a bad result goes to plan, as a no does           │
   ▼                                                     │
 simplify: the simplifier makes the code simpler         │
   ▼                                                     │
-check: a FAN of 4 checkers at the same time             │
+check: a FAN of 5 checkers at the same time             │
   ├──► check_tests    runs the approved tests           │
   ├──► check_safety   reads the change for problems     │
   ├──► check_review   reads the change for errors       │
-  └──► check_security reads the change for security     │
+  ├──► check_security reads the change for security     │
+  └──► check_use      runs the examples as a user        │
   │                                                     │
   ├── one of them bad ──► repair (3 tries) ──► check    │
   ▼ all good                                            │
@@ -89,4 +91,5 @@ an error · a bad result with no path for it · a changed paper · a maximum
 - The step `mark` writes the commit of your yes for the tests into a git name. It has no AI.
 - The step `work_was_done` comes after a good check. With no commit after `mark`, git gives an error. The run then goes to `repair`.
 - A worker can write in `.git`, so `work_was_done` is not a wall against a worker that cheats. It finds a worker that did nothing by error.
-- The step `simplify` and the two new checkers are for new runs. You can remove them for a faster run.
+- The step `simplify` and the three new checkers are for new runs. You can remove them for a faster run.
+- `check_use` clones the run branch into a scratch folder in the temp folder. It builds the work there and runs the examples of the spec.

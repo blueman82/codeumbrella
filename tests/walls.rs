@@ -71,6 +71,7 @@ fn no_claude_role_runs_hooks_uses_the_web_or_reads_the_keys_of_the_person() {
         "reviewer",
         "security",
         "simplifier",
+        "user",
     ] {
         let file = json(&format!("roles/{role}.claude.json"));
         assert_eq!(file["disableAllHooks"], true, "{role}");
@@ -138,6 +139,7 @@ fn each_codex_role_has_its_sandbox_and_its_locks() {
         "reviewer",
         "security",
         "simplifier",
+        "user",
     ] {
         let file = text(&format!("roles/{role}.codex.txt"));
         assert!(!file.contains("danger"));
@@ -517,7 +519,7 @@ fn the_simplifier_writes_only_in_the_work_copy_like_the_builder() {
 }
 
 #[test]
-fn the_check_of_the_default_sheet_is_a_fan_with_four_checkers() {
+fn the_check_of_the_default_sheet_is_a_fan_with_five_checkers() {
     let graph = Graph::load(&root().join("graph.example.yaml"), &root().join("roles")).unwrap();
     let check = graph.step("check").unwrap();
     assert_eq!(check.kind, Kind::Fan);
@@ -527,7 +529,8 @@ fn the_check_of_the_default_sheet_is_a_fan_with_four_checkers() {
             "check_tests",
             "check_safety",
             "check_review",
-            "check_security"
+            "check_security",
+            "check_use"
         ]
     );
     assert_eq!(check.on_bad.as_deref(), Some("repair"));
@@ -536,6 +539,7 @@ fn the_check_of_the_default_sheet_is_a_fan_with_four_checkers() {
     assert_eq!(role("check_safety"), "safety");
     assert_eq!(role("check_review"), "reviewer");
     assert_eq!(role("check_security"), "security");
+    assert_eq!(role("check_use"), "user");
 }
 
 /// True if the sheet text is refused: by the reader or by the check.

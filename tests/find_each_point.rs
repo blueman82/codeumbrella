@@ -16,11 +16,12 @@ use std::{env, fs};
 static COUNT: AtomicU32 = AtomicU32::new(0);
 
 /// The fan parts. They run at the same time, so their order is not fixed.
-const PARTS: [&str; 4] = [
+const PARTS: [&str; 5] = [
     "check_tests",
     "check_safety",
     "check_review",
     "check_security",
+    "check_use",
 ];
 
 const WORK: &str = ".codeumbrella/runs/{run}/work";

@@ -53,7 +53,8 @@ const DEFAULTS: &[(&str, &str)] = defaults!(
     "safety",
     "reviewer",
     "security",
-    "simplifier"
+    "simplifier",
+    "user"
 );
 
 /// A software factory: it puts code into main after the tests and your approval.
