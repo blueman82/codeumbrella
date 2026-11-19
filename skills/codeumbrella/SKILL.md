@@ -23,11 +23,14 @@ You are the window between the person and that command. You do not do the task.
 
 Do these steps in sequence.
 
-1. If the computer cannot find the `codeumbrella` command, try `~/.cargo/bin/codeumbrella`. If that file is not there, stop and tell the person.
-2. If the project has no file `.codeumbrella/graph.yaml`, run `codeumbrella init`. Tell the person that the factory files are in `.codeumbrella/` and that the person can change them. Then run `git status --short`. If it shows a new file `.gitignore`, tell the person and commit that file.
-3. Run `git status --short`. If it shows changes, stop. Tell the person to commit the changes or to put them away. If not, the changes get into the work of the run.
-4. Run `git remote get-url origin`. If it gives an error, stop. Tell the person that the default sheet sends the work to GitHub, and that the project has no GitHub connection. Offer to make a private GitHub project. After a yes from the person, run `gh repo create <name of the project folder> --private --source . --remote origin --push`. Do not make a public project.
-5. Make sure that the packages of the project are on the computer. See "Packages". A tool in the project folder, for example in `.venv`, needs its full path in the test command.
+1. Run `test -d .git`. If it gives an error and a file `.git` is there, the folder is a linked git worktree. Then stop. Tell the person that the factory does not work in a linked git worktree. A full copy made with `git clone` works.
+2. If the computer cannot find the `codeumbrella` command, try `~/.cargo/bin/codeumbrella`. If that file is not there, stop and tell the person.
+3. If the project has no file `.codeumbrella/graph.yaml`, run `codeumbrella init`. Tell the person that the factory files are in `.codeumbrella/` and that the person can change them. Then run `git status --short`. If it shows a new file `.gitignore`, tell the person and commit that file.
+4. Run `git status --short`. If it shows changes, stop. Tell the person to commit the changes or to put them away. If not, the changes get into the work of the run.
+5. Run `git remote get-url origin`. If it gives an error, stop. Tell the person that the default sheet sends the work to GitHub, and that the project has no GitHub connection. Offer to make a private GitHub project. After a yes from the person, run `gh repo create <name of the project folder> --private --source . --remote origin --push`. Do not make a public project.
+6. Run `codeumbrella status`. The error "there are no runs in this folder" means no run, so go on. If the newest run has the status `Running` or `Waiting`, do not start a new run. Tell the person the run id and its status. Start the new run only after the person says to start it.
+7. Run `gh pr list`. If a PR is open, tell the person its number and its title before the start. This step stops nothing. The person can say to start. If `gh pr list` gives an error, tell the person and go on.
+8. Make sure that the packages of the project are on the computer. See "Packages". A tool in the project folder, for example in `.venv`, needs its full path in the test command.
 
 ## Packages
 

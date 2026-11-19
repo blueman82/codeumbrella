@@ -103,6 +103,7 @@ To install the command and the chat command on a computer, run `./install.sh`.
 | `tests/clean_up.rs` | Tests of the step `clean_up`: the default sheet, runs with the built command and the documents. |
 | `tests/pr_text.rs` | Tests of the PR text: the paper `pr`, the role `writer`, the step `write_pr`, and `find_pr` and `open_pr` with a simulated `gh`. |
 | `tests/run_total.rs` | Tests of the numbers of each worker, the total in the notebook, the lines of `status` and the documents. |
+| `tests/run_id.rs` | Tests of the run id with four digits, of `status` on an id of before, of the chat page and the documents. |
 | `install.sh` | Installs the command and the chat command. |
 | `LICENSE` | The MIT licence. Do not change its text. |
 
@@ -151,7 +152,11 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - A live command can have a name that `ps` cannot give. Then `stop` and the repair give an error and change no file. A sandbox blocks `ps`, so the person runs `stop` with no sandbox.
 - The chat runs `stop` only after the person says stop, with no sandbox. An AI does not stop a run by its own decision.
 - An answer and a resume get the lock before they read the notebook. Thus a second command cannot write an answer into a run that is active.
-- The clean copy reads the `origin` settings from `.git/config` of the project. Thus the factory does not work in a linked git worktree.
+- The clean copy reads the `origin` settings from `.git/config` of the project. Thus the factory does not work in a linked git worktree. The chat page stops there before the first command.
+- The id of a new run is `run-<Unix seconds>-<four digits>`. The four digits come from the clock and the command number.
+- Two runs in two folders got the same id on 19 November 2026. The two runs pushed to one branch.
+- The chance of the same id in two folders is small but not zero. `run` makes no call to GitHub.
+- The chat tells the person about a run that is not complete before it starts a new run.
 - `model` and `effort` have only letters, digits, `.`, `-` and `_`. Thus no quote or brace can get to the tool command.
 - `model` and `effort` cannot start with `-`. Thus the tool does not read them as an option.
 - A worker that ends with an error code gives no good result.
