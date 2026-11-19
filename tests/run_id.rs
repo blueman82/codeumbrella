@@ -404,7 +404,7 @@ fn agents_md_tells_the_new_id_its_chance_and_its_cause() {
     let rules = section("AGENTS.md", "Safety rules");
     let shape = line_with(&rules, "`run-<Unix seconds>-<four digits>`");
     plain_and_short(&shape);
-    let chance = line_with(&rules, "not zero");
+    let chance = line_with(&rules, "chance is small");
     plain_and_short(&chance);
     let has = |l: &&str| l.contains("same id") && l.contains(DATE);
     let cause = rules.lines().find(has);
