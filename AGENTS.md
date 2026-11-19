@@ -123,13 +123,13 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - `stop` works only on a run with status Running. It ends the workers and the command, removes `lock`, and writes Stopped. `resume` then tries the same step.
 - A kill of a command leaves `lock`, a Running notebook and workers. Three runs on 18 November 2026 showed this. No code catches a signal, so the next command repairs the run.
 - `status`, `status --wait`, `resume` and `answer` do the repair first. It starts only if `lock` holds a dead number or a live command that is not `codeumbrella`.
-- The repair ends the workers, removes `lock` and writes Stopped with a note, if the status is Running. Other statuses stay.
+- For a run with status Running, the repair ends the workers, removes `lock` and writes Stopped with a note. A run with a different status keeps its notebook.
 - An empty `lock` is not repaired, because a new command writes its number after it makes the file.
 - The repair reads `lock` again after it opens the notebook. A new text means a new command: the repair does nothing.
 - A tool part writes `worker.<number>` with the start time of the worker, and removes it at the end. It writes none if `ps` cannot run.
 - The repair ends a worker only if its start time is the one in the file. The computer can give a dead number to a different command.
 - `stop` ends a command only if `ps` shows that its name is `codeumbrella`. The computer can give a dead number to a different command.
-- If the command is alive and `ps` cannot tell its name, `stop` and the repair give an error and changes no file. A sandbox blocks `ps`, so the person runs `stop` with no sandbox.
+- A live command can have a name that `ps` cannot give. Then `stop` and the repair give an error and change no file. A sandbox blocks `ps`, so the person runs `stop` with no sandbox.
 - The chat runs `stop` only after the person says stop, with no sandbox. An AI does not stop a run by its own decision.
 - An answer and a resume get the lock before they read the notebook. Thus a second command cannot write an answer into a run that is active.
 - The clean copy reads the `origin` settings from `.git/config` of the project. Thus the factory does not work in a linked git worktree.
