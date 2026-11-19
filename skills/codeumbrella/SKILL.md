@@ -88,7 +88,7 @@ The output has one fact on each line: `Run:`, `Status:`, `Note:` and more. A run
 - Status `Stopped`: show the note to the person. After the person corrects the cause, run `codeumbrella resume <run id>` only after the person says yes.
 - If the note says that a paper is not as its writer left it, `resume` does not help. A person must put the paper back first, or start a new run.
 - If the step `no_locked_files` stopped the run, the work changes `.github`, `.claude` or `.codeumbrella`. Show this to the person. Do not go around it.
-- Status `Done`: tell the person that the merge of the PR is complete. Tell the person to run `git pull`. The workers wrote in a copy, so the project branch did not change.
+- Status `Done`: tell the person that the merge of the PR is complete. Tell the person to run `git pull`. The workers wrote in a copy, so the project branch did not change. The step `clean_up` removed the copies `work` and `clean`. The record stays: `state.json`, `log.jsonl` and the papers.
 
 ## The log and the `trace` files
 

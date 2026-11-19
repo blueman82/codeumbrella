@@ -339,3 +339,16 @@ steps:
     type: command
     run:
       - [cp, ".codeumbrella/runs/{run}/papers/lessons/lessons.md", .codeumbrella/lessons.md]
+    next: clean_up
+
+  # No AI. After the merge, this step removes the two copies of the run:
+  # `work` and `clean`. The code is in `master` at that time.
+  # The record of the run stays: the notebook, the log, the papers and the
+  # bundle. To keep the copies, remove this step. Also remove
+  # `next: clean_up` of `save_lessons`.
+  # `rm` gives an error if a folder is not there. Then the run stops with
+  # status Stopped, after a good merge. You can remove the folder by hand.
+  clean_up:
+    type: command
+    run:
+      - [rm, -r, ".codeumbrella/runs/{run}/work", ".codeumbrella/runs/{run}/clean"]

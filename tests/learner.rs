@@ -235,14 +235,16 @@ fn check_safety_reads_the_paper_lessons_and_the_other_parts_do_not() {
 }
 
 #[test]
-fn merge_goes_to_save_lessons_and_the_run_ends_after_it() {
+fn merge_goes_to_save_lessons_and_save_lessons_goes_to_clean_up() {
     let graph = default_sheet();
     let merge = graph.step("merge").unwrap();
     assert_eq!(merge.next.as_deref(), Some("save_lessons"));
     let save = graph.step("save_lessons").unwrap();
     assert_eq!(save.kind, Kind::Command);
     assert_eq!(save.run, [SAVE]);
-    assert!(save.next.is_none(), "{:?}", save.next);
+    assert_eq!(save.next.as_deref(), Some("clean_up"));
+    let clean = graph.step("clean_up").unwrap();
+    assert!(clean.next.is_none(), "{:?}", clean.next);
     assert!(save.on_bad.is_none(), "{:?}", save.on_bad);
     assert!(save.max_tries.is_none(), "{:?}", save.max_tries);
     assert!(save.reads.is_empty() && save.writes.is_empty());
@@ -681,13 +683,15 @@ fn a_run_does_learn_after_simplify_and_check_after_learn() {
     let safety = sim.calls("check_safety");
     assert_eq!(safety.len(), 1, "{safety:?}");
     assert_eq!(safety[0].reads, ["spec", "lessons"]);
-    // After a yes at `approval`, the run does `merge` and `save_lessons`.
+    // After a yes at `approval`, the run does `merge`, `save_lessons` and
+    // `clean_up`.
     run.answer(true, "").unwrap();
     run.go(&graph, &roles(), &sim).unwrap();
     assert_eq!(run.state.status, Status::Done);
     let steps: Vec<String> = log(&run).into_iter().map(|(s, _)| s).collect();
-    let last = &steps[steps.len() - 2..];
-    assert_eq!(last, ["merge", "save_lessons"], "{steps:?}");
+    let last = &steps[steps.len() - 3..];
+    let want = ["merge", "save_lessons", "clean_up"];
+    assert_eq!(last, want, "{steps:?}");
 }
 
 #[test]

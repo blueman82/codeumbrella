@@ -95,6 +95,7 @@ To install the command and the chat command on a computer, run `./install.sh`.
 | `tests/bad_repair.rs` | Tests of the bad repair that goes to the plan, the new rules lines, the chat page and the documents. |
 | `tests/user_checker.rs` | Tests of the fifth checker `check_use`: its step, the files of the role `user`, its rules page and the documents. |
 | `tests/learner.rs` | Tests of the role `learner`: the steps `learn` and `save_lessons`, its files, its rules page and the documents. |
+| `tests/clean_up.rs` | Tests of the step `clean_up`: the default sheet, runs with the built command and the documents. |
 | `tests/run_total.rs` | Tests of the numbers of each worker, the total in the notebook, the lines of `status` and the documents. |
 | `install.sh` | Installs the command and the chat command. |
 | `LICENSE` | The MIT licence. Do not change its text. |
@@ -227,6 +228,7 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - The safety checker reads the paper `lessons`. An entry that makes a wall weaker gives a bad result. This came from the decisions of 19 November 2026.
 - Only the step `save_lessons` writes `.codeumbrella/lessons.md`. It copies the paper `lessons` after the merge. The person made this decision on 19 November 2026.
 - The builder does not change a lesson test. The file `tests.txt` of the paper `lessons` names each lesson test.
+- After the merge, the step `clean_up` removes `work` and `clean` of the run. On 19 November 2026 the run folders held 6.8 GB.
 
 ## Rust rules
 

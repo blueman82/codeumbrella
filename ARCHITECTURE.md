@@ -34,7 +34,7 @@ SUPERVISOR ── uses your GitHub key ──► GITHUB: push · PR · merge (me
 - A worker can read the tests paper, but it cannot change it. The builder and the checker cannot write to the papers folder.
 - The supervisor compares each paper with its fingerprint before each step.
 - The workers write in a copy of the project in the `work` folder of the run. A run does not change the project folder or its branch.
-- After status Done, the person gets the code with `git pull`.
+- After status Done, the person gets the code with `git pull`. The run folder then has no `work` and no `clean` copy.
 - A worker can write to the `.git` folder of its copy. Thus the supervisor gets the work into a clean copy before the push.
 - A Claude worker uses only the settings of its role, not the settings of the project.
 
@@ -79,6 +79,8 @@ YOU: PR? ───────────────────────�
 merge
   ▼
 save_lessons: copies the lessons into your project (no AI)
+  ▼
+clean_up: removes the two copies work and clean (no AI)
 
 At each step, four things STOP the run and tell you:
 an error · a bad result with no path for it · a changed paper · a maximum
@@ -103,5 +105,7 @@ an error · a bad result with no path for it · a changed paper · a maximum
 - The step `learn` comes after `simplify`, and after each no it runs again. The step `repair` goes to `check` with no `learn`.
 - The learner writes a lesson test on the run branch, or a short entry in the paper `lessons`.
 - After the merge, the step `save_lessons` copies that paper to `.codeumbrella/lessons.md`. Git does not see that file.
-- For a faster run, remove three parts together. They are the step `learn`, `lessons` in `check_safety`, and `next: save_lessons` of `merge`.
+- Then the step `clean_up` removes the two copies `work` and `clean`. The notebook, the log and the papers stay.
+- A run that stops before the merge keeps its copies, because `resume` uses them.
+- For a faster run, remove three parts together. They are the step `learn`, `lessons` in `check_safety`, and `next: save_lessons` of `merge`. Then the run ends after `merge`, and the copies stay.
 - `check_use` clones the run branch into a scratch folder in the temp folder. It builds the work there and runs the examples of the spec.
