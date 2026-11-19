@@ -517,7 +517,7 @@ fn queue() -> Result<()> {
         println!("The queue is empty.");
     }
     for path in files {
-        let text = task_text(&path).unwrap_or_default();
+        let text = task_text(&path)?;
         let given = text.lines().find(|l| l.starts_with("Files:"));
         let name = path.file_name().unwrap_or_default().to_string_lossy();
         println!("{name}  {}", given.unwrap_or("Files: not given").trim());

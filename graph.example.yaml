@@ -194,8 +194,10 @@ steps:
   # Without a script, the run stops here. A bad result stops the run. The
   # writer then reads the version for the PR text from the branch.
   # The script runs with no sandbox, as each command step does. Only you
-  # write it: a worker cannot write in `.codeumbrella`. A commit in it should
-  # have `-c core.hooksPath=/dev/null` and `--no-verify`.
+  # write it: a worker cannot write in `.codeumbrella`. A worker can write the
+  # git config of the work copy. So each git call in it should have
+  # `-c core.fsmonitor=false`, and a commit `-c core.hooksPath=/dev/null` and
+  # `--no-verify`. Stop with an error if the copy has a git filter.
   set_version:
     type: command
     run:

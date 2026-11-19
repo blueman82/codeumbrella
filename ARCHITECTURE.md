@@ -117,7 +117,7 @@ an error · a bad result with no path for it · a changed paper · a maximum
 - A worker can write in `.git`, so `work_was_done` is not a wall against a worker that cheats. It finds a worker that did nothing by error.
 - The step `simplify` and the three new checkers are for new runs. You can remove them for a faster run.
 - The step `learn` comes after `simplify`, and after each no it runs again. The step `repair` goes to `write_pr` with no `learn`.
-- The step `write_pr` comes after `learn` and after each `repair`. Then the PR text agrees with the change before each check. A bad result of the writer stops the run.
+- The step `write_pr` comes after `set_version` and after each `repair`. Then the PR text agrees with the change before each check. A bad result of the writer stops the run.
 - The reviewer compares the paper `pr` with the change. One `[x]` of the checklist that the change does not show is a bad result.
 - `open_pr` opens the PR with the title and the text of the paper `pr`. After a no, `find_pr` puts the new title and text into the open PR.
 - `find_pr` and `open_pr` refuse a paper `pr` with a link. Then only the files of the paper go to GitHub.

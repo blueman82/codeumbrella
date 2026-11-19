@@ -131,14 +131,14 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - `work_was_done` also writes the changed files into `files.txt` in the run folder.
 - The default sheet has two command steps with no AI. `mark` comes after `look_at_tests` and before `build`. It writes the commit of that moment into `refs/codeumbrella/before` of the work copy.
 - The steps of the planner write the papers `spec`, `tests` and `pr`.
-- The worker step `write_pr` comes after `learn` and after `repair`, before `check`. The writer completes the PR text in the paper `pr`.
+- The worker step `write_pr` comes after `set_version` and after `repair`, before `check`. The writer completes the PR text in the paper `pr`.
 - `work_was_done` comes after a good `check` and before `no_locked_files`. It makes `new-work.bundle` in the run folder from the commits after `mark`. With no new commit, git gives an error, and the run goes to `repair`.
 
 ## Safety rules
 
 - The supervisor opens the PR. Then the run always stops for the approval of the person. The merge comes only after a yes. A no with a text sends the work back to the planner. The person then sees the tests again.
 - No worker can push, open a PR or merge. Only the command steps `push`, `find_pr`, `open_pr` and `merge` can, with the set commands in the sheet.
-- The script `.codeumbrella/set-version` of the step `set_version` runs with no sandbox, as each command step does. Only the person writes it, because workers cannot write in `.codeumbrella`. The step `work_was_done` and the commit of the script run git in the work copy, where a worker can write. So the diff has `--no-ext-diff` and `--no-textconv`, and the commit has `-c core.hooksPath=/dev/null` and `--no-verify`. `set_version` does not push.
+- The script `.codeumbrella/set-version` of the step `set_version` runs with no sandbox, as each command step does. Only the person writes it, because workers cannot write in `.codeumbrella`. The step `work_was_done` and the commit of the script run git in the work copy, where a worker can write. So the diff has `--no-ext-diff` and `--no-textconv`, and the commit has `-c core.hooksPath=/dev/null` and `--no-verify`. Each git call of the script also has `-c core.fsmonitor=false`, and the script stops if the work copy has a git filter. `set_version` does not push.
 - The step `no_locked_files` stops the run if the work changes `.github`, `.claude` or `.codeumbrella`. A worker cannot write to these folders, but git can put such a file into a commit.
 - That step reads a capital letter and a small letter as the same letter. A test on 16 November 2026 showed the cause. On a Mac, a commit with `.Claude/settings.json` got through the step and changed `.claude/settings.json`.
 - The push does not send tags.
@@ -255,7 +255,7 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - `open_pr` opens the PR with the title of `title.txt` and the text of `body.md` of the paper `pr`. It does not use `--fill`.
 - On 19 November 2026 a PR had the branch name as its title. Its text had only the commit lines.
 - After a no, `find_pr` puts the new title and text of the paper `pr` into the open PR. Thus a PR has no text of an earlier try.
-- The step `write_pr` comes after `learn` and after each `repair`. Thus the PR text agrees with the change before each check.
+- The step `write_pr` comes after `set_version` and after each `repair`. Thus the PR text agrees with the change before each check.
 - A bad result of `write_pr` stops the run.
 - The writer has the walls of the reviewer and one write entry for the paper `pr`. It writes no file of the work copy and commits nothing.
 - In Claude settings a deny rule comes before an allow rule. So the writer has a deny rule for the work copy, not for the full project folder.
