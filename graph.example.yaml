@@ -172,12 +172,12 @@ steps:
     reads: [spec]
     next: check
 
-  # Four checkers look at the work at the same time. This step is a fan.
+  # Five checkers look at the work at the same time. This step is a fan.
   # The result is good only if all the steps in the `fan` line are good.
   # A bad result goes to the repair step, with the report of each checker.
   check:
     type: fan
-    fan: [check_tests, check_safety, check_review, check_security]
+    fan: [check_tests, check_safety, check_review, check_security, check_use]
     on_bad: repair
     next: work_was_done
 
@@ -228,6 +228,16 @@ steps:
   # and its name in the `fan` line of `check`.
   check_security:
     role: security
+    reads: [spec]
+
+  # This checker uses the work as a user does. It clones the run branch into
+  # a scratch folder in the temp folder and builds it there. It runs each
+  # example of the section "Examples for a user" of the spec. It compares
+  # each result with the spec. It changes no file of the project.
+  # For a faster run, remove this step and its name in the `fan` line of
+  # `check`.
+  check_use:
+    role: user
     reads: [spec]
 
   # A builder repairs the code. Then the checker looks again.

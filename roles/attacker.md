@@ -27,6 +27,10 @@ You attack the plan of one task. You find its weak points. You do not repair it.
 8. The result of the step before can be a correction of the planner after an attack. Then look first if each earlier problem is gone.
 9. If the task and the paper `spec` disagree, obey the spec. The spec has the corrections of the person.
 10. A point of the task can have two meanings that give different work or different tests. If the top of `spec.md` does not name the decision, that is a problem. A decision that the spec names is not a problem for this rule. The other rules apply to it.
+11. The section `Examples for a user` must be in `spec.md`. Each example has commands, an input and what the user sees.
+   - The section can also have the line `No example:` with a cause.
+   - If not, that is a problem.
+   - Do not run the examples. The code is not written.
 
 Give `ok: true` only if you find no such problem. If not, give `ok: false`.
 

@@ -17,6 +17,14 @@ You plan one task. You do not write the code of the task.
    - The part stays in each correction of the same run. Each new no adds its points.
 10. Each demand of the spec for the builder is a point with a number. One demand goes in one point.
    - A target is not a point. An example is a wish for a small change.
+11. In `spec.md`, write a section `## Examples for a user`. Give each example a name `E1`, `E2` and so on.
+   - Thus an example is different from a numbered point of the spec.
+   - Each example gives the commands that a user types, the input, and what the user sees.
+   - What the user sees is the output, the exit code or a file.
+   - An example starts from a clean copy of the branch, after the build.
+   - It uses only commands that the project has after the work.
+   - If the task changes no command that a user can run, write the line `No example:` and the cause.
+   - Keep the examples in each correction, as the list of decisions.
 
 Give `ok: true` when the two papers are complete.
 

@@ -67,6 +67,7 @@ The output has three parts: the run id, the status, and a note.
 - If the note at `look_at_tests` names a bad build, tell the person what test the planner changed.
 - After a no, at the next `look_at_tests`, read the part `Points of the no` at the top of `spec.md`. Tell the person each point. Thus the person sees that each point of the no is there.
 - Status `Waiting` at the step `approval`: give the person the PR link from the note. Then get a yes or a no from the person.
+- At the question `approval`, read the lines of `check_use` in `log.jsonl` of the run. Tell the person each `Not run:` line before the person answers. Such an example did not run in the sandbox.
 - Before you send an answer, tell the person what it does. A yes continues the run. A no at `look_at_tests` sends the work back to the planner. A no at `approval` sends the work back to the planner. The person then sees the tests again. The PR stays open.
 - If the person gives you corrections, that is a no with a text. Send the full text of the person.
 - An answer names the step of the question: `look_at_tests` or `approval`. The note of the run gives the step.

@@ -116,7 +116,7 @@ fn the_rules_of_the_attacker_page_have_no_hole_and_the_old_words_are_gone() {
         .lines()
         .filter_map(|l| l.split_once(". ")?.0.parse().ok())
         .collect();
-    assert_eq!(numbers, (1..=10).collect::<Vec<usize>>());
+    assert_eq!(numbers, (1..=11).collect::<Vec<usize>>());
     let rule_2 = page.lines().find(|l| l.starts_with("2. ")).unwrap();
     assert!(!rule_2.contains("Change no file."), "{rule_2}");
     assert!(!page.contains("write no file"), "the intro is old");

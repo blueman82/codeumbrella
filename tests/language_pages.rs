@@ -108,7 +108,7 @@ fn the_reviewer_and_the_simplifier_name_the_pages_and_others_do_not() {
         assert!(page.contains("../../../roles/languages/"), "{role}");
     }
     for role in [
-        "planner", "attacker", "builder", "checker", "safety", "security",
+        "planner", "attacker", "builder", "checker", "safety", "security", "user",
     ] {
         let page = text(&format!("roles/{role}.md"));
         assert!(!page.contains("roles/languages"), "{role}");

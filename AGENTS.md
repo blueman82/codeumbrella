@@ -89,6 +89,7 @@ To install the command and the chat command on a computer, run `./install.sh`.
 | `tests/stop.rs` | Tests of `stop`, with a simulated `claude`. The last three use `ps` and `pkill`, and skip themselves in a sandbox. |
 | `tests/find_each_point.rs` | Tests of `mark`, `work_was_done`, the new rules lines and the repair that changes no file. |
 | `tests/language_pages.rs` | Tests of the six language pages, `init` and the two rules pages. |
+| `tests/user_checker.rs` | Tests of the fifth checker `check_use`: its step, the files of the role `user`, its rules page and the documents. |
 | `install.sh` | Installs the command and the chat command. |
 | `LICENSE` | The MIT licence. Do not change its text. |
 
@@ -149,7 +150,7 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - A paper can change only in a step that lists it in `writes`. The supervisor keeps a fingerprint of each paper. Before each step, the supervisor compares all the papers with their fingerprints. If a paper is different, the run stops. The person can change a paper while the run waits for an answer. The answer makes the fingerprints again.
 - All factory files of a project are in the folder `.codeumbrella`: the sheet, the rules pages and the runs. The folder has its own `.gitignore`, so git does not see it.
 - The Claude planner has no shell. The builder, the checker and the simplifier can run all commands, but only in the sandbox.
-- The builder, the checker and the simplifier can connect to a server on the same computer. An example is a test database. A test on 16 November 2026 showed that the internet and GitHub stay closed with this setting. A worker can thus talk to each server that runs on the computer of the person.
+- The builder, the checker, the simplifier and the user checker can connect to a server on the same computer. An example is a test database. A test on 16 November 2026 showed that the internet and GitHub stay closed with this setting. A worker can thus talk to each server that runs on the computer of the person.
 - The Codex part always turns on the Codex network proxy. Without the proxy, a Codex role that has network settings gets the full internet.
 - Workers have no internet. The packages of a project must be on the computer before a run. A test on 16 November 2026 showed the cause. With internet, a worker can use the GitHub key of the person.
 - The builder, the checker and the simplifier run in the Claude sandbox. They cannot write to `.codeumbrella`, `.claude`, `.github`, `.git/hooks` or `.git/config`. They write only in the work copy of their run.
@@ -174,13 +175,13 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - Each role has one rules page.
 - The chat starts `run`, `answer` and `resume` with `nohup`, so a command lives after the shell ends. It adds `--tool codex` to `run` only. The chat uses `status --wait`. That command repairs a dead run and shows Stopped. The chat runs `resume` only after the person says yes. It does not remove `lock`.
 - The checker compares each test file of the paper `tests` with the project in each try. A file that is different or not there gets the paper version, because the person approved the paper. The builder does not change such a file.
-- The default check step is a fan of four checkers. `check_tests` runs the tests. `check_safety`, `check_review` and `check_security` read the change. They cannot write a file.
+- The default check step is a fan of five checkers. `check_tests` runs the tests. `check_safety`, `check_review` and `check_security` read the change. They cannot write a file. `check_use` runs the examples of the spec as a user does. It writes only in a scratch folder in the temp folder.
 - The step `simplify` follows `build`. The simplifier changes no test file, and it commits only if the test command passes. The step `repair` does not go through it.
 - The reviewer and the `security` checker have the same settings as the safety checker. The simplifier has the same settings as the builder.
 - The stopped run prints `To continue: codeumbrella resume <run id>` and a line that says: resume only after the person says yes. An AI must not give this approval. The limit for the note does not cut them.
 - `answer` and `resume` with a `--tool` that is different from the tool of the run give an error. They give it before a step starts and before the answer is written. A notebook with no tool uses Claude, and `--tool` writes it. `status` changes the notebook only in the repair.
 - The safety checker also reads the files that use the changed lines, for example settings files. A run on 17 November 2026 showed the cause.
-- The four checkers work in the same copy. Only the tests checker writes there.
+- Four checkers work in the same copy. Only the tests checker writes there. `check_use` clones the run branch into its scratch folder.
 - The safety checker does not read the commit that the tests checker makes at the same time. The person sees that commit in the PR.
 - A run on 18 November 2026 showed this. After a no of the person, the builder changed no file. All four checkers gave a good result.
 - After a no, the planner puts a part `Points of the no` at the top of `spec.md`. It is a list with numbers.
@@ -193,6 +194,17 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - The step `mark` keeps the commit of the yes for the tests. The step `work_was_done` gives a bad result with no commit after it.
 - A worker can write in `.git` of its work copy. So `work_was_done` is not a wall against a worker that cheats. It finds a worker that did nothing by error.
 - The end of the workers first looks at each file `worker.<number>`. Thus an error of `ps` changes no file.
+- On 18 November 2026 a person ran the built command by hand with a live worker. The person found two errors that no checker found.
+- Thus the role `user` runs the software as a user. Its step is `check_use` in the fan of `check`.
+- For Claude, the settings of `user` are those of the attacker, character for character.
+- For Codex, the file of `user` is the attacker file with one more entry: `network={enabled=true, mode="limited", allow_local_binding=true}`. Thus the software can start a server on the same computer. The network proxy keeps the internet closed.
+- The user checker makes a scratch folder with `mktemp`. It clones the run branch there with `git clone`, and builds it.
+- It runs each example of the part `Examples for a user` of `spec.md`. It sets `HOME` to a folder in the scratch folder for each command of the software.
+- It changes no file of the project, of the work copy or of the papers. At the end, it removes only its scratch folder.
+- It ends each command that it starts with `kill`, and looks with `kill -0`. The sandbox blocks `ps`, `pgrep` and `pkill`.
+- An example that cannot run in the sandbox gets `Not run:`. That is not a bad result. The chat tells the person each such line at the approval.
+- Only an example that ran and differs from the spec gives a bad result. The user checker does not run the test command.
+- The planner writes the examples, with the names `E1`, `E2` and so on. A task with no command for a user gets `No example:` and a cause.
 
 ## Rust rules
 

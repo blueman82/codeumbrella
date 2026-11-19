@@ -1,0 +1,1 @@
+{extends=":read-only", network={enabled=true, mode="limited", allow_local_binding=true}, filesystem={":workspace_roots"={".codeumbrella"="read"}, ":tmpdir"="write", "{home}/.ssh"="deny", "{home}/.config/gh"="deny", "{home}/.netrc"="deny", "{home}/.git-credentials"="deny", "{home}/Library/Keychains"="deny"}}

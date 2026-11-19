@@ -263,7 +263,7 @@ fn the_default_sheet_has_the_step_simplify_between_build_and_check() {
 }
 
 #[test]
-fn the_fan_of_the_check_has_four_parts() {
+fn the_fan_of_the_check_has_five_parts() {
     let graph = graph();
     let check = graph.step("check").unwrap();
     assert_eq!(
@@ -272,11 +272,16 @@ fn the_fan_of_the_check_has_four_parts() {
             "check_tests",
             "check_safety",
             "check_review",
-            "check_security"
+            "check_security",
+            "check_use"
         ]
     );
     assert_eq!(check.on_bad.as_deref(), Some("repair"));
-    for (name, role) in [("check_review", "reviewer"), ("check_security", "security")] {
+    for (name, role) in [
+        ("check_review", "reviewer"),
+        ("check_security", "security"),
+        ("check_use", "user"),
+    ] {
         let part = graph.step(name).unwrap();
         assert_eq!(part.role.as_deref(), Some(role), "{name}");
         assert_eq!(part.reads, ["spec"], "{name}");

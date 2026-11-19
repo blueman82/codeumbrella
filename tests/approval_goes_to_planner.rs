@@ -18,7 +18,14 @@ struct Script {
 impl Worker for Script {
     fn run(&self, job: &Job) -> Result<Outcome> {
         // The parts of the fan run at the same time, so their order is not fixed.
-        if !["check_safety", "check_review", "check_security"].contains(&job.step) {
+        if ![
+            "check_safety",
+            "check_review",
+            "check_security",
+            "check_use",
+        ]
+        .contains(&job.step)
+        {
             self.calls.lock().unwrap().push(job.step.to_owned());
         }
         for paper in job.writes {
@@ -55,7 +62,14 @@ impl BadBuilds {
 
 impl Worker for BadBuilds {
     fn run(&self, job: &Job) -> Result<Outcome> {
-        if !["check_safety", "check_review", "check_security"].contains(&job.step) {
+        if ![
+            "check_safety",
+            "check_review",
+            "check_security",
+            "check_use",
+        ]
+        .contains(&job.step)
+        {
             self.calls.lock().unwrap().push(job.step.to_owned());
         }
         if job.step == "plan" {
