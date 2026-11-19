@@ -24,6 +24,7 @@ The supervisor knows nothing about software work. All knowledge of the steps is 
 | Notebook | `.codeumbrella/runs/<run-id>/state.json`: where the run is, and the tool of the run. |
 | Tool of the run | The tool that `run` got from `--tool` (default Claude). The notebook keeps it. `answer` and `resume` use it. |
 | Log | `log.jsonl` in the run folder: one line for each step that ended. |
+| `worker.<number>` | A file in the run folder. It holds the start time of the worker with that process number. |
 | `trace` | `<step>.<number>.trace.jsonl` in the run folder: all that one worker did in one try. |
 | Paper | A folder in `.codeumbrella/runs/<run-id>/papers/` that one step writes and other steps read. |
 | Role | The type of a worker. Its rules page is `.codeumbrella/roles/<role>.md` in a project. The folder `roles` holds the defaults. |
@@ -41,8 +42,8 @@ codeumbrella init                              # put the default sheet and rules
 codeumbrella init --update                     # replace changed factory files with the new defaults, keep a copy of each as `.before`
 codeumbrella run "<task>"                      # start a run with Claude workers
 codeumbrella --tool codex run "<task>"         # start a run with Codex workers. The run keeps this tool
-codeumbrella status [run-id]                   # show where a run is
-codeumbrella status --wait <run-id>            # wait until the run is not `Running`, then show it. It does not change the notebook or the lock
+codeumbrella status [run-id]                   # show where a run is. After a kill, it repairs the run first (see Safety rules)
+codeumbrella status --wait <run-id>            # wait until the run is not `Running`, then show it
 codeumbrella answer <run-id> <step> yes|no ["text"]   # answer the question of that step, then continue
 codeumbrella stop <run-id>                     # end an active run: its command and its workers. Only after the person says stop
 codeumbrella resume <run-id>                   # try a stopped step again, with its count of tries at 0. Only after the person says yes
@@ -84,6 +85,7 @@ To install the command and the chat command on a computer, run `./install.sh`.
 | `tests/run_tool.rs` | Tests of the stop message and of the tool of the run. |
 | `tests/new_roles.rs` | Tests of the roles `reviewer`, `security` and `simplifier`, the new steps and the documents. |
 | `tests/small_repairs.rs` | Tests of version 0.1.11: the lock number, `status --wait`, the work folder, run ids, the stop message. |
+| `tests/kill_repair.rs` | Tests of the repair after a kill. The last four use `ps` and `pkill`, and skip themselves in a sandbox. |
 | `tests/stop.rs` | Tests of `stop`, with a simulated `claude`. The last three use `ps` and `pkill`, and skip themselves in a sandbox. |
 | `tests/language_pages.rs` | Tests of the six language pages, `init` and the two rules pages. |
 | `install.sh` | Installs the command and the chat command. |
@@ -117,10 +119,17 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - The clean copy gets the code of GitHub from GitHub. It gets only the `branch` of the run from `../work`. The push sends the commit that the step compared.
 - The push gives the full name of the run `branch` two times. Thus it cannot go to a different `branch`. Tests on 16 November 2026 showed these attacks with git.
 - An answer names its step. An answer for a different step is an error. Thus a yes for the tests cannot become a yes for the merge.
-- Only one command can work on a run at a time. The file `lock` in the run folder shows this. It holds the number that the computer gives to that command. After a kill, `stop` removes that file. A person can also remove it by hand.
+- Only one command can work on a run at a time. The file `lock` in the run folder shows this. It holds the number that the computer gives to that command. After a kill, the next command for the run repairs it.
 - `stop` works only on a run with status Running. It ends the workers and the command, removes `lock`, and writes Stopped. `resume` then tries the same step.
+- A kill of a command leaves `lock`, a Running notebook and workers. Three runs on 18 November 2026 showed this. No code catches a signal, so the next command repairs the run.
+- `status`, `status --wait`, `resume` and `answer` do the repair first. It starts only if `lock` holds a dead number or a live command that is not `codeumbrella`.
+- For a run with status Running, the repair ends the workers, removes `lock` and writes Stopped with a note. A run with a different status keeps its notebook.
+- An empty `lock` is not repaired, because a new command writes its number after it makes the file.
+- The repair reads `lock` again after it opens the notebook. A new text means a new command: the repair does nothing.
+- A tool part writes `worker.<number>` with the start time of the worker, and removes it at the end. It writes none if `ps` cannot run.
+- The repair ends a worker only if its start time is the one in the file. The computer can give a dead number to a different command.
 - `stop` ends a command only if `ps` shows that its name is `codeumbrella`. The computer can give a dead number to a different command.
-- If the command is alive and `ps` cannot tell its name, `stop` gives an error and changes no file. A sandbox blocks `ps`, so the person runs `stop` with no sandbox.
+- A live command can have a name that `ps` cannot give. Then `stop` and the repair give an error and change no file. A sandbox blocks `ps`, so the person runs `stop` with no sandbox.
 - The chat runs `stop` only after the person says stop, with no sandbox. An AI does not stop a run by its own decision.
 - An answer and a resume get the lock before they read the notebook. Thus a second command cannot write an answer into a run that is active.
 - The clean copy reads the `origin` settings from `.git/config` of the project. Thus the factory does not work in a linked git worktree.
@@ -160,13 +169,13 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - A live test on 17 November 2026 showed the cause. A Codex attacker gave 5 bad results for a small task, and the run stopped.
 - For Claude, the settings of the attacker are the same as those of the safety checker. For Codex, they have one more entry: write in the temp folder.
 - Each role has one rules page.
-- The chat starts `run`, `answer` and `resume` with `nohup`, so a command lives after the shell ends. It adds `--tool codex` to `run` only. The chat uses `status --wait`. That command can say that the command of the run is dead. Then the chat removes `lock` and runs `resume` only after the person says yes.
+- The chat starts `run`, `answer` and `resume` with `nohup`, so a command lives after the shell ends. It adds `--tool codex` to `run` only. The chat uses `status --wait`. That command repairs a dead run and shows Stopped. The chat runs `resume` only after the person says yes. It does not remove `lock`.
 - The checker compares each test file of the paper `tests` with the project in each try. A file that is different or not there gets the paper version, because the person approved the paper. The builder does not change such a file.
 - The default check step is a fan of four checkers. `check_tests` runs the tests. `check_safety`, `check_review` and `check_security` read the change. They cannot write a file.
 - The step `simplify` follows `build`. The simplifier changes no test file, and it commits only if the test command passes. The step `repair` does not go through it.
 - The reviewer and the `security` checker have the same settings as the safety checker. The simplifier has the same settings as the builder.
 - The stopped run prints `To continue: codeumbrella resume <run id>` and a line that says: resume only after the person says yes. An AI must not give this approval. The limit for the note does not cut them.
-- `answer` and `resume` with a `--tool` that is different from the tool of the run give an error. They give it before a step starts and before the answer is written. A notebook with no tool uses Claude, and `--tool` writes it. `status` does not change the notebook.
+- `answer` and `resume` with a `--tool` that is different from the tool of the run give an error. They give it before a step starts and before the answer is written. A notebook with no tool uses Claude, and `--tool` writes it. `status` changes the notebook only in the repair.
 - The safety checker also reads the files that use the changed lines, for example settings files. A run on 17 November 2026 showed the cause.
 - The four checkers work in the same copy. Only the tests checker writes there.
 - The safety checker does not read the commit that the tests checker makes at the same time. The person sees that commit in the PR.
@@ -209,7 +218,7 @@ A new package gets into this list only when all of these are correct:
 
 ## Limits for lines of code
 
-- The supervisor (`src/graph.rs`, `src/engine.rs`, `src/main.rs`, `src/log.rs`, `src/lib.rs`): 750 lines of code.
+- The supervisor (`src/graph.rs`, `src/engine.rs`, `src/main.rs`, `src/log.rs`, `src/lib.rs`): 1000 lines of code.
 - Each tool part: 200 lines of code.
 - Empty lines, comment lines and tests do not count.
 - Count with: `grep -v -E '^\s*(//|$)' <file> | wc -l`

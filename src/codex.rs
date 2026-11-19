@@ -72,7 +72,7 @@ impl Worker for Codex {
             .stderr(File::create(err)?)
             .spawn()
             .context("cannot start the codex command")?;
-        let status = wait(child, self.time_limit)?;
+        let status = wait(child, self.time_limit, job.dir)?;
         ensure!(status.success(), "codex ended with an error: {status}");
         let text = fs::read_to_string(&out).with_context(|| {
             format!(

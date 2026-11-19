@@ -247,6 +247,13 @@ fn locked_run(dir: &Path) -> String {
 
 #[test]
 fn status_wait_waits_for_a_live_run_and_then_prints_the_status_text() {
+    // The repair needs `ps` to read the name of the live command.
+    let me = std::process::id().to_string();
+    let ps = Command::new("ps").args(["-o", "comm=", "-p", &me]).output();
+    if !ps.is_ok_and(|o| o.status.success() && !o.stdout.is_empty()) {
+        eprintln!("skipped: ps cannot run here");
+        return;
+    }
     let dir = setup();
     tool(&dir, "claude", CLAUDE_SLOW);
     let runner = spawn(&dir, &["run", "a task"]);
@@ -276,17 +283,13 @@ fn status_wait_stops_with_a_message_when_the_command_of_the_run_is_dead() {
     fs::write(&lock, gone.id().to_string()).unwrap();
     let before = bytes(&dir, &id);
     let wait = finish(spawn(&dir, &["status", "--wait", &id]), 20);
-    assert!(!wait.status.success(), "{}", out(&wait));
-    let text = out(&wait).to_lowercase();
-    assert!(text.contains("dead"), "{text}");
-    assert!(text.contains("lock"), "{text}");
-    assert!(text.contains("remove"), "{text}");
-    // It never changes the notebook and never removes the lock.
-    assert_eq!(bytes(&dir, &id), before);
-    assert!(lock.exists(), "the lock was removed");
-    // A second call does the same, so nothing changed.
+    assert!(wait.status.success(), "{}", out(&wait));
+    says(&wait, "Status: Stopped");
+    // It repairs the run: the notebook changes and the lock goes.
+    assert_ne!(bytes(&dir, &id), before);
+    assert!(!lock.exists(), "the lock is there");
     let again = finish(spawn(&dir, &["status", "--wait", &id]), 20);
-    assert!(!again.status.success());
+    assert!(again.status.success());
 }
 
 #[test]
@@ -294,10 +297,10 @@ fn status_wait_does_not_stop_when_the_command_of_the_run_is_alive() {
     let dir = setup();
     let run = cu(&dir, &["run", "a task"]);
     let id = id(&run);
-    // The test itself is alive: its number is in the lock.
+    // An empty lock reads as a live command.
     set_status(&dir, &id, "Running");
     let lock = run_dir(&dir, &id).join("lock");
-    fs::write(&lock, std::process::id().to_string()).unwrap();
+    fs::write(&lock, "").unwrap();
     let mut wait = spawn(&dir, &["status", "--wait", &id]);
     thread::sleep(Duration::from_millis(1500));
     assert!(wait.try_wait().unwrap().is_none(), "it stopped too early");
@@ -359,7 +362,7 @@ fn status_wait_starts_its_count_again_when_the_lock_comes_back() {
     let mut wait = spawn(&dir, &["status", "--wait", &id]);
     // No lock for 1.5 seconds, a live lock for 1 second, then no lock.
     thread::sleep(Duration::from_millis(1500));
-    fs::write(&lock, std::process::id().to_string()).unwrap();
+    fs::write(&lock, "").unwrap();
     thread::sleep(Duration::from_millis(1000));
     fs::remove_file(&lock).unwrap();
     // The first absence would have ended at 2 seconds. The count is new.

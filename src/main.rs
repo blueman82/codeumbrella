@@ -139,9 +139,20 @@ fn main() -> Result<()> {
     if let Cmd::Stop { run } = &cli.command {
         return stop(&runs.join(run));
     }
+    let target = match &cli.command {
+        Cmd::Status { run: None, .. } => Some(newest(&runs)?),
+        Cmd::Status { run: Some(id), .. }
+        | Cmd::Answer { run: id, .. }
+        | Cmd::Resume { run: id } => Some(runs.join(id)),
+        _ => None,
+    };
+    // A kill leaves a lock and workers. The next command for the run repairs them.
+    if let Some(dir) = &target {
+        repair(dir)?;
+    }
     // An answer and a resume take the lock before they read the notebook.
-    let lock = match &cli.command {
-        Cmd::Answer { run, .. } | Cmd::Resume { run } => Some(Lock::take(&runs.join(run))?),
+    let lock = match (&cli.command, &target) {
+        (Cmd::Answer { .. } | Cmd::Resume { .. }, Some(dir)) => Some(Lock::take(dir)?),
         _ => None,
     };
     let graph = match &cli.command {
@@ -172,16 +183,11 @@ fn main() -> Result<()> {
             run.state.tool = Some(cli.tool.unwrap_or(Tool::Claude));
             run
         }
-        Cmd::Status { run, wait: true } => wait_for(&runs.join(run.as_deref().unwrap_or("-")))?,
-        Cmd::Status { run: Some(id), .. }
-        | Cmd::Answer { run: id, .. }
-        | Cmd::Resume { run: id } => Run::open(runs.join(id))?,
-        Cmd::Stop { .. } => bail!("stop must return before this point"),
-        Cmd::Status { run: None, .. } => {
-            let newest = fs::read_dir(&runs).context("there are no runs in this folder")?;
-            let newest = newest.filter_map(|e| e.ok().map(|e| e.path())).max();
-            Run::open(newest.context("there are no runs in this folder")?)?
+        Cmd::Status { wait: true, .. } => wait_for(target.as_deref().context("no run")?)?,
+        Cmd::Status { .. } | Cmd::Answer { .. } | Cmd::Resume { .. } => {
+            Run::open(target.context("no run")?)?
         }
+        Cmd::Stop { .. } => bail!("stop must return before this point"),
     };
     let _lock = match lock {
         None if matches!(cli.command, Cmd::Run { .. }) => Some(Lock::take(&run.dir)?),
@@ -221,18 +227,19 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-/// Waits until the run is not `Running`, then gives it. It changes no file.
+/// Waits until the run is not `Running`, then gives it. It repairs a run
+/// with a dead command.
 fn wait_for(dir: &Path) -> Result<Run> {
     let mut no_lock = None;
     loop {
+        repair(dir)?;
         let run = Run::open(dir.to_path_buf())?;
         if run.state.status != Status::Running {
             return Ok(run);
         }
-        let pid = fs::read_to_string(dir.join("lock"));
         // No lock for 2 seconds in a row: no command works on the run.
         let since = *no_lock.get_or_insert_with(Instant::now);
-        if pid.is_ok() {
+        if dir.join("lock").exists() {
             no_lock = None;
         } else if since.elapsed() >= Duration::from_secs(2) {
             let id = dir.file_name().unwrap_or_default().to_string_lossy();
@@ -240,30 +247,107 @@ fn wait_for(dir: &Path) -> Result<Run> {
                 "the run says Running and no command works on it. Run `codeumbrella resume {id}` only after the person says yes."
             );
         }
-        let pid = pid.unwrap_or_default();
-        let kill = Command::new("kill").args(["-0", pid.trim()]).output();
-        let alive = pid.is_empty() || kill.is_ok_and(|o| o.status.success());
-        ensure!(
-            alive,
-            "the command of this run is dead. Remove the file {}/lock",
-            dir.display()
-        );
         std::thread::sleep(Duration::from_millis(500));
     }
 }
 
+/// The newest run folder.
+fn newest(runs: &Path) -> Result<PathBuf> {
+    let found = fs::read_dir(runs).context("there are no runs in this folder")?;
+    let found = found.filter_map(|e| e.ok().map(|e| e.path())).max();
+    found.context("there are no runs in this folder")
+}
+
+/// Reads a text as a number larger than 0.
+fn number(text: &str) -> Option<u32> {
+    text.trim().parse().ok().filter(|n| *n > 0)
+}
+
+/// Tells if a command with this number is alive.
+fn alive(pid: u32) -> bool {
+    let kill = Command::new("kill").args(["-0", &pid.to_string()]).output();
+    kill.is_ok_and(|o| o.status.success())
+}
+
+/// Removes a file. It is no error if the file is not there.
+fn remove(path: &Path) -> Result<()> {
+    match fs::remove_file(path) {
+        Err(e) if e.kind() != ErrorKind::NotFound => {
+            bail!("cannot remove {}: {e}", path.display())
+        }
+        _ => Ok(()),
+    }
+}
+
+/// Ends the workers of the files `worker.<number>`, then removes the files.
+/// A number is a worker only if its start time is the one in the file.
+fn end_workers(dir: &Path) -> Result<()> {
+    let files = fs::read_dir(dir).with_context(|| format!("cannot read {}", dir.display()))?;
+    for path in files.filter_map(|e| e.ok().map(|e| e.path())) {
+        let name = path.file_name().unwrap_or_default().to_string_lossy();
+        let Some(pid) = name.strip_prefix("worker.").and_then(number) else {
+            continue;
+        };
+        if alive(pid) {
+            let start = Command::new("ps")
+                .args(["-o", "lstart=", "-p", &pid.to_string()])
+                .output()
+                .ok()
+                .filter(|o| o.status.success());
+            let start = start.with_context(|| {
+                format!("cannot see the worker {pid} with `ps`. Run the command with no sandbox.")
+            })?;
+            let start = String::from_utf8_lossy(&start.stdout);
+            let held = fs::read_to_string(&path).unwrap_or_default();
+            if start.trim() == held.trim() {
+                let _ = Command::new("pkill")
+                    .args(["-TERM", "-P", &pid.to_string()])
+                    .output();
+                let _ = Command::new("kill").arg(pid.to_string()).output();
+            }
+        }
+        remove(&path)?;
+    }
+    Ok(())
+}
+
+/// Repairs a run after a kill of its command: ends the workers that stay,
+/// removes `lock` and writes Stopped. Gives `false` if it did nothing.
+fn repair(dir: &Path) -> Result<bool> {
+    let lock = dir.join("lock");
+    let first = fs::read_to_string(&lock).unwrap_or_default();
+    let Some(pid) = number(&first) else {
+        return Ok(false);
+    };
+    if owner(pid)? == Some(true) {
+        return Ok(false);
+    }
+    let mut run = Run::open(dir.to_path_buf())?;
+    // A different text means that a new command got the lock.
+    if fs::read_to_string(&lock).unwrap_or_default() != first {
+        return Ok(false);
+    }
+    end_workers(dir)?;
+    remove(&lock)?;
+    if run.state.status == Status::Running {
+        let at = run.state.at.clone().unwrap_or_default();
+        run.state.status = Status::Stopped;
+        run.state.note = format!("The command of the run ended at the step {at} with no result.");
+        run.save()?;
+    }
+    println!("Repaired: the command of this run was dead.");
+    Ok(true)
+}
+
 /// Looks at the command with this number: `None` if it is dead, else if it is `codeumbrella`.
 /// It gives an error if `ps` cannot tell.
-fn owner(pid: &str) -> Result<Option<bool>> {
-    if !Command::new("kill")
-        .args(["-0", pid])
-        .output()
-        .is_ok_and(|o| o.status.success())
-    {
+fn owner(pid: u32) -> Result<Option<bool>> {
+    if !alive(pid) {
         return Ok(None);
     }
+    let pid = pid.to_string();
     let ps = Command::new("ps")
-        .args(["-o", "stat=,comm=", "-p", pid])
+        .args(["-o", "stat=,comm=", "-p", &pid])
         .output();
     let text = ps
         .ok()
@@ -291,11 +375,12 @@ fn stop(dir: &Path) -> Result<()> {
         run.state.status
     );
     let lock = dir.join("lock");
-    let pid = fs::read_to_string(&lock).unwrap_or_default();
-    let pid = pid.trim();
-    if pid.parse::<u32>().is_ok() && owner(pid)? == Some(true) {
-        let _ = Command::new("pkill").args(["-TERM", "-P", pid]).output();
-        let _ = Command::new("kill").arg(pid).output();
+    let pid = number(&fs::read_to_string(&lock).unwrap_or_default());
+    if let Some(pid) = pid.filter(|p| owner(*p).is_ok_and(|o| o == Some(true))) {
+        let _ = Command::new("pkill")
+            .args(["-TERM", "-P", &pid.to_string()])
+            .output();
+        let _ = Command::new("kill").arg(pid.to_string()).output();
         let end = Instant::now() + Duration::from_secs(10);
         while owner(pid)?.is_some() {
             ensure!(
@@ -304,16 +389,13 @@ fn stop(dir: &Path) -> Result<()> {
             );
             std::thread::sleep(Duration::from_millis(50));
         }
+    } else if let Some(pid) = pid {
+        owner(pid)?;
     }
+    end_workers(dir)?;
     // The ended command can write the notebook, so read it again.
     let mut run = Run::open(dir.to_path_buf())?;
-    if let Err(e) = fs::remove_file(&lock) {
-        ensure!(
-            e.kind() == std::io::ErrorKind::NotFound,
-            "cannot remove {}: {e}",
-            lock.display()
-        );
-    }
+    remove(&lock)?;
     let at = run.state.at.clone().unwrap_or_default();
     run.state.status = Status::Stopped;
     run.state.note = format!("A person stopped the run at the step {at}.");
