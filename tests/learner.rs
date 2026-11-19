@@ -195,7 +195,7 @@ fn the_step_learn_comes_after_simplify_and_goes_to_check() {
     assert_eq!(learn.role.as_deref(), Some("learner"));
     assert_eq!(learn.reads, ["spec"]);
     assert_eq!(learn.writes, ["lessons"]);
-    assert_eq!(learn.next.as_deref(), Some("write_pr"));
+    assert_eq!(learn.next.as_deref(), Some("set_version"));
     assert!(learn.on_bad.is_none(), "{:?}", learn.on_bad);
     assert!(learn.max_tries.is_none(), "{:?}", learn.max_tries);
     assert!(learn.run.is_empty() && learn.fan.is_empty());
@@ -673,6 +673,7 @@ fn a_run_does_learn_after_simplify_and_check_after_learn() {
         ("build", true),
         ("simplify", true),
         ("learn", true),
+        ("set_version", true),
         ("write_pr", true),
         ("check", true),
         ("work_was_done", true),
@@ -707,6 +708,7 @@ fn a_bad_check_goes_to_repair_and_back_to_check_with_no_learn() {
         ("build", true),
         ("simplify", true),
         ("learn", true),
+        ("set_version", true),
         ("write_pr", true),
         ("check", false),
         ("repair", true),
@@ -738,6 +740,7 @@ fn after_a_no_at_approval_the_run_does_learn_again_before_check() {
         ("build", true),
         ("simplify", true),
         ("learn", true),
+        ("set_version", true),
         ("write_pr", true),
         ("check", true),
         ("work_was_done", true),

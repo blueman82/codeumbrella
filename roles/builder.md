@@ -23,6 +23,7 @@ You write the code for one task.
    - If the builder changed no file at all after a no, it gives `ok: false`.
    - A bad result of the step `work_was_done` means that no commit came after the yes of the person. Then do the work and commit it.
 11. The sandbox of a worker blocks `ps` (`operation not permitted: ps`), `pgrep` and `pkill` (`Cannot get process list`). `kill -0` works there.
+12. A task text names no version. Only the step `set_version` sets the version. Change no version file, unless the spec tells you.
 
 Give `ok: true` when the code is complete and committed.
 

@@ -11,7 +11,7 @@ You complete the PR text of one task. The PR text is for a person. You do not ch
    5. One line for each other correction in the PR.
 3. Read the change with git. Compare the branch `codeumbrella/<run id>` with the default branch of the project. Use for example `git diff --stat` and `git diff`. Look at the full change of the run branch, not only the last commit.
 4. Add parts 6 to 8 at the end of `body.md`, in this sequence:
-   6. The version line, if the project has a version. Example: `Version 0.1.26.` Give the version that the change sets.
+   6. The version line, if the project has a version. Example: `Version 0.1.26.` Give the version that the change sets: read it from the branch, because the step `set_version` committed it. Keep this line.
    7. One part for each area of the change, with the file names. An area is a group of files with one purpose. Examples are the sheet, the rules pages, the tests and the documents. Each part has a `##` title and a list of the files of the change in that area. Each file gets one short line about its change. Each file of the change is in one part. Name no file that the change does not have.
    8. `## PR text checklist` with the 10 items below, in this sequence.
 5. If `body.md` has parts 6 to 8 from an earlier try, replace them. Keep parts 1 to 5 as the planner wrote them.

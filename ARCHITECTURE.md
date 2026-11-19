@@ -61,6 +61,9 @@ simplify: the simplifier makes the code simpler         │
   ▼                                                     │
 learn: the learner reads the logs, writes the lessons   │
   ▼                                                     │
+set_version: the script of your project sets the        │
+version and commits it (no AI)                          │
+  ▼                                                     │
 write_pr: the writer completes the PR text              │
   ▼                                                     │
 check: a FAN of 5 checkers at the same time             │
@@ -87,6 +90,10 @@ save_lessons: copies the lessons into your project (no AI)
   ▼
 clean_up: removes the two copies work and clean (no AI)
 
+The queue: the folder .codeumbrella/queue/ holds the tasks that wait.
+After Done, `codeumbrella run --next` starts the first one and stops
+at look_at_tests, as each run does.
+
 At each step, four things STOP the run and tell you:
 an error · a bad result with no path for it · a changed paper · a maximum
 ```
@@ -103,12 +110,14 @@ an error · a bad result with no path for it · a changed paper · a maximum
 - The picture shows the default sheet, `graph.example.yaml`. A project can change its own sheet.
 - The run keeps the tool of the run in its notebook. `answer` and `resume` use it.
 - The notebook also keeps the total of the numbers of the workers. `status` shows it.
+- The queue is the folder `.codeumbrella/queue/`: one text file for each task that waits. `codeumbrella queue` shows it. `codeumbrella run --next` starts the first file and moves it into the run as `task.txt`. The supervisor never starts a run by itself.
+- The step `set_version` comes after `learn` and before `write_pr`. It runs the script `.codeumbrella/set-version` on the work copy. The script sets the version and commits it. No task text names a version. `work_was_done` also writes `files.txt`, the names of the changed files.
 - The step `mark` writes the commit of your yes for the tests into a git name. It has no AI.
 - The step `work_was_done` comes after a good check. With no commit after `mark`, git gives an error. The run then goes to `repair`.
 - A worker can write in `.git`, so `work_was_done` is not a wall against a worker that cheats. It finds a worker that did nothing by error.
 - The step `simplify` and the three new checkers are for new runs. You can remove them for a faster run.
 - The step `learn` comes after `simplify`, and after each no it runs again. The step `repair` goes to `write_pr` with no `learn`.
-- The step `write_pr` comes after `learn` and after each `repair`. Then the PR text agrees with the change before each check. A bad result of the writer stops the run.
+- The step `write_pr` comes after `set_version` and after each `repair`. Then the PR text agrees with the change before each check. A bad result of the writer stops the run.
 - The reviewer compares the paper `pr` with the change. One `[x]` of the checklist that the change does not show is a bad result.
 - `open_pr` opens the PR with the title and the text of the paper `pr`. After a no, `find_pr` puts the new title and text into the open PR.
 - `find_pr` and `open_pr` refuse a paper `pr` with a link. Then only the files of the paper go to GitHub.

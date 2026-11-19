@@ -53,6 +53,8 @@ If a run stops because a package is not on the computer, install that package. T
 | The person gives you | You run |
 |---|---|
 | A task | `codeumbrella run "<task>"` |
+| A task, while a run of the project is `Running` or `Waiting` | Write the task as a file in `.codeumbrella/queue/`, for example `01-name.txt`. Add a line `Files: a, b` if you know the files. Do not start a run. |
+| The next task of the queue | `codeumbrella run --next` |
 | No task | `codeumbrella status` |
 
 A `run`, `answer` or `resume` command can run longer than the time limit of a chat shell. A shell of the chat can end, or a time limit of the chat can stop it. The command then stops, and the file `lock` stays. So start each of these commands so that it continues after the shell ends and after a time limit. Send the output to a file. For a usual shell:
@@ -101,6 +103,8 @@ The run folder is `.codeumbrella/runs/<run id>/`.
 
 - `log.jsonl` has one line for each step that ended. The line has the time, the step, good or bad, the seconds and the summary. The line of a worker step also has the numbers of its worker, for example `worker_seconds` and `dollars`.
 - `<step>.<number>.trace.jsonl` has all that one worker did in one try. These files are large.
+
+After status `Done`, run `codeumbrella queue`. If the queue has a task, start `codeumbrella run --next` (the same way as `run`, with `nohup`) and tell the person which task started. The new run stops at `look_at_tests`, as each run does. Do not answer it. If the queue is empty, say nothing more.
 
 When the status is `Done` or `Stopped`, read `log.jsonl`. Give the person a short table: the time of each step, the slowest step, the number of repair tries, and the answers of the person.
 

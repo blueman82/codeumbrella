@@ -111,8 +111,16 @@ enum Cmd {
         #[arg(long)]
         update: bool,
     },
-    /// Start a new run for a task.
-    Run { task: String },
+    /// Start a new run for a task, or for the first task of the queue.
+    Run {
+        #[arg(required_unless_present = "next", conflicts_with = "next")]
+        task: Option<String>,
+        /// Start the first task of `.codeumbrella/queue/`.
+        #[arg(long)]
+        next: bool,
+    },
+    /// Show the tasks that wait in the queue.
+    Queue,
     /// Show where a run is. Without an id: the newest run.
     Status {
         run: Option<String>,
@@ -144,6 +152,9 @@ enum YesNo {
 fn main() -> Result<()> {
     let cli = Cli::parse();
     let runs = env::current_dir()?.join(HOME).join("runs");
+    if let Cmd::Queue = &cli.command {
+        return queue();
+    }
     if let Cmd::Stop { run } = &cli.command {
         return stop(&runs.join(run));
     }
@@ -169,7 +180,11 @@ fn main() -> Result<()> {
     };
     let mut run = match &cli.command {
         Cmd::Init { update } => return init(*update),
-        Cmd::Run { task } => {
+        Cmd::Run { task, .. } => {
+            let (task, queued) = match task {
+                Some(task) => (task.clone(), None),
+                None => next_task(&runs)?,
+            };
             // Four digits from the clock and the command number make a same id in two folders rare.
             let now = SystemTime::now().duration_since(UNIX_EPOCH)?;
             let digits = (u64::from(now.subsec_nanos()) + u64::from(std::process::id())) % 10_000;
@@ -189,16 +204,20 @@ fn main() -> Result<()> {
                 }
             }
             let dir = runs.join(id);
-            let mut run = Run::start(dir, task, graph.as_ref().context("no sheet")?)?;
+            let mut run = Run::start(dir, &task, graph.as_ref().context("no sheet")?)?;
             // Default is Claude: the factory was built for it, and old notebooks have no tool.
             run.state.tool = Some(cli.tool.unwrap_or(Tool::Claude));
+            if let Some(file) = queued {
+                fs::rename(&file, run.dir.join("task.txt"))
+                    .with_context(|| format!("cannot move {}", file.display()))?;
+            }
             run
         }
         Cmd::Status { wait: true, .. } => wait_for(target.as_deref().context("no run")?)?,
         Cmd::Status { .. } | Cmd::Answer { .. } | Cmd::Resume { .. } => {
             Run::open(target.context("no run")?)?
         }
-        Cmd::Stop { .. } => bail!("stop must return before this point"),
+        Cmd::Stop { .. } | Cmd::Queue => bail!("stop must return before this point"),
     };
     let _lock = match lock {
         None if matches!(cli.command, Cmd::Run { .. }) => Some(Lock::take(&run.dir)?),
@@ -472,6 +491,56 @@ fn count(n: u64, word: &str) -> String {
     format!("{n} {word}{s}")
 }
 
+/// The files of the queue, in the sequence of their names.
+fn queued() -> Result<Vec<PathBuf>> {
+    let found = match fs::read_dir(Path::new(HOME).join("queue")) {
+        Ok(found) => found,
+        Err(e) if e.kind() == ErrorKind::NotFound => return Ok(Vec::new()),
+        Err(e) => bail!("cannot read the queue: {e}"),
+    };
+    let mut files: Vec<PathBuf> = found.filter_map(|e| e.ok().map(|e| e.path())).collect();
+    files.sort();
+    Ok(files)
+}
+
+/// The text of a task file. A link or a folder is an error: no read out of the queue.
+fn task_text(path: &Path) -> Result<String> {
+    let plain = fs::symlink_metadata(path).is_ok_and(|m| m.is_file());
+    ensure!(plain, "{} is not a plain file", path.display());
+    fs::read_to_string(path).with_context(|| format!("cannot read {}", path.display()))
+}
+
+/// Prints one line for each task that waits: the file name and its `Files:` line.
+fn queue() -> Result<()> {
+    let files = queued()?;
+    if files.is_empty() {
+        println!("The queue is empty.");
+    }
+    for path in files {
+        let text = task_text(&path)?;
+        let given = text.lines().find(|l| l.starts_with("Files:"));
+        let name = path.file_name().unwrap_or_default().to_string_lossy();
+        println!("{name}  {}", given.unwrap_or("Files: not given").trim());
+    }
+    Ok(())
+}
+
+/// Gives the first task of the queue and its file. It changes nothing. It gives
+/// an error for an empty queue and for a run that is `Running` or `Waiting`.
+fn next_task(runs: &Path) -> Result<(String, Option<PathBuf>)> {
+    let first = queued()?.into_iter().next().context("the queue is empty")?;
+    let found = fs::read_dir(runs).into_iter().flatten();
+    for dir in found.filter_map(|e| e.ok().map(|e| e.path())) {
+        let active = Run::open(dir.clone()).ok();
+        let active = active.filter(|r| matches!(r.state.status, Status::Running | Status::Waiting));
+        if active.is_some() {
+            let id = dir.file_name().unwrap_or_default().to_string_lossy();
+            bail!("the run {id} is active, so no new run can start");
+        }
+    }
+    Ok((task_text(&first)?, Some(first)))
+}
+
 /// Writes each default file that the project does not have. With `update`, it
 /// also replaces a changed file and keeps the old one as `<name>.before`.
 fn init(update: bool) -> Result<()> {
@@ -494,6 +563,12 @@ fn init(update: bool) -> Result<()> {
             println!("Updated {}", path.display());
         }
     }
+    // The script of the person stays, also with `--update`.
+    let script = Path::new(HOME).join("set-version");
+    if !script.exists() {
+        fs::write(&script, include_str!("../default.set-version"))?;
+    }
+    fs::create_dir_all(Path::new(HOME).join("queue"))?;
     println!("The factory files are in {HOME}/. Change them for this project.");
     Ok(())
 }

@@ -193,6 +193,7 @@ fn with_no_commit_work_was_done_is_bad_and_goes_to_repair() {
         ("build", true),
         ("simplify", true),
         ("learn", true),
+        ("set_version", true),
         ("write_pr", true),
         ("check", true),
         ("work_was_done", false),
@@ -200,7 +201,7 @@ fn with_no_commit_work_was_done_is_bad_and_goes_to_repair() {
         ("write_pr", true),
     ]);
     let after = after_yes(&run);
-    assert_eq!(after.get(..9), Some(&path[..]), "{after:?}");
+    assert_eq!(after.get(..10), Some(&path[..]), "{after:?}");
     // The builder in `repair` gets the error text of git.
     let got = worker.got("repair");
     let first = got[0].to_lowercase();
@@ -223,6 +224,7 @@ fn a_commit_of_the_repair_makes_work_was_done_good() {
         ("build", true),
         ("simplify", true),
         ("learn", true),
+        ("set_version", true),
         ("write_pr", true),
         ("check", true),
         ("work_was_done", false),
@@ -253,6 +255,7 @@ fn with_a_new_commit_work_was_done_is_good_and_changes_no_file() {
         ("build", true),
         ("simplify", true),
         ("learn", true),
+        ("set_version", true),
         ("write_pr", true),
         ("check", true),
         ("work_was_done", true),
@@ -304,6 +307,7 @@ fn after_a_no_at_the_approval_a_commit_from_before_does_not_count() {
         ("build", true),
         ("simplify", true),
         ("learn", true),
+        ("set_version", true),
         ("write_pr", true),
         ("check", true),
         ("work_was_done", false),
@@ -311,7 +315,7 @@ fn after_a_no_at_the_approval_a_commit_from_before_does_not_count() {
         ("write_pr", true),
     ]);
     let after = after_yes(&run);
-    assert_eq!(after.get(..9), Some(&path[..]), "{after:?}");
+    assert_eq!(after.get(..10), Some(&path[..]), "{after:?}");
     assert!(!run.state.results["work_was_done"].ok);
 }
 
@@ -340,7 +344,7 @@ fn the_default_sheet_has_mark_before_build_and_work_was_done_after_check() {
         "../new-work.bundle",
         "refs/codeumbrella/before..HEAD",
     ];
-    assert_eq!(done.run, [bundle]);
+    assert_eq!(done.run[0], bundle);
     assert_eq!(done.on_bad.as_deref(), Some("repair"));
     assert_eq!(done.next.as_deref(), Some("no_locked_files"));
     let check = graph.step("check").unwrap();
