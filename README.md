@@ -8,7 +8,7 @@ The factory stops two times for you. First, you look at the tests. Second, you g
 
 The page [ARCHITECTURE.md](ARCHITECTURE.md) shows the parts and the path of a task in two pictures.
 
-An attacker looks for weak points in the plan before you see the tests. A simplifier then makes the new code simpler. A learner then reads the logs of the runs. Five checkers look at each piece of work at the same time. One runs the tests that you gave approval for. One reads the change for safety problems. A reviewer reads it for errors.
+An attacker looks for weak points in the plan before you see the tests. A simplifier then makes the new code simpler, and a learner reads the logs of the runs. Five checkers look at each piece of work at the same time. One runs the tests that you gave approval for. One reads the change for safety problems. A reviewer reads it for errors.
 
 A `security` checker reads it for weak points that a person can use to do damage. A user checker builds the work in a scratch folder. It runs the examples of the spec as a user does.
 
