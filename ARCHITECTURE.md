@@ -111,7 +111,7 @@ an error · a bad result with no path for it · a changed paper · a maximum
 - The step `write_pr` comes after `learn` and after each `repair`. Then the PR text agrees with the change before each check. A bad result of the writer stops the run.
 - The reviewer compares the paper `pr` with the change. One `[x]` of the checklist that the change does not show is a bad result.
 - `open_pr` opens the PR with the title and the text of the paper `pr`. After a no, `find_pr` puts the new title and text into the open PR.
-- `find_pr` and `open_pr` refuse a paper `pr` with a link. Then no file outside the paper goes to GitHub.
+- `find_pr` and `open_pr` refuse a paper `pr` with a link. Then only the files of the paper go to GitHub.
 - The learner writes a lesson test on the run branch, or a short entry in the paper `lessons`.
 - After the merge, the step `save_lessons` copies that paper to `.codeumbrella/lessons.md`. Git does not see that file.
 - Then the step `clean_up` removes the two copies `work` and `clean`. The notebook, the log and the papers stay.

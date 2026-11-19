@@ -31,7 +31,7 @@ The supervisor knows nothing about software work. All knowledge of the steps is 
 | Lesson | A problem of a run that can come again in a different task. The learner makes it a lesson test, or a short entry. |
 | `.codeumbrella/lessons.md` | The entries of the lessons of a project. The step `save_lessons` writes it after the merge. Git does not see it. |
 | Role | The type of a worker. Its rules page is `.codeumbrella/roles/<role>.md` in a project. The folder `roles` holds the defaults. |
-| Writer | The role `writer`. It reads the change with git, and adds the version line, the areas of the change and the checklist to `body.md` of the paper `pr`. |
+| Writer | The role `writer`. It reads the change with git. It adds the version line, the areas of the change and the checklist to `body.md` of the paper `pr`. |
 
 ## Commands
 
@@ -101,7 +101,7 @@ To install the command and the chat command on a computer, run `./install.sh`.
 | `tests/user_checker.rs` | Tests of the fifth checker `check_use`: its step, the files of the role `user`, its rules page and the documents. |
 | `tests/learner.rs` | Tests of the role `learner`: the steps `learn` and `save_lessons`, its files, its rules page and the documents. |
 | `tests/clean_up.rs` | Tests of the step `clean_up`: the default sheet, runs with the built command and the documents. |
-| `tests/pr_text.rs` | Tests of the PR text: the paper `pr`, the role `writer`, the step `write_pr`, and `find_pr` and `open_pr` with a simulated `gh`. |
+| `tests/pr_text.rs` | Tests of the PR text: the paper `pr`, the role `writer` and the step `write_pr`. Also `find_pr` and `open_pr`, with a simulated `gh`. |
 | `tests/run_total.rs` | Tests of the numbers of each worker, the total in the notebook, the lines of `status` and the documents. |
 | `install.sh` | Installs the command and the chat command. |
 | `LICENSE` | The MIT licence. Do not change its text. |
@@ -243,7 +243,7 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - The step `write_pr` comes after `learn` and after each `repair`. Thus the PR text agrees with the change before each check.
 - A bad result of `write_pr` stops the run.
 - The writer has the walls of the reviewer and one write entry for the paper `pr`. It writes no file of the work copy and commits nothing.
-- In Claude settings a deny rule wins over an allow rule. So the writer has a deny rule for the work copy, not for the full project folder.
+- In Claude settings a deny rule comes before an allow rule. So the writer has a deny rule for the work copy, not for the full project folder.
 - The reviewer compares the paper `pr` with the change. One `[x]` that the change does not show gives a bad result.
 - A file in part 7 that the change does not have gives a bad result. So does a file of the change that no part 7 names.
 - A worker can write the paper `pr`, but `find_pr` and `open_pr` run with no sandbox.
