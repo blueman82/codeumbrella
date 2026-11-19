@@ -6,7 +6,9 @@
 # It changes only the work copy. It does not fetch and it does not push.
 # A worker can write `.git/config` of the work copy, and this script runs with
 # no sandbox. So each git call has `-c core.fsmonitor=false`, and a filter in
-# that config stops the script with an error.
+# that config stops the script with an error. The version must be three
+# numbers, a linked file or folder stops the script, and the commit is not
+# signed, so no program of that config runs.
 set -eu
 work=$1
 cd "$work"
@@ -14,8 +16,31 @@ if git config --get-regexp '^filter\.' > /dev/null; then
   echo "set-version: the work copy has a git filter" >&2
   exit 1
 fi
-g() { git -c core.fsmonitor=false -c core.hooksPath=/dev/null "$@"; }
+g() {
+  git -c core.fsmonitor=false -c core.hooksPath=/dev/null \
+    -c commit.gpgSign=false "$@"
+}
 old=$(g show origin/master:Cargo.toml | sed -n 's/^version = "\(.*\)"$/\1/p' | head -n 1)
+if ! printf '%s\n' "$old" | grep -Eqx '[0-9]+\.[0-9]+\.[0-9]+'; then
+  echo "set-version: origin/master has no version of three numbers" >&2
+  exit 1
+fi
+files="Cargo.toml Cargo.lock .claude-plugin/plugin.json .codex-plugin/plugin.json"
+for path in .claude-plugin .codex-plugin $files; do
+  for one in "$path" "$path.new"; do
+    if [ -L "$one" ]; then
+      echo "set-version: $one is a link" >&2
+      exit 1
+    fi
+  done
+done
+for file in $files; do
+  if [ ! -f "$file" ]; then
+    echo "set-version: $file is not a file" >&2
+    exit 1
+  fi
+  rm -f "$file.new"
+done
 major=${old%%.*}
 rest=${old#*.}
 minor=${rest%%.*}
@@ -31,7 +56,6 @@ for file in .claude-plugin/plugin.json .codex-plugin/plugin.json; do
   sed "s/^\( *\"version\": \)\".*\"/\1\"$new\"/" "$file" > "$file.new"
   mv "$file.new" "$file"
 done
-files="Cargo.toml Cargo.lock .claude-plugin/plugin.json .codex-plugin/plugin.json"
 # shellcheck disable=SC2086
 if ! g diff --quiet --no-ext-diff --no-textconv HEAD -- $files; then
   g add -- $files
