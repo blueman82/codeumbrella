@@ -73,6 +73,7 @@ fn no_claude_role_runs_hooks_uses_the_web_or_reads_the_keys_of_the_person() {
         "simplifier",
         "user",
         "learner",
+        "writer",
     ] {
         let file = json(&format!("roles/{role}.claude.json"));
         assert_eq!(file["disableAllHooks"], true, "{role}");
@@ -102,7 +103,8 @@ fn the_claude_planner_has_no_shell_and_writes_only_the_papers_of_its_run() {
             "Glob",
             "Grep",
             &format!("{papers}/spec/**)"),
-            &format!("{papers}/tests/**)")
+            &format!("{papers}/tests/**)"),
+            &format!("{papers}/pr/**)")
         ]
     );
 }
@@ -142,6 +144,7 @@ fn each_codex_role_has_its_sandbox_and_its_locks() {
         "simplifier",
         "user",
         "learner",
+        "writer",
     ] {
         let file = text(&format!("roles/{role}.codex.txt"));
         assert!(!file.contains("danger"));

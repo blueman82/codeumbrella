@@ -244,7 +244,7 @@ fn the_default_sheet_sends_a_bad_build_and_a_bad_repair_to_the_plan() {
     let repair = graph.step("repair").unwrap();
     assert_eq!(repair.on_bad.as_deref(), Some("plan"));
     assert_eq!(repair.max_tries, Some(3));
-    assert_eq!(repair.next.as_deref(), Some("check"));
+    assert_eq!(repair.next.as_deref(), Some("write_pr"));
     assert_eq!(graph.step("plan").unwrap().max_tries, Some(3));
 }
 
@@ -272,6 +272,7 @@ fn a_no_at_the_approval_goes_to_the_planner_and_then_to_the_person_for_the_tests
             "build",
             "simplify",
             "learn",
+            "write_pr",
             "check_tests",
             "plan",
             "attack_plan"
@@ -293,12 +294,14 @@ fn a_no_at_the_approval_goes_to_the_planner_and_then_to_the_person_for_the_tests
             "build",
             "simplify",
             "learn",
+            "write_pr",
             "check_tests",
             "plan",
             "attack_plan",
             "build",
             "simplify",
             "learn",
+            "write_pr",
             "check_tests"
         ]
     );
@@ -393,6 +396,7 @@ fn a_bad_repair_goes_to_the_planner_and_waits_at_look_at_tests() {
         "build",
         "simplify",
         "learn",
+        "write_pr",
         "check_tests",
         "repair",
         "plan",
@@ -424,9 +428,12 @@ fn after_a_yes_after_a_bad_repair_the_run_does_the_build_again() {
     // After the second yes: the build, the simplifier, the learner and a
     // good check.
     let calls = worker.calls();
-    assert_eq!(calls.len(), 13, "{calls:?}");
-    let after = calls[9..].to_vec();
-    assert_eq!(after, ["build", "simplify", "learn", "check_tests"]);
+    assert_eq!(calls.len(), 15, "{calls:?}");
+    let after = calls[10..].to_vec();
+    assert_eq!(
+        after,
+        ["build", "simplify", "learn", "write_pr", "check_tests"]
+    );
     assert_eq!(worker.count("build"), 2);
     assert_eq!(worker.count("repair"), 1);
     assert_eq!(run.state.status, Status::Waiting, "{}", run.state.note);

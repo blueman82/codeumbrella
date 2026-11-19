@@ -27,9 +27,11 @@ The supervisor knows nothing about software work. All knowledge of the steps is 
 | `worker.<number>` | A file in the run folder. It holds the start time of the worker with that process number. |
 | `trace` | `<step>.<number>.trace.jsonl` in the run folder: all that one worker did in one try. |
 | Paper | A folder in `.codeumbrella/runs/<run-id>/papers/` that one step writes and other steps read. |
+| Paper `pr` | The paper with the PR text. `title.txt` is the title, in one line. `body.md` is the text. The planner writes the title and parts 1 to 5. The writer adds parts 6 to 8. |
 | Lesson | A problem of a run that can come again in a different task. The learner makes it a lesson test, or a short entry. |
 | `.codeumbrella/lessons.md` | The entries of the lessons of a project. The step `save_lessons` writes it after the merge. Git does not see it. |
 | Role | The type of a worker. Its rules page is `.codeumbrella/roles/<role>.md` in a project. The folder `roles` holds the defaults. |
+| Writer | The role `writer`. It reads the change with git, and adds the version line, the areas of the change and the checklist to `body.md` of the paper `pr`. |
 
 ## Commands
 
@@ -63,6 +65,9 @@ To install the command and the chat command on a computer, run `./install.sh`.
 | `default.gitignore` | The default ignore file. `init` gives it to a project that has no `.gitignore`. |
 | `roles/<role>.md` | The default rules page of each role, written by hand. |
 | `roles/learner.md` | The rules page of the learner. It reads the logs of the runs and writes the paper `lessons`. |
+| `roles/writer.md` | The rules page of the writer. It adds parts 6 to 8 of the PR text and the checklist. |
+| `roles/writer.claude.json` | The Claude settings of the writer: the walls of the reviewer, and one write entry for the paper `pr`. |
+| `roles/writer.codex.txt` | The Codex settings of the writer: the reviewer file, and one write entry for the paper `pr`. |
 | `roles/languages/<language>.md` | The good practice of one language: Python, Go, JavaScript, TypeScript, Java, Rust. Only the reviewer and the simplifier read them. `init` copies them. |
 | `roles/<role>.claude.json` | The Claude permissions and the sandbox settings of each role. In this file, `{project}` is the full path of the project folder and `{run}` is the id of the run. |
 | `src/graph.rs` | Reads the sheet and finds its errors before a run. |
@@ -96,6 +101,7 @@ To install the command and the chat command on a computer, run `./install.sh`.
 | `tests/user_checker.rs` | Tests of the fifth checker `check_use`: its step, the files of the role `user`, its rules page and the documents. |
 | `tests/learner.rs` | Tests of the role `learner`: the steps `learn` and `save_lessons`, its files, its rules page and the documents. |
 | `tests/clean_up.rs` | Tests of the step `clean_up`: the default sheet, runs with the built command and the documents. |
+| `tests/pr_text.rs` | Tests of the PR text: the paper `pr`, the role `writer`, the step `write_pr`, and `find_pr` and `open_pr` with a simulated `gh`. |
 | `tests/run_total.rs` | Tests of the numbers of each worker, the total in the notebook, the lines of `status` and the documents. |
 | `install.sh` | Installs the command and the chat command. |
 | `LICENSE` | The MIT licence. Do not change its text. |
@@ -114,12 +120,14 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - A step that an `on_bad` line goes to must have `max_tries`.
 - A line that the supervisor does not know is an error.
 - The default sheet has two command steps with no AI. `mark` comes after `look_at_tests` and before `build`. It writes the commit of that moment into `refs/codeumbrella/before` of the work copy.
+- The steps of the planner write the papers `spec`, `tests` and `pr`.
+- The worker step `write_pr` comes after `learn` and after `repair`, before `check`. The writer completes the PR text in the paper `pr`.
 - `work_was_done` comes after a good `check` and before `no_locked_files`. It makes `new-work.bundle` in the run folder from the commits after `mark`. With no new commit, git gives an error, and the run goes to `repair`.
 
 ## Safety rules
 
 - The supervisor opens the PR. Then the run always stops for the approval of the person. The merge comes only after a yes. A no with a text sends the work back to the planner. The person then sees the tests again.
-- No worker can push, open a PR or merge. Only the command steps `push`, `open_pr` and `merge` can, with the set commands in the sheet.
+- No worker can push, open a PR or merge. Only the command steps `push`, `find_pr`, `open_pr` and `merge` can, with the set commands in the sheet.
 - The step `no_locked_files` stops the run if the work changes `.github`, `.claude` or `.codeumbrella`. A worker cannot write to these folders, but git can put such a file into a commit.
 - That step reads a capital letter and a small letter as the same letter. A test on 16 November 2026 showed the cause. On a Mac, a commit with `.Claude/settings.json` got through the step and changed `.claude/settings.json`.
 - The push does not send tags.
@@ -165,7 +173,7 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - The steps with `gh` read the clean copy, not the `.git` folder of the project. The word `GIT_DIR` in the sheet does this.
 - A deny rule such as `Edit(.codeumbrella/**)` is what makes the sandbox lock a path. The tests of 15 November 2026 showed this. The setting `sandbox.filesystem.denyWrite` with a relative path did nothing in those tests.
 - A deny rule without the sandbox is not sufficient. A script that a permitted command starts can go around it.
-- Each Codex role runs in the Codex sandbox with the settings in `roles/<role>.codex.txt`. The locked paths are the same as for Claude. The planner can write only to the two papers of its run. The Codex sandbox has no internet, so a Codex worker cannot push.
+- Each Codex role runs in the Codex sandbox with the settings in `roles/<role>.codex.txt`. The locked paths are the same as for Claude. The planner can write only to the three papers of its run: `spec`, `tests` and `pr`. The Codex sandbox has no internet, so a Codex worker cannot push.
 - The sandbox is the only wall for the commands of a worker, for Claude and for Codex.
 - `init --update` copies each changed factory file to `<name>.before`, then writes the default. It does not touch `runs` or the `.gitignore` of the project folder.
 - A paper that a step writes is not compared before that step. Thus a writer can run again after a try that broke its paper.
@@ -229,6 +237,19 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - Only the step `save_lessons` writes `.codeumbrella/lessons.md`. It copies the paper `lessons` after the merge. The person made this decision on 19 November 2026.
 - The builder does not change a lesson test. The file `tests.txt` of the paper `lessons` names each lesson test.
 - After the merge, the step `clean_up` removes `work` and `clean` of the run. On 19 November 2026 the run folders held 6.8 GB.
+- `open_pr` opens the PR with the title of `title.txt` and the text of `body.md` of the paper `pr`. It does not use `--fill`.
+- On 19 November 2026 a PR had the branch name as its title. Its text had only the commit lines.
+- After a no, `find_pr` puts the new title and text of the paper `pr` into the open PR. Thus a PR has no text of an earlier try.
+- The step `write_pr` comes after `learn` and after each `repair`. Thus the PR text agrees with the change before each check.
+- A bad result of `write_pr` stops the run.
+- The writer has the walls of the reviewer and one write entry for the paper `pr`. It writes no file of the work copy and commits nothing.
+- In Claude settings a deny rule wins over an allow rule. So the writer has a deny rule for the work copy, not for the full project folder.
+- The reviewer compares the paper `pr` with the change. One `[x]` that the change does not show gives a bad result.
+- A file in part 7 that the change does not have gives a bad result. So does a file of the change that no part 7 names.
+- A worker can write the paper `pr`, but `find_pr` and `open_pr` run with no sandbox.
+- So their script refuses the paper `pr` if its folder or one of its two files is a symbolic link.
+- It also refuses a file with two or more hard links. Thus no file of the person goes to GitHub.
+- A refused paper gives a bad result. `find_pr` goes to `open_pr`, which refuses too, and the run stops.
 
 ## Rust rules
 

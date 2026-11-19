@@ -195,7 +195,7 @@ fn the_step_learn_comes_after_simplify_and_goes_to_check() {
     assert_eq!(learn.role.as_deref(), Some("learner"));
     assert_eq!(learn.reads, ["spec"]);
     assert_eq!(learn.writes, ["lessons"]);
-    assert_eq!(learn.next.as_deref(), Some("check"));
+    assert_eq!(learn.next.as_deref(), Some("write_pr"));
     assert!(learn.on_bad.is_none(), "{:?}", learn.on_bad);
     assert!(learn.max_tries.is_none(), "{:?}", learn.max_tries);
     assert!(learn.run.is_empty() && learn.fan.is_empty());
@@ -212,7 +212,7 @@ fn the_step_learn_comes_after_simplify_and_goes_to_check() {
 fn the_repair_goes_to_check_and_not_through_learn() {
     let graph = default_sheet();
     let repair = graph.step("repair").unwrap();
-    assert_eq!(repair.next.as_deref(), Some("check"));
+    assert_eq!(repair.next.as_deref(), Some("write_pr"));
     let simplify = graph.step("simplify").unwrap();
     assert_eq!(simplify.next.as_deref(), Some("learn"));
     let build = graph.step("build").unwrap();
@@ -228,7 +228,9 @@ fn check_safety_reads_the_paper_lessons_and_the_other_parts_do_not() {
     assert!(safety.writes.is_empty(), "{:?}", safety.writes);
     let tests = graph.step("check_tests").unwrap();
     assert_eq!(tests.reads, ["spec", "tests"]);
-    for name in ["check_review", "check_security", "check_use"] {
+    let review = graph.step("check_review").unwrap();
+    assert_eq!(review.reads, ["spec", "pr"]);
+    for name in ["check_security", "check_use"] {
         let part = graph.step(name).unwrap();
         assert_eq!(part.reads, ["spec"], "{name}");
     }
@@ -671,6 +673,7 @@ fn a_run_does_learn_after_simplify_and_check_after_learn() {
         ("build", true),
         ("simplify", true),
         ("learn", true),
+        ("write_pr", true),
         ("check", true),
         ("work_was_done", true),
         ("no_locked_files", true),
@@ -704,8 +707,10 @@ fn a_bad_check_goes_to_repair_and_back_to_check_with_no_learn() {
         ("build", true),
         ("simplify", true),
         ("learn", true),
+        ("write_pr", true),
         ("check", false),
         ("repair", true),
+        ("write_pr", true),
         ("check", true),
         ("work_was_done", true),
         ("no_locked_files", true),
@@ -733,6 +738,7 @@ fn after_a_no_at_approval_the_run_does_learn_again_before_check() {
         ("build", true),
         ("simplify", true),
         ("learn", true),
+        ("write_pr", true),
         ("check", true),
         ("work_was_done", true),
         ("no_locked_files", true),

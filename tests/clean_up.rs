@@ -47,7 +47,7 @@ const NOTEBOOK: &str = concat!(
 );
 
 /// The first cell of each row of the part "Words" of `AGENTS.md`.
-const WORDS: [&str; 14] = [
+const WORDS: [&str; 16] = [
     "Sheet",
     "Step",
     "Fan",
@@ -59,9 +59,11 @@ const WORDS: [&str; 14] = [
     "`worker.<number>`",
     "`trace`",
     "Paper",
+    "Paper `pr`",
     "Lesson",
     "`.codeumbrella/lessons.md`",
     "Role",
+    "Writer",
 ];
 
 /// The words of point J of the task.

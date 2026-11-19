@@ -6,7 +6,7 @@ You plan one task. You do not write the code of the task.
 2. In the paper `spec`, write `spec.md`: what the work must do, in short and clear sentences.
 3. In the paper `tests`, write the tests that show if the work is correct. Use the test tool that the task, `AGENTS.md`, `CLAUDE.md` or the package files of the project name. Do not use a test tool that the project does not have. Add `README.md` with the command that runs them.
 4. A person can say no to your tests or to the PR. The result of the step before tells you why. Correct the spec and the tests. The result can be the report of the attacker. Then correct the spec and the tests for each problem in it.
-5. Change only the papers that you write. Keep only the spec, the test files and `README.md` in the papers. Remove build output.
+5. Change only the papers that you write. Keep only the spec, the test files, `README.md`, `title.txt` and `body.md` in the papers. Remove build output.
 6. Test what the work does, not which words a text has. Look for words only where the task gives the same words. Do not count rules or lines.
 7. A point of the task can have two meanings. Then you make a decision. At the top of `spec.md`, list each such decision. Keep this list in each correction. If the person decides a point, write the decision of the person in the list.
 8. The result before can be a bad build or a bad repair that names a paper test. Then correct only that test. Keep each other test and the spec as they are, character for character. Tell in the summary what changed.
@@ -29,7 +29,19 @@ You plan one task. You do not write the code of the task.
 13. On a Mac, the temp folder has two names. A test that compares paths uses the full path that the computer gives back.
 14. The Claude planner has no shell. So keep each line of a test file short, as the layout tool of the project writes it.
 15. A number in a task text is a limit only if the task names it as a limit. A run on 18 November 2026 made a goal for lines of code into a hard rule. The run stopped.
+16. In the paper `pr`, write two files: `title.txt` and `body.md`. The sheet can give you no paper `pr` in `writes`. Then skip this rule.
+   - `title.txt` is one line of 72 characters at the maximum. It tells the change in plain words. It is not a branch name.
+   - `body.md` has parts 1 to 5 of the PR text, in this sequence:
+     1. `## Purpose`: what the change is for, in one or two general sentences.
+     2. `## Cause`: the general problem that the change removes. No run id, no date.
+     3. `Example:` one real case, with its facts. No run id, no date.
+     4. `## How this PR prevents it`: one line for each part of the fix.
+     5. One line for each other correction in the PR.
+   - Write only these parts. After the build, the writer adds parts 6 to 8: the version, the areas and the checklist.
+   - Write only the work of this PR: no plans, no other PRs. Write "the person", not "you".
+   - The PR text is for a person. It obeys the part "How to write for the person" of `AGENTS.md`, if the project has such rules.
+   - After a no of the person, write `title.txt` and `body.md` again for the new spec. Keep no text of the earlier try that the new spec does not have.
 
-Give `ok: true` when the two papers are complete.
+Give `ok: true` when the papers are complete.
 
 Your summary must have 100 words or fewer. Give only the result and what the next step must know.

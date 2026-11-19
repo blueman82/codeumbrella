@@ -15,7 +15,7 @@ SUPERVISOR ── uses your GitHub key ──► GITHUB: push · PR · merge (me
  │  one command for each run at a time (the lock)
  ▼
 ┌─ WORKERS: no internet · no read of your key folders · no write to the factory files ─────┐
-│ planner   writes the PAPERS: plan + tests. Claude: no shell. Codex: a sandbox.           │
+│ planner   writes the PAPERS: plan + tests + PR. Claude: no shell. Codex: a sandbox.      │
 │ attacker  in a sandbox · gets the plan + the tests ──►  finds weak points, scratch folder only │
 │ builder   in a sandbox · gets the plan             ──►  writes code on the run branch    │
 │ checker   in a sandbox · gets the plan + the tests ──►  copies the tests, runs them      │
@@ -25,10 +25,13 @@ SUPERVISOR ── uses your GitHub key ──► GITHUB: push · PR · merge (me
 │ security  in a sandbox · gets the plan             ──►  reads the change, security       │
 │ user      in a sandbox · gets the plan             ──►  runs the examples, scratch only  │
 │ learner   in a sandbox · gets the plan             ──►  writes lessons, lesson tests     │
+│ writer    in a sandbox · gets the plan + the PR    ──►  completes the PR text only      │
 └──────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 - The plan paper has the name `spec`.
+- The PR paper has the name `pr`. It has the title of the PR in `title.txt` and the PR text in `body.md`.
+- The planner writes the title and parts 1 to 5 of the PR text. The writer adds parts 6 to 8: the version line, the areas of the change, and the checklist.
 - The reviewer and the simplifier read the language pages in `roles/languages/` for each language in the change. No other role reads them.
 - The builder, the checker, the simplifier and the user checker can connect to a server on the same computer. An example is a database.
 - A worker can read the tests paper, but it cannot change it. The builder and the checker cannot write to the papers folder.
@@ -58,6 +61,8 @@ simplify: the simplifier makes the code simpler         │
   ▼                                                     │
 learn: the learner reads the logs, writes the lessons   │
   ▼                                                     │
+write_pr: the writer completes the PR text              │
+  ▼                                                     │
 check: a FAN of 5 checkers at the same time             │
   ├──► check_tests    runs the approved tests           │
   ├──► check_safety   reads the change for problems     │
@@ -65,14 +70,14 @@ check: a FAN of 5 checkers at the same time             │
   ├──► check_security reads the change for security     │
   └──► check_use      runs the examples as a user       │
   │                                                     │
-  ├── one of them bad ──► repair (3 tries) ──► check    │
+  ├── one of them bad ──► repair (3 tries) ──► write_pr │
   │                   a bad repair goes to plan         │
   ▼ all good                                            │
 work_was_done: a commit after mark? no ──► repair       │
   ▼ yes                                                 │
 no change in a locked folder? (clean copy)              │
   ▼ yes                                                 │
-push ──► find the PR, or open one                       │
+push ──► find the PR and give it the new text, or open one │
   ▼                                                     │
 YOU: PR? ───────────────────────────────────────────────┘
   ▼ yes
@@ -102,7 +107,11 @@ an error · a bad result with no path for it · a changed paper · a maximum
 - The step `work_was_done` comes after a good check. With no commit after `mark`, git gives an error. The run then goes to `repair`.
 - A worker can write in `.git`, so `work_was_done` is not a wall against a worker that cheats. It finds a worker that did nothing by error.
 - The step `simplify` and the three new checkers are for new runs. You can remove them for a faster run.
-- The step `learn` comes after `simplify`, and after each no it runs again. The step `repair` goes to `check` with no `learn`.
+- The step `learn` comes after `simplify`, and after each no it runs again. The step `repair` goes to `write_pr` with no `learn`.
+- The step `write_pr` comes after `learn` and after each `repair`. Then the PR text agrees with the change before each check. A bad result of the writer stops the run.
+- The reviewer compares the paper `pr` with the change. One `[x]` of the checklist that the change does not show is a bad result.
+- `open_pr` opens the PR with the title and the text of the paper `pr`. After a no, `find_pr` puts the new title and text into the open PR.
+- `find_pr` and `open_pr` refuse a paper `pr` with a link. Then no file outside the paper goes to GitHub.
 - The learner writes a lesson test on the run branch, or a short entry in the paper `lessons`.
 - After the merge, the step `save_lessons` copies that paper to `.codeumbrella/lessons.md`. Git does not see that file.
 - Then the step `clean_up` removes the two copies `work` and `clean`. The notebook, the log and the papers stay.

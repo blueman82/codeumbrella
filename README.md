@@ -18,6 +18,8 @@ Git does not see the file `.codeumbrella/lessons.md`. The workers of the next ru
 
 If the builder finds a bad paper test, the planner corrects only that test, and you see the tests again.
 
+Each PR has a set PR text, so you see what the change is for. The planner writes the title and the purpose, the cause, an example and the fix. After the build, the role `writer` adds the version line, the files of each area of the change, and a checklist. Its step is `write_pr`. It runs again after each repair, so the text agrees with the change. Each item of the checklist has `[x]`, or `[ ]` with a cause. The reviewer compares the PR text with the change. At the PR stop, the chat shows you the title and each `[ ]` line.
+
 Two steps with no AI look for work. After your yes for the tests, the step `mark` keeps the commit of that moment. After a good check, the step `work_was_done` looks for a new commit after `mark`. With no new commit, the builder must repair the work.
 
 ## Requirements: what the computer must have
@@ -82,7 +84,7 @@ Run `codeumbrella init --update` in your project. It replaces each factory file 
 | Stop | Yes | No, with your text |
 |---|---|---|
 | The tests | The builder starts. | The planner writes the tests again. |
-| The PR | The supervisor merges. Then it copies the lessons to `.codeumbrella/lessons.md`. Then `clean_up` removes the two copies of the run. | The planner corrects the spec and the tests. You see the tests again. The same PR gets the new code. |
+| The PR | The supervisor merges. Then it copies the lessons to `.codeumbrella/lessons.md`. Then `clean_up` removes the two copies of the run. | The planner corrects the spec and the tests. You see the tests again. The same PR gets the new code, a new title and a new text. |
 
 A point of your task can have two meanings. Then the planner makes a decision and lists it at the top of the spec. At the tests stop, the chat tells you each such decision. In a terminal, read the top of `.codeumbrella/runs/<run-id>/papers/spec/spec.md`.
 

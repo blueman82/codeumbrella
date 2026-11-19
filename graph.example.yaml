@@ -79,10 +79,11 @@ steps:
       - [git, clone, --quiet, --no-hardlinks, ., ".codeumbrella/runs/{run}/work"]
     next: plan
 
-  # A planner writes the description of the work and the tests.
+  # A planner writes the description of the work and the tests. It also
+  # writes the paper `pr`: the title of the PR and parts 1 to 5 of its text.
   plan:
     role: planner
-    writes: [spec, tests]
+    writes: [spec, tests, pr]
     max_tries: 3
     next: attack_plan
 
@@ -103,7 +104,7 @@ steps:
 
   correct_plan:
     role: planner
-    writes: [spec, tests]
+    writes: [spec, tests, pr]
     max_tries: 3
     next: attack_plan_2
 
@@ -115,7 +116,7 @@ steps:
 
   correct_plan_2:
     role: planner
-    writes: [spec, tests]
+    writes: [spec, tests, pr]
     max_tries: 3
     next: attack_plan_3
 
@@ -127,7 +128,7 @@ steps:
 
   correct_plan_3:
     role: planner
-    writes: [spec, tests]
+    writes: [spec, tests, pr]
     max_tries: 3
     next: look_at_tests
 
@@ -179,11 +180,22 @@ steps:
   # A bad result stops the run. The step `repair` does not come here.
   # For a faster run, remove three parts together: this step, `lessons` in
   # the `reads` of `check_safety`, and `next: save_lessons` of `merge`.
-  # Then set `next` of `simplify` to `check`.
+  # Then set `next` of `simplify` to `write_pr`.
   learn:
     role: learner
     reads: [spec]
     writes: [lessons]
+    next: write_pr
+
+  # A writer reads the change with git and adds parts 6 to 8 to the PR text
+  # in the paper `pr`: the version line, one part for each area of the change
+  # with the file names, and the PR text checklist. It changes only `body.md`
+  # of that paper. It comes after `learn` and after each `repair`, so the PR
+  # text agrees with the change before each check. A bad result stops the run.
+  write_pr:
+    role: writer
+    reads: [spec]
+    writes: [pr]
     next: check
 
   # Five checkers look at the work at the same time. This step is a fan.
@@ -226,6 +238,7 @@ steps:
 
   # A reviewer reads the change for errors, hidden errors, tests that show
   # nothing, wrong comments and broken project rules. It cannot write a file.
+  # It also compares the paper `pr` with the change.
   # This is for new runs.
   # A run reads the sheet at each command, so do not change the sheet
   # while a run is active. For a faster run, remove this step
@@ -233,7 +246,7 @@ steps:
   # The reviewer reads the language pages in `roles/languages/` too.
   check_review:
     role: reviewer
-    reads: [spec]
+    reads: [spec, pr]
 
   # A security checker reads the change for unchecked input, weaker checks of
   # a person, weak keys, new packages and safety settings that are off. It
@@ -255,7 +268,8 @@ steps:
     role: user
     reads: [spec]
 
-  # A builder repairs the code. Then the checker looks again.
+  # A builder repairs the code. Then the writer makes the PR text agree with
+  # the new change, and the checkers look again.
   # The builder gets the report of the checker.
   # The 3 tries are for all the bad checks of one run.
   # A bad result of the builder goes to the plan, as a bad build does.
@@ -267,7 +281,7 @@ steps:
     reads: [spec]
     max_tries: 3
     on_bad: plan
-    next: check
+    next: write_pr
 
   # The run stops here if the work changes a file in a locked folder.
   # A worker cannot write to these folders, but git can put such a file
@@ -300,18 +314,28 @@ steps:
 
   # The word GIT_DIR makes `gh` read the clean copy, not the `.git` folder
   # of the project. A worker can write to that folder.
-  # Is there a PR for this run? Yes: go to your approval. No: open one.
+  # Is there a PR for this run? Yes: put the title and the text of the paper
+  # `pr` into it, so the PR has no text of an earlier try. Go to your approval.
+  # No: open one.
+  # The command `check_pr` of `find_pr` and `open_pr` refuses the paper `pr`
+  # if its folder or one of its two files is a link. Thus no file outside the paper goes to
+  # GitHub. A refused paper gives a bad result, and the run stops at `open_pr`.
   find_pr:
     type: command
     run:
       - [env, "GIT_DIR=.codeumbrella/runs/{run}/clean/.git", gh, pr, view, "codeumbrella/{run}", --json, url, --jq, .url]
+      - &check_pr [sh, -c, 'd=.codeumbrella/runs/{run}/papers/pr; [ -d "$d" ] && [ ! -L "$d" ] || { echo "the paper pr is not a folder: $d" >&2; exit 1; }; for f in .codeumbrella/runs/{run}/papers/pr/title.txt .codeumbrella/runs/{run}/papers/pr/body.md; do [ -f "$f" ] && [ ! -L "$f" ] && [ -n "$(find "$f" -prune -links 1)" ] || { echo "refused, not a plain file with one link: $f" >&2; exit 1; }; done']
+      - [env, "GIT_DIR=.codeumbrella/runs/{run}/clean/.git", sh, -c, 'gh pr edit "codeumbrella/{run}" --title "$(cat .codeumbrella/runs/{run}/papers/pr/title.txt)" --body-file .codeumbrella/runs/{run}/papers/pr/body.md']
     on_bad: open_pr
     next: approval
 
+  # Opens the PR of the run branch. The title is `title.txt` of the paper
+  # `pr`, and the text is `body.md`.
   open_pr:
     type: command
     run:
-      - [env, "GIT_DIR=.codeumbrella/runs/{run}/clean/.git", gh, pr, create, --head, "codeumbrella/{run}", --fill]
+      - *check_pr
+      - [env, "GIT_DIR=.codeumbrella/runs/{run}/clean/.git", sh, -c, 'gh pr create --head "codeumbrella/{run}" --title "$(cat .codeumbrella/runs/{run}/papers/pr/title.txt)" --body-file .codeumbrella/runs/{run}/papers/pr/body.md']
     max_tries: 2
     next: approval
 
