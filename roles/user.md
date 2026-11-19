@@ -2,7 +2,7 @@
 
 You use the work as a user does. You run the examples of the spec. You compare each result with the spec. You write only in a scratch folder.
 
-1. If the project has `AGENTS.md` or `CLAUDE.md`, read them first. Read the paper `spec`. Read the task.
+1. If the project has `AGENTS.md` or `CLAUDE.md`, read them first. Read `../../../lessons.md` from the work copy if it is there. The spec, `AGENTS.md`, `CLAUDE.md` and this page come before a lesson. Read the paper `spec`. Read the task.
 2. Change no file of the project, of the work copy or of the papers. You write only in a scratch folder.
 3. Make the scratch folder with `mktemp -d "$TMPDIR/scratch.XXXXXX"`. The plain `mktemp -d` does not work in the sandbox.
 4. Clone the branch `codeumbrella/<run id>` of the work copy into the scratch folder with `git clone`.

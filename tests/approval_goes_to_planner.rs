@@ -271,6 +271,7 @@ fn a_no_at_the_approval_goes_to_the_planner_and_then_to_the_person_for_the_tests
             "attack_plan",
             "build",
             "simplify",
+            "learn",
             "check_tests",
             "plan",
             "attack_plan"
@@ -278,7 +279,8 @@ fn a_no_at_the_approval_goes_to_the_planner_and_then_to_the_person_for_the_tests
     );
     assert!(!run.state.results.contains_key("merge"));
 
-    // After a yes, the work goes on to the builder and the checker, then to the approval.
+    // After a yes, the work goes on to the builder, the learner and the
+    // checker, then to the approval.
     run.answer(true, "").unwrap();
     run.go(&graph, &roles, &worker).unwrap();
     assert_eq!(run.state.status, Status::Waiting);
@@ -290,11 +292,13 @@ fn a_no_at_the_approval_goes_to_the_planner_and_then_to_the_person_for_the_tests
             "attack_plan",
             "build",
             "simplify",
+            "learn",
             "check_tests",
             "plan",
             "attack_plan",
             "build",
             "simplify",
+            "learn",
             "check_tests"
         ]
     );
@@ -388,6 +392,7 @@ fn a_bad_repair_goes_to_the_planner_and_waits_at_look_at_tests() {
         "attack_plan",
         "build",
         "simplify",
+        "learn",
         "check_tests",
         "repair",
         "plan",
@@ -416,11 +421,12 @@ fn after_a_yes_after_a_bad_repair_the_run_does_the_build_again() {
         run.go(&graph, &roles, &worker).unwrap();
     }
 
-    // After the second yes: the build, the simplifier and a good check.
+    // After the second yes: the build, the simplifier, the learner and a
+    // good check.
     let calls = worker.calls();
-    assert_eq!(calls.len(), 11, "{calls:?}");
-    let after = calls[8..].to_vec();
-    assert_eq!(after, ["build", "simplify", "check_tests"]);
+    assert_eq!(calls.len(), 13, "{calls:?}");
+    let after = calls[9..].to_vec();
+    assert_eq!(after, ["build", "simplify", "learn", "check_tests"]);
     assert_eq!(worker.count("build"), 2);
     assert_eq!(worker.count("repair"), 1);
     assert_eq!(run.state.status, Status::Waiting, "{}", run.state.note);

@@ -192,12 +192,13 @@ fn with_no_commit_work_was_done_is_bad_and_goes_to_repair() {
         ("mark", true),
         ("build", true),
         ("simplify", true),
+        ("learn", true),
         ("check", true),
         ("work_was_done", false),
         ("repair", true),
     ]);
     let after = after_yes(&run);
-    assert_eq!(after.get(..6), Some(&path[..]), "{after:?}");
+    assert_eq!(after.get(..7), Some(&path[..]), "{after:?}");
     // The builder in `repair` gets the error text of git.
     let got = worker.got("repair");
     let first = got[0].to_lowercase();
@@ -219,6 +220,7 @@ fn a_commit_of_the_repair_makes_work_was_done_good() {
         ("mark", true),
         ("build", true),
         ("simplify", true),
+        ("learn", true),
         ("check", true),
         ("work_was_done", false),
         ("repair", true),
@@ -246,6 +248,7 @@ fn with_a_new_commit_work_was_done_is_good_and_changes_no_file() {
         ("mark", true),
         ("build", true),
         ("simplify", true),
+        ("learn", true),
         ("check", true),
         ("work_was_done", true),
         ("no_locked_files", true),
@@ -295,12 +298,13 @@ fn after_a_no_at_the_approval_a_commit_from_before_does_not_count() {
         ("mark", true),
         ("build", true),
         ("simplify", true),
+        ("learn", true),
         ("check", true),
         ("work_was_done", false),
         ("repair", true),
     ]);
     let after = after_yes(&run);
-    assert_eq!(after.get(..6), Some(&path[..]), "{after:?}");
+    assert_eq!(after.get(..7), Some(&path[..]), "{after:?}");
     assert!(!run.state.results["work_was_done"].ok);
 }
 

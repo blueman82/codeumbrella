@@ -24,6 +24,7 @@ SUPERVISOR ── uses your GitHub key ──► GITHUB: push · PR · merge (me
 │ reviewer  in a sandbox · gets the plan             ──►  reads the change for errors      │
 │ security  in a sandbox · gets the plan             ──►  reads the change, security       │
 │ user      in a sandbox · gets the plan             ──►  runs the examples, scratch only  │
+│ learner   in a sandbox · gets the plan             ──►  writes lessons, lesson tests     │
 └──────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -55,6 +56,8 @@ build: a bad result goes to plan, as a no does          │
   ▼                                                     │
 simplify: the simplifier makes the code simpler         │
   ▼                                                     │
+learn: the learner reads the logs, writes the lessons   │
+  ▼                                                     │
 check: a FAN of 5 checkers at the same time             │
   ├──► check_tests    runs the approved tests           │
   ├──► check_safety   reads the change for problems     │
@@ -74,6 +77,8 @@ push ──► find the PR, or open one                       │
 YOU: PR? ───────────────────────────────────────────────┘
   ▼ yes
 merge
+  ▼
+save_lessons: copies the lessons into your project (no AI)
 
 At each step, four things STOP the run and tell you:
 an error · a bad result with no path for it · a changed paper · a maximum
@@ -94,4 +99,8 @@ an error · a bad result with no path for it · a changed paper · a maximum
 - The step `work_was_done` comes after a good check. With no commit after `mark`, git gives an error. The run then goes to `repair`.
 - A worker can write in `.git`, so `work_was_done` is not a wall against a worker that cheats. It finds a worker that did nothing by error.
 - The step `simplify` and the three new checkers are for new runs. You can remove them for a faster run.
+- The step `learn` comes after `simplify`, and after each no it runs again. The step `repair` goes to `check` with no `learn`.
+- The learner writes a lesson test on the run branch, or a short entry in the paper `lessons`.
+- After the merge, the step `save_lessons` copies that paper to `.codeumbrella/lessons.md`. Git does not see that file.
+- For a faster run, remove three parts together: the step `learn`, `lessons` in `check_safety`, and `next: save_lessons` of `merge`.
 - `check_use` clones the run branch into a scratch folder in the temp folder. It builds the work there and runs the examples of the spec.

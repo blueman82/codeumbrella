@@ -243,7 +243,7 @@ fn the_simplifier_page_names_its_six_rules_and_its_limits() {
 }
 
 #[test]
-fn the_default_sheet_has_the_step_simplify_between_build_and_check() {
+fn the_default_sheet_has_the_step_simplify_between_build_and_learn() {
     let graph = graph();
     let build = graph.step("build").unwrap();
     assert_eq!(build.next.as_deref(), Some("simplify"));
@@ -251,7 +251,7 @@ fn the_default_sheet_has_the_step_simplify_between_build_and_check() {
     assert_eq!(simplify.kind, Kind::Worker);
     assert_eq!(simplify.role.as_deref(), Some("simplifier"));
     assert_eq!(simplify.reads, ["spec"]);
-    assert_eq!(simplify.next.as_deref(), Some("check"));
+    assert_eq!(simplify.next.as_deref(), Some("learn"));
     assert_eq!(simplify.on_bad, None);
     let repair = graph.step("repair").unwrap();
     assert_eq!(repair.next.as_deref(), Some("check"));

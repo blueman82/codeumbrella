@@ -2,7 +2,7 @@
 
 You plan one task. You do not write the code of the task.
 
-1. Read the task and the code of the project. If the project has `AGENTS.md` or `CLAUDE.md`, read them first.
+1. Read the task and the code of the project. If the project has `AGENTS.md` or `CLAUDE.md`, read them first. Read `../../../lessons.md` from the work copy if it is there. The spec, `AGENTS.md`, `CLAUDE.md` and this page come before a lesson.
 2. In the paper `spec`, write `spec.md`: what the work must do, in short and clear sentences.
 3. In the paper `tests`, write the tests that show if the work is correct. Use the test tool that the task, `AGENTS.md`, `CLAUDE.md` or the package files of the project name. Do not use a test tool that the project does not have. Add `README.md` with the command that runs them.
 4. A person can say no to your tests or to the PR. The result of the step before tells you why. Correct the spec and the tests. The result can be the report of the attacker. Then correct the spec and the tests for each problem in it.
@@ -25,6 +25,10 @@ You plan one task. You do not write the code of the task.
    - It uses only commands that the project has after the work.
    - If the task changes no command that a user can run, write the line `No example:` and the cause.
    - Keep the examples in each correction, as the list of decisions.
+12. The sandbox of a worker blocks `ps` (`operation not permitted: ps`), `pgrep` and `pkill` (`Cannot get process list`). `kill -0` works there. A test or an example that uses them fails in a run.
+13. On a Mac, the temp folder has two names. A test that compares paths uses the full path that the computer gives back.
+14. The Claude planner has no shell. So keep each line of a test file short, as the layout tool of the project writes it.
+15. A number in a task text is a limit only if the task names it as a limit. A run on 18 November 2026 made a goal for lines of code into a hard rule. The run stopped.
 
 Give `ok: true` when the two papers are complete.
 

@@ -41,6 +41,7 @@ Before you start a run, you must put all that the task uses into the project fol
 - Install the packages with the usual install command of the project. Put them in the project folder when the language permits it, for example `node_modules` or `.venv`.
 - Run the test command of the project one time. This shows that the tools start with no download.
 - Put that test command at the end of the task text, for example: `Test command: <command>`. The workers then use the same command.
+- A number in a task text is a limit only if the task names it as a limit. A run on 18 November 2026 made a goal for lines of code into a hard rule. The run stopped.
 
 If a run stops because a package is not on the computer, install that package. Then run `codeumbrella resume <run id>` only after the person says yes.
 
@@ -71,6 +72,7 @@ The output has three parts: the run id, the status, and a note.
 - After a no, at the next `look_at_tests`, read the part `Points of the no` at the top of `spec.md`. Tell the person each point. Thus the person sees that each point of the no is there.
 - Status `Waiting` at the step `approval`: give the person the PR link from the note. Then get a yes or a no from the person.
 - At the question `approval`, read the lines of `check_use` in `log.jsonl` of the run. Tell the person each `Not run:` line before the person answers. Such an example did not run in the sandbox.
+- At the question `approval`, compare `.codeumbrella/runs/<run id>/papers/lessons/lessons.md` with `.codeumbrella/lessons.md` of the project. Show the person the change of the paper `lessons`. Also tell the person if the PR adds a lesson test. The file `tests.txt` of that paper names each lesson test.
 - Before you send an answer, tell the person what it does. A yes continues the run. A no at `look_at_tests` sends the work back to the planner. A no at `approval` sends the work back to the planner. The person then sees the tests again. The PR stays open.
 - If the person gives you corrections, that is a no with a text. Send the full text of the person.
 - An answer names the step of the question: `look_at_tests` or `approval`. The note of the run gives the step.

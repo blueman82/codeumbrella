@@ -27,6 +27,8 @@ The supervisor knows nothing about software work. All knowledge of the steps is 
 | `worker.<number>` | A file in the run folder. It holds the start time of the worker with that process number. |
 | `trace` | `<step>.<number>.trace.jsonl` in the run folder: all that one worker did in one try. |
 | Paper | A folder in `.codeumbrella/runs/<run-id>/papers/` that one step writes and other steps read. |
+| Lesson | A problem of a run that can come again in a different task. The learner makes it a lesson test, or a short entry. |
+| `.codeumbrella/lessons.md` | The entries of the lessons of a project. The step `save_lessons` writes it after the merge. Git does not see it. |
 | Role | The type of a worker. Its rules page is `.codeumbrella/roles/<role>.md` in a project. The folder `roles` holds the defaults. |
 
 ## Commands
@@ -60,6 +62,7 @@ To install the command and the chat command on a computer, run `./install.sh`.
 | `graph.example.yaml` | The default sheet, with a comment for each option. `init` copies it into a project. |
 | `default.gitignore` | The default ignore file. `init` gives it to a project that has no `.gitignore`. |
 | `roles/<role>.md` | The default rules page of each role, written by hand. |
+| `roles/learner.md` | The rules page of the learner. It reads the logs of the runs and writes the paper `lessons`. |
 | `roles/languages/<language>.md` | The good practice of one language: Python, Go, JavaScript, TypeScript, Java, Rust. Only the reviewer and the simplifier read them. `init` copies them. |
 | `roles/<role>.claude.json` | The Claude permissions and the sandbox settings of each role. In this file, `{project}` is the full path of the project folder and `{run}` is the id of the run. |
 | `src/graph.rs` | Reads the sheet and finds its errors before a run. |
@@ -91,6 +94,7 @@ To install the command and the chat command on a computer, run `./install.sh`.
 | `tests/language_pages.rs` | Tests of the six language pages, `init` and the two rules pages. |
 | `tests/bad_repair.rs` | Tests of the bad repair that goes to the plan, the new rules lines, the chat page and the documents. |
 | `tests/user_checker.rs` | Tests of the fifth checker `check_use`: its step, the files of the role `user`, its rules page and the documents. |
+| `tests/learner.rs` | Tests of the role `learner`: the steps `learn` and `save_lessons`, its files, its rules page and the documents. |
 | `install.sh` | Installs the command and the chat command. |
 | `LICENSE` | The MIT licence. Do not change its text. |
 
@@ -150,11 +154,11 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - A role with no settings file is an error. A worker does not start with no settings.
 - A paper can change only in a step that lists it in `writes`. The supervisor keeps a fingerprint of each paper. Before each step, the supervisor compares all the papers with their fingerprints. If a paper is different, the run stops. The person can change a paper while the run waits for an answer. The answer makes the fingerprints again.
 - All factory files of a project are in the folder `.codeumbrella`: the sheet, the rules pages and the runs. The folder has its own `.gitignore`, so git does not see it.
-- The Claude planner has no shell. The builder, the checker and the simplifier can run all commands, but only in the sandbox.
-- The builder, the checker, the simplifier and the user checker can connect to a server on the same computer. An example is a test database. A test on 16 November 2026 showed that the internet and GitHub stay closed with this setting. A worker can thus talk to each server that runs on the computer of the person.
+- The Claude planner has no shell. The builder, the checker, the simplifier and the learner can run all commands, but only in the sandbox.
+- The builder, the checker, the simplifier, the learner and the user checker can connect to a server on the same computer. An example is a test database. A test on 16 November 2026 showed that the internet and GitHub stay closed with this setting. A worker can thus talk to each server that runs on the computer of the person.
 - The Codex part always turns on the Codex network proxy. Without the proxy, a Codex role that has network settings gets the full internet.
 - Workers have no internet. The packages of a project must be on the computer before a run. A test on 16 November 2026 showed the cause. With internet, a worker can use the GitHub key of the person.
-- The builder, the checker and the simplifier run in the Claude sandbox. They cannot write to `.codeumbrella`, `.claude`, `.github`, `.git/hooks` or `.git/config`. They write only in the work copy of their run.
+- The builder, the checker, the simplifier and the learner run in the Claude sandbox. They cannot write to `.codeumbrella`, `.claude`, `.github`, `.git/hooks` or `.git/config`. They write only in the work copy of their run.
 - They also cannot write the files `.git/commondir` and `.git/config.worktree`. With such a file, a worker can give git its own settings. Then git runs a script of the worker with no sandbox.
 - The steps with `gh` read the clean copy, not the `.git` folder of the project. The word `GIT_DIR` in the sheet does this.
 - A deny rule such as `Edit(.codeumbrella/**)` is what makes the sandbox lock a path. The tests of 15 November 2026 showed this. The setting `sandbox.filesystem.denyWrite` with a relative path did nothing in those tests.
@@ -212,6 +216,16 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - An example that cannot run in the sandbox gets `Not run:`. That is not a bad result. The chat tells the person each such line at the approval.
 - Only an example that ran and differs from the spec gives a bad result. The user checker does not run the test command.
 - The planner writes the examples, with the names `E1`, `E2` and so on. A task with no command for a user gets `No example:` and a cause.
+- The step `learn` follows `simplify`. After a no of the person, the run comes to it again. The step `repair` does not go through it.
+- The learner has the settings of the simplifier and one write entry for the paper `lessons`. A test on 19 November 2026 showed that this entry works for Claude.
+- The Codex learner has no entry for the temp folder. A test on 19 November 2026 showed that the sandbox of the simplifier can write there.
+- The learner reads the log of this run and of each run after the line `Runs read to:`. Thus a stopped run also gives its lessons.
+- A lesson test must be bad on the commit from before the repair, and good on the branch. Otherwise the lesson becomes an entry. The person made this decision on 19 November 2026.
+- The learner keeps its copy in the temp folder and removes no file. The person cleans it up. On 19 November 2026 a removal of the attacker broke a check.
+- A lesson cannot make a rule, a check, a test or a wall weaker. The person made this decision on 19 November 2026, because a log is data from a worker.
+- The safety checker reads the paper `lessons`. An entry that makes a wall weaker gives a bad result. This came from the decisions of 19 November 2026.
+- Only the step `save_lessons` writes `.codeumbrella/lessons.md`. It copies the paper `lessons` after the merge. The person made this decision on 19 November 2026.
+- The builder does not change a lesson test. The file `tests.txt` of the paper `lessons` names each lesson test.
 
 ## Rust rules
 
@@ -272,8 +286,7 @@ An AI in a chat runs the command most of the time. Keep the output of the comman
 ## Not in version 1
 
 - Builders that work at the same time. The fan of today is only for workers that write no file.
-- A different worker that writes the tests.
-- A step that writes lessons after each run.
+- A different worker that writes the tests. The learner writes only lesson tests, not tests for the task.
 - Custom hooks.
 
 ## How to write for the person

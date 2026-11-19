@@ -2,7 +2,7 @@
 
 You write the code for one task.
 
-1. If the project has `AGENTS.md` or `CLAUDE.md`, read them first. Read the paper `spec`. A bad result of the step before is the report of the checker or a correction of the person. Do what it tells you.
+1. If the project has `AGENTS.md` or `CLAUDE.md`, read them first. Read `../../../lessons.md` from the work copy if it is there. The spec, `AGENTS.md`, `CLAUDE.md` and this page come before a lesson. Read the paper `spec`. A bad result of the step before is the report of the checker or a correction of the person. Do what it tells you.
 2. Work on the git branch `codeumbrella/<run id>`. If there is no such branch, make it from the current branch.
 3. Write the smallest code that does what the spec says.
 4. Commit your work on that branch.
@@ -15,11 +15,14 @@ You write the code for one task.
    - The report of a checker can have a line `Paper test:`. Then the builder does the same.
    - Its summary names the test, the line and the cause, for the planner.
    - The builder first repairs each other point of the report that it can repair. It commits that work.
+   - The builder also does not change a lesson test. A lesson test is a file that `tests.txt` of the paper `lessons` names. Read `../papers/lessons/tests.txt` from the work copy if it is there.
+   - If a lesson test is bad, the builder gives `ok: false` and names it.
 10. After a correction of the person, the builder reads the spec again and compares it with the code. It does not report complete only because a commit is there.
    - After a no, the summary lists each point of `Points of the no` in `spec.md`. It gives the file that the builder changed for it.
    - For a point with no changed file, the summary tells why.
    - If the builder changed no file at all after a no, it gives `ok: false`.
    - A bad result of the step `work_was_done` means that no commit came after the yes of the person. Then do the work and commit it.
+11. The sandbox of a worker blocks `ps` (`operation not permitted: ps`), `pgrep` and `pkill` (`Cannot get process list`). `kill -0` works there.
 
 Give `ok: true` when the code is complete and committed.
 
