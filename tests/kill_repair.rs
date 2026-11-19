@@ -75,9 +75,9 @@ fn out(o: &Output) -> String {
 
 fn id(o: &Output) -> String {
     let all = out(o);
-    let line = all.lines().find(|l| l.starts_with("Run: "));
+    let line = all.lines().find(|l| l.starts_with("Run:      "));
     let line = line.expect("a run");
-    line["Run: ".len()..].to_owned()
+    line["Run:      ".len()..].to_owned()
 }
 
 fn says(o: &Output, needle: &str) {
@@ -187,7 +187,7 @@ fn names(dir: &Path) -> Vec<String> {
 /// A run that waits at the question. Gives the id.
 fn waiting(dir: &Path) -> String {
     let run = cu(dir, &["run", "a task"]);
-    says(&run, "Status: Waiting");
+    says(&run, "Status:   Waiting");
     id(&run)
 }
 
@@ -311,7 +311,7 @@ fn assert_repaired(dir: &Path, id: &str, at: &str) {
 fn shows_repair(o: &Output, id: &str) {
     assert!(o.status.success(), "{}", out(o));
     says(o, REPAIRED);
-    says(o, "Status: Stopped");
+    says(o, "Status:   Stopped");
     says(o, &format!("To continue: codeumbrella resume {id}"));
 }
 
@@ -354,7 +354,7 @@ fn a_second_status_after_the_repair_prints_no_repair_line() {
     let again = cu(&dir, &["status", &id]);
     assert!(again.status.success(), "{}", out(&again));
     lacks(&again, REPAIRED);
-    says(&again, "Status: Stopped");
+    says(&again, "Status:   Stopped");
     assert_eq!(bytes(&dir, &id), state);
     assert_repaired(&dir, &id, &at);
 }
@@ -370,7 +370,7 @@ fn resume_repairs_first_and_then_starts_the_same_step_again() {
     let resume = cu(&dir, &["resume", &id]);
     assert!(resume.status.success(), "{}", out(&resume));
     says(&resume, REPAIRED);
-    says(&resume, "Status: Waiting");
+    says(&resume, "Status:   Waiting");
     lacks(&resume, "different command");
     let after = fs::read_dir(dir.join("bin")).unwrap().count();
     assert_eq!(after, before + 1, "the worker of the step did not start");

@@ -1,10 +1,11 @@
 //! The tool part for Codex: it starts one `codex exec` worker for one step.
 
 use crate::claude::{INIT, SCHEMA, files, prompt, wait};
-use crate::engine::{Job, Outcome, Worker};
+use crate::engine::{Job, Numbers, Outcome, Worker};
 use anyhow::{Context, Result, ensure};
+use serde_json::Value;
 use std::process::{Command, Stdio};
-use std::{env, fs, fs::File, time::Duration};
+use std::{env, fs, fs::File, path::Path, time::Duration};
 
 /// Starts Codex workers.
 #[derive(Debug)]
@@ -15,6 +16,19 @@ pub struct Codex {
 
 impl Worker for Codex {
     fn run(&self, job: &Job) -> Result<Outcome> {
+        self.run_counted(job).0
+    }
+
+    fn run_counted(&self, job: &Job) -> (Result<Outcome>, Numbers) {
+        let mut numbers = Numbers::default();
+        let result = self.work(job, &mut numbers);
+        (result, numbers)
+    }
+}
+
+impl Codex {
+    /// Does one step. It writes the numbers of the worker into `numbers`.
+    fn work(&self, job: &Job, numbers: &mut Numbers) -> Result<Outcome> {
         let rules = fs::read_to_string(job.rules).with_context(|| {
             format!("cannot read the rules page {}. {INIT}", job.rules.display())
         })?;
@@ -68,11 +82,13 @@ impl Worker for Codex {
             .env_remove("GITHUB_TOKEN")
             .current_dir(job.dir.join("work"))
             .stdin(Stdio::null())
-            .stdout(File::create(trace)?)
+            .stdout(File::create(&trace)?)
             .stderr(File::create(err)?)
             .spawn()
             .context("cannot start the codex command")?;
-        let status = wait(child, self.time_limit, job.dir)?;
+        let (status, seconds) = wait(child, self.time_limit, job.dir)?;
+        numbers.seconds = Some(seconds);
+        tokens(&trace, numbers);
         ensure!(status.success(), "codex ended with an error: {status}");
         let text = fs::read_to_string(&out).with_context(|| {
             format!(
@@ -81,5 +97,23 @@ impl Worker for Codex {
             )
         })?;
         serde_json::from_str(&text).context("codex gave no result in the correct format")
+    }
+}
+
+/// Adds the tokens of each `turn.completed` line of the trace into `numbers`.
+/// The cached tokens and the reasoning tokens are parts of these two numbers.
+/// A trace with no such line gives no token numbers.
+fn tokens(trace: &Path, numbers: &mut Numbers) {
+    let text = fs::read_to_string(trace).unwrap_or_default();
+    for line in text.lines() {
+        let Ok(event) = serde_json::from_str::<Value>(line) else {
+            continue;
+        };
+        if event["type"] != "turn.completed" {
+            continue;
+        }
+        let count = |key: &str| event["usage"][key].as_u64().unwrap_or_default();
+        *numbers.tokens_in.get_or_insert(0) += count("input_tokens");
+        *numbers.tokens_out.get_or_insert(0) += count("output_tokens");
     }
 }

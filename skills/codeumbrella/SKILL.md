@@ -64,7 +64,13 @@ Use the same command line for `answer` and `resume`, with no `--tool`. Then run 
 
 ## After each command
 
-The output has three parts: the run id, the status, and a note.
+The output has one fact on each line: `Run:`, `Status:`, `Note:` and more. A run with status `Running` also shows `Step:` and `Since:`. The lines `Workers:`, `Time:` and `Cost:` give the total of the workers. `More:` gives the path of the log.
+
+- At each question, and at the status `Done` or `Stopped`, tell the person the lines `Workers:`, `Time:` and `Cost:`.
+- Also tell each limit of the numbers that fits the run. `AGENTS.md` of the factory has the list "Limits of the numbers". Example: a run with Codex workers has no full cost. The line `No cost:` shows such workers.
+- `Time:` is in worker minutes. It is a sum of worker times, not the time on the clock. The workers of a fan work at the same time.
+- `Cost:` is the number that the Claude tool writes. With a subscription, the person pays a different sum.
+- Do not add the numbers of the worker files by hand. Do not tell the person a time or a cost that no file of the run shows.
 
 - Status `Waiting` at the step `look_at_tests`: read the files in `.codeumbrella/runs/<run id>/papers/tests/`. Tell the person in plain words what each test looks at. Also read `.codeumbrella/runs/<run id>/papers/spec/spec.md`. Tell the person each decision in the list at its top. If the spec has no such list, tell the person that the planner made no decision. Then get a yes or a no from the person.
 - If the note at `look_at_tests` names a bad build, tell the person what test the planner changed.
@@ -88,11 +94,11 @@ The output has three parts: the run id, the status, and a note.
 
 The run folder is `.codeumbrella/runs/<run id>/`.
 
-- `log.jsonl` has one line for each step that ended. The line has the time, the step, good or bad, the seconds and the summary.
+- `log.jsonl` has one line for each step that ended. The line has the time, the step, good or bad, the seconds and the summary. The line of a worker step also has the numbers of its worker, for example `worker_seconds` and `dollars`.
 - `<step>.<number>.trace.jsonl` has all that one worker did in one try. These files are large.
 
 When the status is `Done` or `Stopped`, read `log.jsonl`. Give the person a short table: the time of each step, the slowest step, the number of repair tries, and the answers of the person.
 
-Do not read a full `trace` file. Use `grep` to find one thing in it, for example a command, an error or `total_cost_usd`. Do this only when the person wants to know why a step was slow or bad, or what the run cost.
+Do not read a full `trace` file. Use `grep` to find one thing in it, for example a command or an error. Do this only when the person wants to know why a step was slow or bad. For the cost of the run, use the line `Cost:` of the status.
 
 Write to the person in short, plain sentences. Give the meaning of each technical word.

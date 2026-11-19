@@ -306,8 +306,11 @@ fn out(o: &Output) -> String {
 /// The id of the run that an output names.
 fn id(o: &Output) -> String {
     let all = out(o);
-    let line = all.lines().find(|l| l.starts_with("Run: ")).expect("a run");
-    line["Run: ".len()..].to_owned()
+    let line = all
+        .lines()
+        .find(|l| l.starts_with("Run:      "))
+        .expect("a run");
+    line["Run:      ".len()..].to_owned()
 }
 
 /// A simulated `claude` that records what it got and gives a good result.
@@ -321,7 +324,7 @@ fn a_claude_worker_gets_its_settings_and_no_github_token() {
     let dir = project();
     tool(&dir, "claude", GOOD_CLAUDE);
     let run = cu(&dir, &["run", "a task"]);
-    assert!(out(&run).contains("Status: Waiting"), "{}", out(&run));
+    assert!(out(&run).contains("Status:   Waiting"), "{}", out(&run));
     let args = fs::read_to_string(dir.join("bin/args.txt")).unwrap();
     let lines: Vec<&str> = args.lines().collect();
     let at = |word: &str| lines.iter().position(|l| *l == word).expect(word);
@@ -346,7 +349,7 @@ fn a_claude_role_with_no_settings_file_does_not_start() {
     tool(&dir, "claude", GOOD_CLAUDE);
     fs::remove_file(dir.join(".codeumbrella/roles/planner.claude.json")).unwrap();
     let run = cu(&dir, &["run", "a task"]);
-    assert!(out(&run).contains("Status: Stopped"), "{}", out(&run));
+    assert!(out(&run).contains("Status:   Stopped"), "{}", out(&run));
     assert!(out(&run).contains("cannot read the settings"));
     assert!(!dir.join("bin/args.txt").exists(), "the worker started");
 }
@@ -356,7 +359,7 @@ fn a_worker_that_ends_with_an_error_code_is_not_good() {
     let dir = project();
     tool(&dir, "claude", &format!("{GOOD_CLAUDE}\nexit 3"));
     let run = cu(&dir, &["run", "a task"]);
-    assert!(out(&run).contains("Status: Stopped"), "{}", out(&run));
+    assert!(out(&run).contains("Status:   Stopped"), "{}", out(&run));
     // This simulated codex writes a good result, and then ends with an error code.
     // A new project gives the run its own id: two runs in one second would share an id.
     let dir = project();
@@ -365,7 +368,7 @@ echo '{"ok":true,"summary":"done"}' > "$2"
 exit 3"#;
     tool(&dir, "codex", codex);
     let run = cu(&dir, &["--tool", "codex", "run", "a task"]);
-    assert!(out(&run).contains("Status: Stopped"), "{}", out(&run));
+    assert!(out(&run).contains("Status:   Stopped"), "{}", out(&run));
 }
 
 #[test]
@@ -383,7 +386,7 @@ while [ "$1" != "--output-last-message" ]; do shift; done
 echo '{"ok":true,"summary":"try 1"}' > "$2""#,
     );
     let run = cu(&dir, &["--tool", "codex", "run", "a task"]);
-    assert!(out(&run).contains("Status: Waiting"), "{}", out(&run));
+    assert!(out(&run).contains("Status:   Waiting"), "{}", out(&run));
     let args = fs::read_to_string(dir.join("bin/args.txt")).unwrap();
     assert!(args.contains("--enable\nnetwork_proxy\n"), "{args}");
     assert!(
@@ -410,7 +413,7 @@ echo '{"ok":true,"summary":"try 1"}' > "$2""#,
             "no",
         ],
     );
-    assert!(out(&no).contains("Status: Stopped"), "{}", out(&no));
+    assert!(out(&no).contains("Status:   Stopped"), "{}", out(&no));
     assert!(out(&no).contains("codex gave no result"), "{}", out(&no));
 }
 
@@ -429,7 +432,11 @@ fn an_answer_is_only_for_the_step_that_it_names() {
         out(&yes)
     );
     let status = cu(&dir, &["status", &id]);
-    assert!(out(&status).contains("Status: Waiting"), "{}", out(&status));
+    assert!(
+        out(&status).contains("Status:   Waiting"),
+        "{}",
+        out(&status)
+    );
 }
 
 #[test]

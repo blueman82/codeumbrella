@@ -4,11 +4,12 @@ use anyhow::{Context, Result, bail, ensure};
 use clap::{Parser, Subcommand, ValueEnum};
 use codeumbrella::claude::Claude;
 use codeumbrella::codex::Codex;
-use codeumbrella::engine::{Job, Lock, Outcome, Run, Status, Worker};
+use codeumbrella::engine::{Job, Lock, Numbers, Outcome, Run, Status, Worker};
 use codeumbrella::graph::{Graph, Tool};
 use std::io::ErrorKind;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use std::{env, fs, path::Path, path::PathBuf, process::Command};
+use time::{OffsetDateTime, format_description::well_known::Rfc3339};
 
 /// The folder in a project that holds the sheet, the rules pages and the runs.
 const HOME: &str = ".codeumbrella";
@@ -89,10 +90,14 @@ struct Mixed {
 
 impl Worker for Mixed {
     fn run(&self, job: &Job) -> Result<Outcome> {
+        self.run_counted(job).0
+    }
+
+    fn run_counted(&self, job: &Job) -> (Result<Outcome>, Numbers) {
         let time_limit = self.time_limit;
         match job.tool.unwrap_or(self.tool) {
-            Tool::Claude => Claude { time_limit }.run(job),
-            Tool::Codex => Codex { time_limit }.run(job),
+            Tool::Claude => Claude { time_limit }.run_counted(job),
+            Tool::Codex => Codex { time_limit }.run_counted(job),
         }
     }
 }
@@ -418,14 +423,51 @@ fn show(run: &Run) {
     // The screen gets a short note. The full text is in the log.
     let note: String = run.state.note.chars().take(300).collect();
     let id = run.dir.file_name().unwrap_or_default().to_string_lossy();
-    println!("Run: {id}\nStatus: {:?}\n{note}", run.state.status);
+    // One fact on each line. Each value starts at character 11.
+    let line = |name: &str, value: &str| println!("{:<10}{value}", format!("{name}:"));
+    let (state, total) = (&run.state, &run.state.total);
+    line("Run", &id);
+    line("Status", &format!("{:?}", state.status));
+    if !note.is_empty() {
+        line("Note", &note);
+    }
+    if state.status == Status::Running {
+        line("Step", state.at.as_deref().unwrap_or_default());
+        let since = state
+            .since
+            .as_deref()
+            .map(|t| OffsetDateTime::parse(t, &Rfc3339));
+        if let Some(Ok(since)) = since {
+            let minutes = (OffsetDateTime::now_utc() - since).whole_minutes().max(0);
+            let word = if minutes == 1 { "minute" } else { "minutes" };
+            line("Since", &format!("{minutes} {word}"));
+        }
+    }
+    if total.workers > 0 {
+        line("Workers", &total.workers.to_string());
+        line(
+            "Time",
+            &format!("{:.1} worker minutes", total.seconds / 60.0),
+        );
+    }
+    if total.workers > total.no_cost {
+        line("Cost", &format!("{:.2} dollars", total.dollars));
+    }
+    if total.no_cost > 0 && total.no_cost < total.workers {
+        let word = if total.no_cost == 1 {
+            "worker"
+        } else {
+            "workers"
+        };
+        line("No cost", &format!("{} {word}", total.no_cost));
+    }
     if run.state.status == Status::Stopped && note.contains("not as its writer left it") {
         println!("A person must put the paper back first.");
     } else if run.state.status == Status::Stopped {
         println!("To continue: codeumbrella resume {id}");
         println!("Resume only after the person says yes. An AI must not give this approval.");
     }
-    println!("More: {}", run.dir.join("log.jsonl").display());
+    line("More", &run.dir.join("log.jsonl").display().to_string());
 }
 
 /// Writes each default file that the project does not have. With `update`, it

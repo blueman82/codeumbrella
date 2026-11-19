@@ -68,8 +68,11 @@ fn out(o: &Output) -> String {
 
 fn id(o: &Output) -> String {
     let all = out(o);
-    let line = all.lines().find(|l| l.starts_with("Run: ")).expect("a run");
-    line["Run: ".len()..].to_owned()
+    let line = all
+        .lines()
+        .find(|l| l.starts_with("Run:      "))
+        .expect("a run");
+    line["Run:      ".len()..].to_owned()
 }
 
 fn says(o: &Output, needle: &str) {
@@ -207,7 +210,7 @@ fn the_lock_file_holds_the_process_number_of_the_command() {
     tool(&dir, "claude", CLAUDE_LOCK);
     write_sheet(&dir, THREE);
     let run = cu(&dir, &["run", "a task"]);
-    says(&run, "Status: Waiting");
+    says(&run, "Status:   Waiting");
     let lock = fs::read_to_string(dir.join("bin/lockcopy")).unwrap();
     let parent = fs::read_to_string(dir.join("bin/ppid")).unwrap();
     assert_eq!(lock.trim(), parent.trim(), "the lock: {lock:?}");
@@ -262,7 +265,7 @@ fn status_wait_waits_for_a_live_run_and_then_prints_the_status_text() {
     let wait = finish(spawn(&dir, &["status", "--wait", &id]), 30);
     let waited = start.elapsed();
     assert!(wait.status.success(), "{}", out(&wait));
-    says(&wait, "Status: Waiting");
+    says(&wait, "Status:   Waiting");
     assert!(waited >= Duration::from_millis(500), "it did not wait");
     let runner = finish(runner, 30);
     assert!(runner.status.success(), "{}", out(&runner));
@@ -284,7 +287,7 @@ fn status_wait_stops_with_a_message_when_the_command_of_the_run_is_dead() {
     let before = bytes(&dir, &id);
     let wait = finish(spawn(&dir, &["status", "--wait", &id]), 20);
     assert!(wait.status.success(), "{}", out(&wait));
-    says(&wait, "Status: Stopped");
+    says(&wait, "Status:   Stopped");
     // It repairs the run: the notebook changes and the lock goes.
     assert_ne!(bytes(&dir, &id), before);
     assert!(!lock.exists(), "the lock is there");
@@ -309,7 +312,7 @@ fn status_wait_does_not_stop_when_the_command_of_the_run_is_alive() {
     fs::remove_file(&lock).unwrap();
     let wait = finish(wait, 20);
     assert!(wait.status.success(), "{}", out(&wait));
-    says(&wait, "Status: Done");
+    says(&wait, "Status:   Done");
 }
 
 /// The names of all files in a folder, with their sizes.
@@ -401,7 +404,7 @@ fn a_worker_step_stops_the_run_when_the_work_folder_is_empty() {
     tool(&dir, "claude", CLAUDE);
     write_sheet(&dir, ONE_WORKER);
     let run = cu(&dir, &["run", "a task"]);
-    says(&run, "Status: Stopped");
+    says(&run, "Status:   Stopped");
     says(&run, "0.1.2");
     says(&run, "codeumbrella init --update");
     assert_eq!(count(&dir, "claude"), 0, "a worker started");
@@ -413,7 +416,7 @@ fn a_worker_step_stops_the_run_when_the_work_folder_is_not_there() {
     tool(&dir, "claude", CLAUDE);
     write_sheet(&dir, REMOVE_WORK);
     let run = cu(&dir, &["run", "a task"]);
-    says(&run, "Status: Stopped");
+    says(&run, "Status:   Stopped");
     says(&run, "0.1.2");
     says(&run, "codeumbrella init --update");
     assert_eq!(count(&dir, "claude"), 0, "a worker started");
@@ -423,7 +426,7 @@ fn a_worker_step_stops_the_run_when_the_work_folder_is_not_there() {
 fn a_worker_step_with_a_filled_work_folder_starts_the_worker() {
     let dir = setup();
     let run = cu(&dir, &["run", "a task"]);
-    says(&run, "Status: Waiting");
+    says(&run, "Status:   Waiting");
     assert_eq!(count(&dir, "claude"), 1);
 }
 
@@ -445,7 +448,7 @@ fn runs_that_start_in_the_same_second_get_different_ids() {
     let mut ids = BTreeSet::new();
     for child in children {
         let run = finish(child, 60);
-        says(&run, "Status: Done");
+        says(&run, "Status:   Done");
         ids.insert(id(&run));
     }
     assert_eq!(ids.len(), 4, "{ids:?}");
@@ -504,7 +507,7 @@ fn missing_settings(args: &[&str], file: &str) {
     let dir = setup();
     fs::remove_file(dir.join(".codeumbrella/roles").join(file)).unwrap();
     let run = cu(&dir, args);
-    says(&run, "Status: Stopped");
+    says(&run, "Status:   Stopped");
     says(&run, "codeumbrella init --update");
 }
 
@@ -554,7 +557,7 @@ fn a_stop_for_a_changed_paper_has_no_resume_line_and_says_to_put_the_paper_back(
     tool(&dir, "claude", CLAUDE);
     write_sheet(&dir, TAMPER);
     let run = cu(&dir, &["run", "a task"]);
-    says(&run, "Status: Stopped");
+    says(&run, "Status:   Stopped");
     says(&run, "not as its writer left it");
     lacks(&run, "To continue:");
     puts_paper_back(&run);
@@ -562,7 +565,7 @@ fn a_stop_for_a_changed_paper_has_no_resume_line_and_says_to_put_the_paper_back(
     // `status` and a `resume` that stops again print the same.
     for args in [["status", id.as_str()], ["resume", id.as_str()]] {
         let again = cu(&dir, &args);
-        says(&again, "Status: Stopped");
+        says(&again, "Status:   Stopped");
         lacks(&again, "To continue:");
         puts_paper_back(&again);
     }
@@ -598,7 +601,7 @@ fn a_command_that_uses_claude_on_a_notebook_with_no_tool_says_so_in_one_line() {
     lacks(&run, NO_TOOL_LINE);
     forget_tool(&dir, &id);
     let answer = cu(&dir, &["answer", &id, "ask1", "yes"]);
-    says(&answer, "Status: Waiting");
+    says(&answer, "Status:   Waiting");
     let text = out(&answer);
     let lines = text.lines().filter(|l| *l == NO_TOOL_LINE).count();
     assert_eq!(lines, 1, "{text}");
@@ -632,7 +635,7 @@ fn status_with_a_different_tool_shows_the_run_and_does_not_change_the_notebook()
     let before = bytes(&dir, &id);
     let status = cu(&dir, &["--tool", "claude", "status", &id]);
     assert!(status.status.success(), "{}", out(&status));
-    says(&status, "Status: Waiting");
+    says(&status, "Status:   Waiting");
     assert_eq!(bytes(&dir, &id), before);
 }
 

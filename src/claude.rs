@@ -1,6 +1,6 @@
 //! The tool part for Claude: it starts one `claude -p` worker for one step.
 
-use crate::engine::{Job, Outcome, Worker};
+use crate::engine::{Job, Numbers, Outcome, Worker};
 use anyhow::{Context, Result, bail, ensure};
 use serde::Deserialize;
 use std::process::{Child, Command, ExitStatus, Stdio};
@@ -27,10 +27,39 @@ struct Reply {
     #[serde(default)]
     result: String,
     structured_output: Option<Outcome>,
+    total_cost_usd: Option<f64>,
+    num_turns: Option<u64>,
+    #[serde(rename = "modelUsage")]
+    model_usage: Option<serde_json::Map<String, serde_json::Value>>,
+    usage: Option<Usage>,
+}
+
+/// The tokens in the last line of the Claude output. No field counts as 0.
+#[derive(Default, Deserialize)]
+#[serde(default)]
+#[allow(clippy::struct_field_names)] // The names are those of the Claude output.
+struct Usage {
+    input_tokens: u64,
+    cache_creation_input_tokens: u64,
+    cache_read_input_tokens: u64,
+    output_tokens: u64,
 }
 
 impl Worker for Claude {
     fn run(&self, job: &Job) -> Result<Outcome> {
+        self.run_counted(job).0
+    }
+
+    fn run_counted(&self, job: &Job) -> (Result<Outcome>, Numbers) {
+        let mut numbers = Numbers::default();
+        let result = self.work(job, &mut numbers);
+        (result, numbers)
+    }
+}
+
+impl Claude {
+    /// Does one step. It writes the numbers of the worker into `numbers`.
+    fn work(&self, job: &Job, numbers: &mut Numbers) -> Result<Outcome> {
         let rules = fs::read_to_string(job.rules).with_context(|| {
             format!("cannot read the rules page {}. {INIT}", job.rules.display())
         })?;
@@ -64,11 +93,20 @@ impl Worker for Claude {
             .stderr(File::create(&err)?)
             .spawn()
             .context("cannot start the claude command")?;
-        let status = wait(child, self.time_limit, job.dir)?;
+        let (status, seconds) = wait(child, self.time_limit, job.dir)?;
+        numbers.seconds = Some(seconds);
         // The last line of the trace is the result.
         let text = fs::read_to_string(&out)?;
         let reply: Reply = serde_json::from_str(text.lines().last().unwrap_or_default())
             .with_context(|| format!("claude gave no result; see {}", err.display()))?;
+        numbers.dollars = reply.total_cost_usd;
+        numbers.turns = reply.num_turns;
+        numbers.model = reply.model_usage.and_then(|m| m.keys().next().cloned());
+        if let Some(u) = reply.usage {
+            let input = u.input_tokens + u.cache_creation_input_tokens;
+            numbers.tokens_in = Some(input + u.cache_read_input_tokens);
+            numbers.tokens_out = Some(u.output_tokens);
+        }
         if reply.is_error {
             bail!("claude reported an error: {}", reply.result);
         }
@@ -88,10 +126,12 @@ pub(crate) fn files(job: &Job) -> (PathBuf, PathBuf) {
     (name(n, "trace.jsonl"), name(n, "err.txt"))
 }
 
-/// Waits until a worker ends, and gives its exit status. Stops the worker at
+/// Waits until a worker ends, and gives its exit status and its time in
+/// seconds, from the start of the command to its end. Stops the worker at
 /// the time limit. While it waits, the file `worker.<number>` in `dir` holds
 /// the start time of the worker, so a later command can end it after a kill.
-pub(crate) fn wait(child: Child, limit: Duration, dir: &Path) -> Result<ExitStatus> {
+pub(crate) fn wait(child: Child, limit: Duration, dir: &Path) -> Result<(ExitStatus, f64)> {
+    let begin = Instant::now();
     let start = Command::new("ps")
         .args(["-o", "lstart=", "-p", &child.id().to_string()])
         .output()
@@ -104,7 +144,7 @@ pub(crate) fn wait(child: Child, limit: Duration, dir: &Path) -> Result<ExitStat
     if let Some(file) = file {
         let _ = fs::remove_file(file);
     }
-    status
+    Ok((status?, begin.elapsed().as_secs_f64()))
 }
 
 /// Waits for the worker, with the time limit.
