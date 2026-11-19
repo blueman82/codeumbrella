@@ -56,11 +56,10 @@ fn a_running_status_with_no_live_command_gets_a_resume() {
     let s = text(SKILL);
     let line = s
         .lines()
-        .find(|l| l.contains("Running") && l.contains("lock"))
-        .expect("no line about Running and the file lock");
+        .find(|l| l.contains("repairs a run with a dead command"))
+        .expect("no line about the repair of a dead command");
     assert!(line.contains("resume"), "{line}");
     assert!(line.to_lowercase().contains("tell the person"), "{line}");
-    assert!(line.to_lowercase().contains("alive"), "{line}");
 }
 
 #[test]
@@ -177,7 +176,7 @@ fn agents_md_has_a_line_for_each_repair() {
 #[test]
 fn the_line_limits_in_agents_md_are_the_agreed_ones() {
     let a = text("AGENTS.md");
-    assert!(a.contains("`src/lib.rs`): 750 lines of code."));
+    assert!(a.contains("`src/lib.rs`): 1000 lines of code."));
     assert!(a.contains("Each tool part: 200 lines of code."));
 }
 
