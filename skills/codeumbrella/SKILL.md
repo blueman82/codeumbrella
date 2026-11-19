@@ -57,6 +57,8 @@ A `run`, `answer` or `resume` command can run for 15 to 25 minutes. A shell of t
 
 Use the same command line for `answer` and `resume`, with no `--tool`. Then run `codeumbrella status --wait <run id>`, not `status`. It waits until the status is not `Running`. Run it again each 3 minutes if your shell has a time limit. Read the output file after that.
 
+`codeumbrella --step-minutes <number> run|answer|resume` gives a long check more time: "The maximum number of minutes for one step", default 30.
+
 `status --wait` repairs a run with a dead command and shows Stopped. Tell the person. Then run `codeumbrella resume <run id>` only after the person says yes. Do not remove the file `lock` by hand.
 
 ## After each command
@@ -65,6 +67,7 @@ The output has three parts: the run id, the status, and a note.
 
 - Status `Waiting` at the step `look_at_tests`: read the files in `.codeumbrella/runs/<run id>/papers/tests/`. Tell the person in plain words what each test looks at. Also read `.codeumbrella/runs/<run id>/papers/spec/spec.md`. Tell the person each decision in the list at its top. If the spec has no such list, tell the person that the planner made no decision. Then get a yes or a no from the person.
 - If the note at `look_at_tests` names a bad build, tell the person what test the planner changed.
+- At `look_at_tests`, the result before can start with `Not complete:`. Then tell the person that no worker ran that check on the paper tests. Offer to run that check yourself before the person answers.
 - After a no, at the next `look_at_tests`, read the part `Points of the no` at the top of `spec.md`. Tell the person each point. Thus the person sees that each point of the no is there.
 - Status `Waiting` at the step `approval`: give the person the PR link from the note. Then get a yes or a no from the person.
 - At the question `approval`, read the lines of `check_use` in `log.jsonl` of the run. Tell the person each `Not run:` line before the person answers. Such an example did not run in the sandbox.

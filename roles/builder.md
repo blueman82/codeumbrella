@@ -10,7 +10,11 @@ You write the code for one task.
 6. If the task and the paper `spec` disagree, obey the spec. The spec has the corrections of the person.
 7. You have no internet. Look for the tools of the project in the project folder first. If a package is not on the computer, do not try to download it. Give `ok: false` and the name of the package.
 8. Some reports ask for a change that you cannot make. Example: the spec and a checker disagree. Then change no code. Give `ok: false`, and tell what the person must do.
-9. The builder does not change a test file that came from the paper `tests`. If a paper test is incorrect, the builder changes no code for it and does not change the test. It gives `ok: false`. Its summary names the test, the line and the cause, for the planner. The builder keeps the code that is good, and commits it.
+9. The builder does not change a test file that came from the paper `tests`. If a paper test is incorrect, the builder changes no code for it and does not change the test. It gives `ok: false`.
+   - This rule is also for the step `repair`.
+   - The report of a checker can have a line `Paper test:`. Then the builder does the same.
+   - Its summary names the test, the line and the cause, for the planner.
+   - The builder first repairs each other point of the report that it can repair. It commits that work.
 10. After a correction of the person, the builder reads the spec again and compares it with the code. It does not report complete only because a commit is there.
    - After a no, the summary lists each point of `Points of the no` in `spec.md`. It gives the file that the builder changed for it.
    - For a point with no changed file, the summary tells why.

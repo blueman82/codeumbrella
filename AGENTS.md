@@ -89,6 +89,7 @@ To install the command and the chat command on a computer, run `./install.sh`.
 | `tests/stop.rs` | Tests of `stop`, with a simulated `claude`. The last three use `ps` and `pkill`, and skip themselves in a sandbox. |
 | `tests/find_each_point.rs` | Tests of `mark`, `work_was_done`, the new rules lines and the repair that changes no file. |
 | `tests/language_pages.rs` | Tests of the six language pages, `init` and the two rules pages. |
+| `tests/bad_repair.rs` | Tests of the bad repair that goes to the plan, the new rules lines, the chat page and the documents. |
 | `tests/user_checker.rs` | Tests of the fifth checker `check_use`: its step, the files of the role `user`, its rules page and the documents. |
 | `install.sh` | Installs the command and the chat command. |
 | `LICENSE` | The MIT licence. Do not change its text. |
@@ -163,8 +164,14 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - `init --update` copies each changed factory file to `<name>.before`, then writes the default. It does not touch `runs` or the `.gitignore` of the project folder.
 - A paper that a step writes is not compared before that step. Thus a writer can run again after a try that broke its paper.
 - After a stop for a changed paper, `resume` stops again. The stop message does not print the `resume` line. A person must put the paper back first.
-- The plan step has 3 tries for one run. The first plan uses one. A no of the person or a bad build uses one more. Thus 2 of them can go back, and the third stops the run.
-- The step `build` has `on_bad: plan`. Runs on 18 November 2026 stopped at `build` for one bad paper test each. The code was good. A stopped run refuses a changed paper. The step `repair` has no such line.
+- The plan step has 3 tries for one run. The first plan uses one. A no, a bad build or a bad repair uses one more. Thus 2 of them can go back, and the third stops the run.
+- The step `build` has `on_bad: plan`. Runs on 18 November 2026 stopped at `build` for one bad paper test each. The code was good. A stopped run refuses a changed paper.
+- The step `repair` has `on_bad: plan` too. Two runs on 19 November 2026 stopped at `repair` for one bad paper test.
+- The builder cannot change a paper test. After the third try of `repair`, the run stops, as before.
+- A checker that finds a paper test that no code can repair starts its summary with `Paper test:`. A run on 19 November 2026 showed the cause.
+- The attacker waits until each command ends before it removes its scratch folder. On 19 November 2026 a removal broke a check.
+- The attacker runs the test file checks of the project on the paper tests. A rule of the project refused 4 tests on 19 November 2026.
+- A check of the attacker that did not complete gives the line `Not complete:`. The chat offers to run that check. This came from the runs of 19 November 2026.
 - The attacker runs the test command in its scratch copy. A test that is bad in its own setup is a problem. A run on 18 November 2026 showed the cause. The attacker built the tests and found 10 bad tests, and it gave one cause for all.
 - The attacker reads the spec and the tests after the planner. It writes only in a scratch folder in the temp folder of the computer. There it builds the paper tests and runs the checks. Then it removes that folder.
 - A bad result of the attacker goes to a step `correct_plan`. The planner corrects the plan, and the attacker looks again.
