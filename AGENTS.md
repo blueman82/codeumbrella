@@ -275,7 +275,9 @@ A new package gets into this list only when all of these are correct:
 
 An AI in a chat runs the command most of the time. Keep the output of the command short, so the chat keeps its context. The command prints one short line for each step and a note of 300 characters maximum. The full text goes into the log and the `trace` files.
 
-The status text has one fact on each line. Each value starts at character 11. The lines are `Run:`, `Status:` and `Note:`. A run with status Running also gets `Step:` and `Since:`. Then come `Workers:`, `Time:`, `Cost:` and `No cost:`. `More:` with the path of the log is the last line. A line with no value is not there.
+The status text has one fact on each line. Each value starts at character 11. The lines are `Run:`, `Status:` and `Note:`. A run with status Running also gets `Step:` and `Since:`. Then come `Workers:`, `Time:`, `Cost:` and `No cost:`.
+
+`More:` with the path of the log is the last line. A line with no value is not there.
 
 - `Workers:` is the count of the workers that gave their time. Each try counts.
 - `Time:` is in worker minutes. It is a sum of worker times, not the time on the clock. The workers of a fan work at the same time.

@@ -67,7 +67,9 @@ The plugin brings only the chat command `/codeumbrella`. The `codeumbrella` comm
    - In a chat, tell the chat your answer.
    - In a terminal, run `codeumbrella answer <run-id> <step> yes` or `codeumbrella answer <run-id> <step> no "why"`. The step is `look_at_tests` or `approval`.
 
-To see where a run is, run `codeumbrella status`. To wait until it ends, run `codeumbrella status --wait <run-id>`. The status shows one fact on each line: the run, the status, the note, the step of this moment and the total of the workers. The total has the lines `Workers:`, `Time:` and `Cost:`.
+To see where a run is, run `codeumbrella status`. To wait until it ends, run `codeumbrella status --wait <run-id>`.
+
+The status shows one fact on each line: the run, the status, the note, the step of this moment and the total of the workers. The total has the lines `Workers:`, `Time:` and `Cost:`.
 
 ## After you install a new version
 
