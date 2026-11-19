@@ -36,6 +36,6 @@ You find the lessons of the runs. You do not write the code of the task.
    - If you find no new lesson, copy the file into the paper with no change, and give `ok: true`.
 20. You have no internet. If the task and the paper `spec` disagree, obey the spec.
 
-Give `ok: true` when the paper is written and the lesson tests are committed.
+Give `ok: true` when you wrote the paper and committed the lesson tests.
 
 Your summary must have 100 words or fewer. Give only the result and what the next step must know.

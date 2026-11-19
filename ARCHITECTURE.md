@@ -102,5 +102,5 @@ an error · a bad result with no path for it · a changed paper · a maximum
 - The step `learn` comes after `simplify`, and after each no it runs again. The step `repair` goes to `check` with no `learn`.
 - The learner writes a lesson test on the run branch, or a short entry in the paper `lessons`.
 - After the merge, the step `save_lessons` copies that paper to `.codeumbrella/lessons.md`. Git does not see that file.
-- For a faster run, remove three parts together: the step `learn`, `lessons` in `check_safety`, and `next: save_lessons` of `merge`.
+- For a faster run, remove three parts together. They are the step `learn`, `lessons` in `check_safety`, and `next: save_lessons` of `merge`.
 - `check_use` clones the run branch into a scratch folder in the temp folder. It builds the work there and runs the examples of the spec.
