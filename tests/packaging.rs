@@ -293,7 +293,9 @@ fn no_test_file_names_the_version_of_today() {
     let dir = root().join("tests");
     for entry in std::fs::read_dir(&dir).expect("tests folder") {
         let path = entry.expect("entry").path();
-        let body = std::fs::read_to_string(&path).unwrap_or_default();
+        let read = std::fs::read_to_string(&path);
+        let msg = format!("read {}", path.display());
+        let body = read.expect(&msg);
         assert!(
             !body.contains(quoted),
             "{} names the version {quoted}",
