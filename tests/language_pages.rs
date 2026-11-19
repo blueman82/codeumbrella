@@ -191,6 +191,8 @@ fn agents_md_names_the_simplifier_in_the_three_safety_sentences() {
     assert_eq!(lines.len(), 3, "expected 3 safety lines: {lines:?}");
     for line in lines {
         assert!(line.contains("simplifier"), "{line}");
+        // The learner runs commands in the sandbox too.
+        assert!(line.contains("learner"), "{line}");
     }
 }
 

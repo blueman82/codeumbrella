@@ -29,7 +29,7 @@ fn list(value: &Value) -> Vec<&str> {
 
 #[test]
 fn the_builder_and_the_checker_run_in_the_claude_sandbox_with_the_locks() {
-    for role in ["builder", "checker", "simplifier"] {
+    for role in ["builder", "checker", "simplifier", "learner"] {
         let file = json(&format!("roles/{role}.claude.json"));
         let sandbox = &file["sandbox"];
         assert_eq!(sandbox["enabled"], true, "{role}");
@@ -72,6 +72,7 @@ fn no_claude_role_runs_hooks_uses_the_web_or_reads_the_keys_of_the_person() {
         "security",
         "simplifier",
         "user",
+        "learner",
     ] {
         let file = json(&format!("roles/{role}.claude.json"));
         assert_eq!(file["disableAllHooks"], true, "{role}");
@@ -111,7 +112,7 @@ fn each_codex_role_has_its_sandbox_and_its_locks() {
     let planner = text("roles/planner.codex.txt");
     assert!(planner.starts_with("{extends=\":read-only\""), "{planner}");
     assert!(planner.contains("runs/{run}/papers/spec\"=\"write\""));
-    for role in ["builder", "checker", "simplifier"] {
+    for role in ["builder", "checker", "simplifier", "learner"] {
         let file = text(&format!("roles/{role}.codex.txt"));
         assert!(file.starts_with("{extends=\":workspace\""), "{file}");
         assert!(file.contains("mode=\"limited\""), "{file}");
@@ -140,6 +141,7 @@ fn each_codex_role_has_its_sandbox_and_its_locks() {
         "security",
         "simplifier",
         "user",
+        "learner",
     ] {
         let file = text(&format!("roles/{role}.codex.txt"));
         assert!(!file.contains("danger"));
@@ -173,6 +175,24 @@ fn only_the_approval_of_the_person_goes_to_the_merge() {
     }
     assert_eq!(graph.step("approval").unwrap().kind, Kind::Person);
     assert_ne!(graph.start, "merge");
+}
+
+#[test]
+fn only_the_step_save_lessons_writes_the_lessons_file_of_the_project() {
+    let graph = Graph::load(&root().join("graph.example.yaml"), &root().join("roles")).unwrap();
+    for (name, step) in &graph.steps {
+        let mut words = step.run.iter().flatten();
+        let names = words.any(|w| w.ends_with(".codeumbrella/lessons.md"));
+        assert_eq!(names, name == "save_lessons", "{name}");
+    }
+    // The learner writes only in its work copy and in the paper `lessons`.
+    let file = json("roles/learner.claude.json");
+    let allow = list(&file["permissions"]["allow"]);
+    let edits = allow.iter().filter(|a| a.starts_with("Edit"));
+    let edits: Vec<&str> = edits.copied().collect();
+    let work = "Edit(/{project}/.codeumbrella/runs/{run}/work/**)";
+    let paper = "Edit(/{project}/.codeumbrella/runs/{run}/papers/lessons/**)";
+    assert_eq!(edits, [work, paper]);
 }
 
 #[test]

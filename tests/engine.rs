@@ -112,11 +112,20 @@ fn a_good_run_stops_two_times_for_the_person_and_then_ends() {
     assert_eq!(run.state.status, Status::Done);
     assert_eq!(
         *worker.calls.lock().unwrap(),
-        ["plan", "attack_plan", "build", "simplify", "check_tests"]
+        [
+            "plan",
+            "attack_plan",
+            "build",
+            "simplify",
+            "learn",
+            "check_tests"
+        ]
     );
     // The PR opens before the approval. The merge comes after it.
     assert!(run.state.results.contains_key("find_pr"));
     assert!(run.state.results.contains_key("merge"));
+    // The lessons go into the project after the merge.
+    assert!(run.state.results.contains_key("save_lessons"));
 }
 
 #[test]
@@ -132,7 +141,7 @@ fn a_bad_check_goes_to_repair_and_back() {
     run.answer(true, "").unwrap();
     run.go(&graph, &roles, &worker).unwrap();
     assert_eq!(run.state.at.as_deref(), Some("approval"));
-    // The repair goes back to the check, not through `simplify`.
+    // The repair goes back to the check, not through `simplify` or `learn`.
     assert_eq!(
         *worker.calls.lock().unwrap(),
         [
@@ -140,6 +149,7 @@ fn a_bad_check_goes_to_repair_and_back() {
             "attack_plan",
             "build",
             "simplify",
+            "learn",
             "check_tests",
             "repair",
             "check_tests",
@@ -167,6 +177,7 @@ fn a_bad_review_or_security_part_also_goes_to_repair() {
         let times = |name: &str| calls.iter().filter(|c| *c == name).count();
         assert_eq!(times("repair"), 1, "{part}");
         assert_eq!(times("simplify"), 1, "{part}");
+        assert_eq!(times("learn"), 1, "{part}");
         assert_eq!(times("check_tests"), 2, "{part}");
     }
 }
@@ -201,7 +212,7 @@ fn the_repair_stops_at_its_maximum() {
     // After `resume`, the run can do the stopped step again.
     run.state.tries.remove("repair");
     run.go(&graph, &roles, &worker).unwrap();
-    assert_eq!(worker.calls.lock().unwrap().len(), 5 + 2 * 3 + 2 * 3);
+    assert_eq!(worker.calls.lock().unwrap().len(), 6 + 2 * 3 + 2 * 3);
 }
 
 #[test]
@@ -241,12 +252,14 @@ fn a_no_at_the_approval_sends_the_work_back_to_the_planner() {
             "attack_plan",
             "build",
             "simplify",
+            "learn",
             "check_tests",
             "plan",
             "attack_plan"
         ]
     );
     assert!(!run.state.results.contains_key("merge"));
+    assert!(!run.state.results.contains_key("save_lessons"));
 }
 
 #[test]

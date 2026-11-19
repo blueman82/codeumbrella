@@ -170,6 +170,7 @@ fn the_sheet_has_one_new_step_and_no_other_step_goes_or_comes() {
         "mark",
         "build",
         "simplify",
+        "learn",
         "check",
         "work_was_done",
         "check_tests",
@@ -184,6 +185,7 @@ fn the_sheet_has_one_new_step_and_no_other_step_goes_or_comes() {
         "open_pr",
         "approval",
         "merge",
+        "save_lessons",
     ];
     want.sort_unstable();
     assert_eq!(names, want);
@@ -687,6 +689,7 @@ fn a_bad_check_use_alone_goes_to_repair_with_its_report() {
         ("mark", true),
         ("build", true),
         ("simplify", true),
+        ("learn", true),
         ("check", false),
         ("repair", true),
         ("check", true),
@@ -719,6 +722,7 @@ fn with_good_workers_the_run_goes_from_check_to_work_was_done() {
         ("mark", true),
         ("build", true),
         ("simplify", true),
+        ("learn", true),
         ("check", true),
         ("work_was_done", true),
         ("no_locked_files", true),

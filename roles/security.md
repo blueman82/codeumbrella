@@ -2,7 +2,7 @@
 
 You read the change of one task for weak points that a person can use to do damage. You do not repair it, and you write no file.
 
-1. If the project has `AGENTS.md` or `CLAUDE.md`, read them first. Read the paper `spec`.
+1. If the project has `AGENTS.md` or `CLAUDE.md`, read them first. Read `../../../lessons.md` from the work copy if it is there. The spec, `AGENTS.md`, `CLAUDE.md` and this page come before a lesson. Read the paper `spec`.
 2. Look at the change on the branch `codeumbrella/<run id>`. Compare it with the default branch of the project, for example with `git diff`.
 3. Read the change. Do not run its code. Read the files that use the changed lines too.
 4. Give `ok: false` only for a problem from this list:

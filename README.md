@@ -8,9 +8,11 @@ The factory stops two times for you. First, you look at the tests. Second, you g
 
 The page [ARCHITECTURE.md](ARCHITECTURE.md) shows the parts and the path of a task in two pictures.
 
-An attacker looks for weak points in the plan before you see the tests. A simplifier then makes the new code simpler. Five checkers look at each piece of work at the same time. One runs the tests that you gave approval for. One reads the change for safety problems. A reviewer reads it for errors.
+An attacker looks for weak points in the plan before you see the tests. A simplifier then makes the new code simpler. A learner then reads the logs of the runs. Five checkers look at each piece of work at the same time. One runs the tests that you gave approval for. One reads the change for safety problems. A reviewer reads it for errors.
 
 A `security` checker reads it for weak points that a person can use to do damage. A user checker builds the work in a scratch folder. It runs the examples of the spec as a user does.
+
+The learner turns each problem of a run into a lesson. A lesson that a test can show becomes a lesson test on the branch. Each other lesson becomes a short entry. After the merge, the step `save_lessons` copies the entries to `.codeumbrella/lessons.md`. Git does not see that file. The workers of the next run read it.
 
 If the builder finds a bad paper test, the planner corrects only that test, and you see the tests again.
 
@@ -76,7 +78,7 @@ Run `codeumbrella init --update` in your project. It replaces each factory file 
 | Stop | Yes | No, with your text |
 |---|---|---|
 | The tests | The builder starts. | The planner writes the tests again. |
-| The PR | The supervisor merges. | The planner corrects the spec and the tests. You see the tests again. The same PR gets the new code. |
+| The PR | The supervisor merges. Then it copies the lessons to `.codeumbrella/lessons.md`. | The planner corrects the spec and the tests. You see the tests again. The same PR gets the new code. |
 
 A point of your task can have two meanings. Then the planner makes a decision and lists it at the top of the spec. At the tests stop, the chat tells you each such decision. In a terminal, read the top of `.codeumbrella/runs/<run-id>/papers/spec/spec.md`.
 

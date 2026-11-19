@@ -170,6 +170,20 @@ steps:
   simplify:
     role: simplifier
     reads: [spec]
+    next: learn
+
+  # A learner reads the log of this run and of the runs before it. It finds
+  # each bad result and each no of yours. A lesson that a test can show
+  # becomes a lesson test on the branch. Each other lesson becomes a short
+  # entry in the paper `lessons`. After a no, the run comes here again.
+  # A bad result stops the run. The step `repair` does not come here.
+  # For a faster run, remove three parts together: this step, `lessons` in
+  # the `reads` of `check_safety`, and `next: save_lessons` of `merge`.
+  # Then set `next` of `simplify` to `check`.
+  learn:
+    role: learner
+    reads: [spec]
+    writes: [lessons]
     next: check
 
   # Five checkers look at the work at the same time. This step is a fan.
@@ -205,9 +219,10 @@ steps:
   # This checker reads the change. It looks for keys, weaker tests and
   # changes that the task does not want. It cannot write a file.
   # It does not read the commit that the tests checker makes at the same time.
+  # It also reads the paper `lessons` for an entry that makes a wall weaker.
   check_safety:
     role: safety
-    reads: [spec]
+    reads: [spec, lessons]
 
   # A reviewer reads the change for errors, hidden errors, tests that show
   # nothing, wrong comments and broken project rules. It cannot write a file.
@@ -314,3 +329,13 @@ steps:
     type: command
     run:
       - [env, "GIT_DIR=.codeumbrella/runs/{run}/clean/.git", gh, pr, merge, "codeumbrella/{run}", --squash]
+    next: save_lessons
+
+  # No AI. After the merge, this step copies the paper `lessons` of the run
+  # to `.codeumbrella/lessons.md` in your project. Git does not see that file.
+  # The learner of the next run reads it. A bad merge stops the run before
+  # this step.
+  save_lessons:
+    type: command
+    run:
+      - [cp, ".codeumbrella/runs/{run}/papers/lessons/lessons.md", .codeumbrella/lessons.md]
