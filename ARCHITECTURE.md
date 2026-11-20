@@ -110,7 +110,7 @@ an error · a bad result with no path for it · a changed paper · a maximum
 - The picture shows the default sheet, `graph.example.yaml`. A project can change its own sheet.
 - The run keeps the tool of the run in its notebook. `answer` and `resume` use it.
 - The notebook also keeps the total of the numbers of the workers. `status` shows it.
-- The queue is the folder `.codeumbrella/queue/`: one text file for each task that waits. `codeumbrella queue` shows it. `codeumbrella run --next` starts the first file and moves it into the run as `task.txt`. The supervisor never starts a run by itself.
+- The queue is the folder `.codeumbrella/queue/`: one text file for each task that waits. `codeumbrella queue` shows it. `codeumbrella run --next` starts the first file and moves it into the run as `task.txt`. The supervisor does not start a run by itself.
 - The step `set_version` comes after `learn` and before `write_pr`. It runs the script `.codeumbrella/set-version` on the work copy. The script sets the version and commits it. No task text names a version. `work_was_done` also writes `files.txt`, the names of the changed files.
 - The step `mark` writes the commit of your yes for the tests into a git name. It has no AI.
 - The step `work_was_done` comes after a good check. With no commit after `mark`, git gives an error. The run then goes to `repair`.

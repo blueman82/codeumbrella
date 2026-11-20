@@ -46,7 +46,7 @@ Before you start a run, you must put all that the task uses into the project fol
 - Put that test command at the end of the task text, for example: `Test command: <command>`. The workers then use the same command.
 - A number in a task text is a limit only if the task names it as a limit. A run on 18 November 2026 made a goal for lines of code into a hard rule. The run stopped.
 - Before the first run of a project, tell the person this. The workers run the test command in a sandbox, in a clone of the project. A tool of the project folder, a git hook and a second sandbox do not work there.
-- The full check of a project can fail in that sandbox. Then the task text gets two lines at its end. `Test command: <command>` is a command that works in the sandbox. `Full check: <command>` is the check that does not work there.
+- The full check of a project can be bad in that sandbox. Then the task text gets two lines at its end. `Test command: <command>` is a command that works in the sandbox. `Full check: <command>` is the check that does not work there.
 - Run the `Test command:` one time before the run, as above. Do not add a `Full check:` line if the full check works as the test command.
 
 If a run stops because a package is not on the computer, install that package. Then run `codeumbrella resume <run id>` only after the person says yes.
@@ -111,7 +111,7 @@ The run folder is `.codeumbrella/runs/<run id>/`.
 - `log.jsonl` has one line for each step that ended. The line has the time, the step, good or bad, the seconds and the summary. The line of a worker step also has the numbers of its worker, for example `worker_seconds` and `dollars`.
 - `<step>.<number>.trace.jsonl` has all that one worker did in one try. These files are large.
 
-After status `Done`, run `codeumbrella queue`. If the queue has a task, start `codeumbrella run --next` (the same way as `run`, with `nohup`) and tell the person which task started. The new run stops at `look_at_tests`, as each run does. Do not answer it. If the queue is empty, say nothing more.
+After status `Done`, run `codeumbrella queue`. If the queue has a task, start `codeumbrella run --next` (as you start `run`, with `nohup`) and tell the person which task started. The new run stops at `look_at_tests`, as each run does. Do not answer it. If the queue is empty, say nothing more.
 
 When the status is `Done` or `Stopped`, read `log.jsonl`. Give the person a short table: the time of each step, the slowest step, the number of repair tries, and the answers of the person.
 
