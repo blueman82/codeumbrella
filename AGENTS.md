@@ -24,7 +24,7 @@ The supervisor knows nothing about software work. All knowledge of the steps is 
 | Notebook | `.codeumbrella/runs/<run-id>/state.json`: where the run is, and the tool of the run. `since` is the start time of the step of this moment. `total` has the sum of the numbers of the workers: `workers`, `seconds`, `dollars`, `tokens_in`, `tokens_out` and `no_cost`. |
 | Tool of the run | The tool that `run` got from `--tool` (default Claude). The notebook keeps it. `answer` and `resume` use it. |
 | Log | `log.jsonl` in the run folder: one line for each step that ended. The line of a worker step also has the numbers of its worker: `worker_seconds`, `dollars`, `turns`, `model`, `tokens_in` and `tokens_out`. A field is there only if the tool gives it. |
-| `worker.<number>` | A file in the run folder. It holds the start time of the worker with that process number. |
+| `worker.<number>` | A file in the run folder. It holds the start time of the worker with that number. The computer gives this number to each command. |
 | `trace` | `<step>.<number>.trace.jsonl` in the run folder: all that one worker did in one try. |
 | Paper | A folder in `.codeumbrella/runs/<run-id>/papers/` that one step writes and other steps read. |
 | Paper `pr` | The paper with the PR text. `title.txt` is the title, in one line. `body.md` is the text. The planner writes the title and parts 1 to 5. The writer adds parts 6 to 8. |
@@ -112,6 +112,7 @@ To install the command and the chat command on a computer, run `./install.sh`.
 | `tests/run_total.rs` | Tests of the numbers of each worker, the total in the notebook, the lines of `status` and the documents. |
 | `tests/full_check.rs` | Tests of the full check that cannot run in the sandbox: the chat page, the rules pages, `init` and the documents. |
 | `tests/run_id.rs` | Tests of the run id with four digits, of `status` on an id of before, of the chat page and the documents. |
+| `tests/plain_words.rs` | Tests of the rules for plain words: the rules pages, the list of `AGENTS.md`, the sheet and the documents. |
 | `install.sh` | Installs the command and the chat command. |
 | `LICENSE` | The MIT licence. Do not change its text. |
 
@@ -130,6 +131,7 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - A line that the supervisor does not know is an error.
 - The command step `set_version` comes after `learn` and before `write_pr`. It runs `.codeumbrella/set-version` on the work copy. A bad result stops the run. A task text names no version: only the script sets it.
 - `work_was_done` also writes the changed files into `files.txt` in the run folder.
+- `check_review` reads `spec`, `pr` and `lessons`. It reads the paper `lessons` for plain words.
 - The default sheet has two command steps with no AI. `mark` comes after `look_at_tests` and before `build`. It writes the commit of that moment into `refs/codeumbrella/before` of the work copy.
 - The steps of the planner write the papers `spec`, `tests` and `pr`.
 - The worker step `write_pr` comes after `set_version` and after `repair`, before `check`. The writer completes the PR text in the paper `pr`.
@@ -152,7 +154,7 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - An answer names its step. An answer for a different step is an error. Thus a yes for the tests cannot become a yes for the merge.
 - Only one command can work on a run at a time. The file `lock` in the run folder shows this. It holds the number that the computer gives to that command. After a kill, the next command for the run repairs it.
 - `stop` works only on a run with status Running. It ends the workers and the command, removes `lock`, and writes Stopped. `resume` then tries the same step.
-- A kill of a command leaves `lock`, a Running notebook and workers. Three runs on 18 November 2026 showed this. No code catches a signal, so the next command repairs the run.
+- After a kill of a command, `lock`, a Running notebook and workers stay. Three runs on 18 November 2026 showed this. No code catches a signal, so the next command repairs the run.
 - `status`, `status --wait`, `resume` and `answer` do the repair first. It starts only if `lock` holds a dead number or a live command that is not `codeumbrella`.
 - For a run with status Running, the repair ends the workers, removes `lock` and writes Stopped with a note. A run with a different status keeps its notebook.
 - An empty `lock` is not repaired, because a new command writes its number after it makes the file.
@@ -270,6 +272,13 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - A worker gives `Not run: full check` for the `Full check:` command. The test command stays a wall. The cause: a run of 19 November 2026 in a different project.
 - The attacker names a paper test that reads `git status`. It is bad after the merge. A run of 19 November 2026 showed it.
 - The chat runs the full check with no sandbox only after the person says yes. The cause: the check runs code that a worker wrote. The person decided this on 19 November 2026, after a run in a different project.
+- The planner, the writer, the learner and the builder write 20 words at the maximum in a sentence. The cause: workers wrote long sentences on 19 November 2026.
+- A paragraph of these four workers has 6 sentences at the maximum.
+- These four rules pages also tell the workers to use the active voice and no semicolon. They name no word of a list.
+- The reviewer checks the limits and the refused words of `AGENTS.md`, from 19 November 2026. The cause: three workers of one run wrote refused words.
+- In the change or in the paper `pr`, such a problem gives a bad result of the reviewer.
+- A problem in the paper `lessons` gives only a note of the reviewer. The chat shows that note at the question `approval`.
+- No repair worker can write the paper `lessons`. So the chat corrects that paper on the word of the person.
 
 ## Rust rules
 
@@ -357,3 +366,14 @@ The factory keeps each number that a tool gives. The documents tell each limit.
 ## How to write for the person
 
 The person who owns this project does not know Rust. Write messages and documents in short, plain sentences. Give the meaning of each technical word the first time that you use it.
+
+### Refused words
+
+- Words: `program`, `never`, `security`, `process`, `already`, `way`, `case`, `need`, `return`, `place`, `permit`, `now`, `real`, `exact`, `later`, `confirm`, `decide`, `true`, `false`, `few`, `leaves`, `choice`, `take`, `avoid`, `aim`, `old`, `ask`, `both`, `wrong`, `pass`, `whose`, `outside`, `still`, `missing`, `absent`, `preparation`, `rest`, `yet`, `ready`, `conflict`, `once`, `just`, `size`, `state`, `round`, `early`, `findings`, `carry`, `order`, `split`, `save`, `guard`, `among`, `under`, `separate`, `another`, `yourself`, `past`, `little`, `exist`, `lost`, `approve`, `search`, `form`, `whole`, `otherwise`, `any`, `trace`, `gap`, `zero`, `fail`, `loses`, `splits`, `harmful`.
+- The workers obey this list in each text for a person.
+- A word in code marks is not refused.
+- Write `security` in code marks.
+- Write `process` in code marks, or write `command`.
+- Write `trace` in code marks.
+- Write `command`, not `program`.
+- This list is for this project only. Other projects write their own list, or none.

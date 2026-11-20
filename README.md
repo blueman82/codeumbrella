@@ -134,6 +134,8 @@ The factory does not work in a linked git worktree.
 | `roles/languages/<language>.md` | The language pages for Python, Go, JavaScript, TypeScript, Java and Rust. The reviewer and the simplifier read the page of each language in the change. |
 | `roles/<role>.claude.json`, `roles/<role>.codex.txt` | What one worker can do. |
 
+The workers write short sentences for you: 20 words at the maximum. A project can put a list of refused words into its `AGENTS.md`. Then the workers use no word of that list, and the reviewer checks it.
+
 ## What a worker can and cannot do
 
 | Can | Cannot |

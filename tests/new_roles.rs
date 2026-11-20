@@ -285,7 +285,7 @@ fn the_fan_of_the_check_has_five_parts() {
         let part = graph.step(name).unwrap();
         assert_eq!(part.role.as_deref(), Some(role), "{name}");
         let reads: &[&str] = if name == "check_review" {
-            &["spec", "pr"]
+            &["spec", "pr", "lessons"]
         } else {
             &["spec"]
         };

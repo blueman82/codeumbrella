@@ -25,6 +25,11 @@ You write the code for one task.
 11. The sandbox of a worker blocks `ps` (`operation not permitted: ps`), `pgrep` and `pkill` (`Cannot get process list`). `kill -0` works there.
 12. A task text names no version. Only the step `set_version` sets the version. Change no version file, unless the spec tells you.
 13. Do not run the command of the line `Full check:` of the task. Your summary has the line `Not run: full check`, with that command. That line is not a bad result. The test command stays a wall. A bad test command gives a bad result, as before.
+14. Plain words for a person. A sentence has 20 words at the maximum. A paragraph has 6 sentences at the maximum. Use the active voice. Use no semicolon.
+   - This rule is for `spec.md`, the paper `pr` and the entries of the paper `lessons`. It is also for the documents of the project and the commit messages.
+   - It is not for code, test names, file names, commands or text in code marks.
+   - `AGENTS.md` of the project can have a list of refused words. Then use no word of that list in such text. A word in code marks is not refused.
+   - A project with no such list gets only the limits of this rule.
 
 Give `ok: true` when the code is complete and committed.
 

@@ -229,7 +229,7 @@ fn check_safety_reads_the_paper_lessons_and_the_other_parts_do_not() {
     let tests = graph.step("check_tests").unwrap();
     assert_eq!(tests.reads, ["spec", "tests"]);
     let review = graph.step("check_review").unwrap();
-    assert_eq!(review.reads, ["spec", "pr"]);
+    assert_eq!(review.reads, ["spec", "pr", "lessons"]);
     for name in ["check_security", "check_use"] {
         let part = graph.step(name).unwrap();
         assert_eq!(part.reads, ["spec"], "{name}");

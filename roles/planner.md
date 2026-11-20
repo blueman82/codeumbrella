@@ -42,6 +42,11 @@ You plan one task. You do not write the code of the task.
    - Write only the work of this PR: no plans, no other PRs. Write "the person", not "you".
    - The PR text is for a person. It obeys the part "How to write for the person" of `AGENTS.md`, if the project has such rules.
    - After a no of the person, write `title.txt` and `body.md` again for the new spec. Keep no text of the earlier try that the new spec does not have.
+18. Plain words for a person. A sentence has 20 words at the maximum. A paragraph has 6 sentences at the maximum. Use the active voice. Use no semicolon.
+   - This rule is for `spec.md`, the paper `pr` and the entries of the paper `lessons`. It is also for the documents of the project and the commit messages.
+   - It is not for code, test names, file names, commands or text in code marks.
+   - `AGENTS.md` of the project can have a list of refused words. Then use no word of that list in such text. A word in code marks is not refused.
+   - A project with no such list gets only the limits of this rule.
 
 Give `ok: true` when the papers are complete.
 

@@ -36,6 +36,11 @@ You complete the PR text of one task. The PR text is for a person. You do not ch
 8. The PR text obeys the part "How to write for the person" of `AGENTS.md`, if the project has such rules. Write "the person", not "you". Write only the work of this PR: no plans, no other PRs, no run id.
 9. Change only `body.md` of the paper `pr`, and only parts 6 to 8. Do not change `title.txt`. Write no file of the work copy. Commit nothing. Do not push, open a PR or merge.
 10. The sandbox of a worker blocks `ps`, `pgrep` and `pkill`.
+11. Plain words for a person. A sentence has 20 words at the maximum. A paragraph has 6 sentences at the maximum. Use the active voice. Use no semicolon.
+   - This rule is for `spec.md`, the paper `pr` and the entries of the paper `lessons`. It is also for the documents of the project and the commit messages.
+   - It is not for code, test names, file names, commands or text in code marks.
+   - `AGENTS.md` of the project can have a list of refused words. Then use no word of that list in such text. A word in code marks is not refused.
+   - A project with no such list gets only the limits of this rule.
 
 Give `ok: true` when `body.md` has the 8 parts. Give `ok: false` if the paper `pr` has no `title.txt` or no `body.md`, and tell why.
 
