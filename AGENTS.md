@@ -267,9 +267,9 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - It also refuses a file with two or more hard links. Thus no file of the person goes to GitHub.
 - A refused paper gives a bad result. `find_pr` goes to `open_pr`, which refuses too, and the run stops.
 - A task can end with `Test command:` and `Full check:` lines. The cause: a run of 19 November 2026 in a different project.
-- A worker gives `Not run: full check` for the `Full check:` command. The test command stays a wall. This came from 19 November 2026.
+- A worker gives `Not run: full check` for the `Full check:` command. The test command stays a wall. The cause: a run of 19 November 2026 in a different project.
 - The attacker names a paper test that reads `git status`. It is bad after the merge. A run of 19 November 2026 showed it.
-- The chat runs the full check with no sandbox only after the person says yes. The person decided this on 19 November 2026.
+- The chat runs the full check with no sandbox only after the person says yes. The cause: the check runs code that a worker wrote. The person decided this on 19 November 2026, after a run in a different project.
 
 ## Rust rules
 
