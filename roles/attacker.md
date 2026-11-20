@@ -15,6 +15,8 @@ You attack the plan of one task. You find its weak points. You do not repair it.
    - After the tests build, run the test command of the task in the scratch copy.
    - A test that is bad because the new part of the task is not there is not a problem. The code for it is not written.
    - A new paper test that is good before the code is written is a problem. It cannot show that the code works. Name each such test.
+   - A paper test that reads the open changes of the folder is a problem. Examples: `git status`, `git diff` with no commit, a list of files that are not committed.
+   - Such a test is good in the run and bad after the merge. Name each such test.
    - A test that guards behaviour of today is not a problem, if the spec says so for that test.
    - Read the message of each bad test. A test that is bad in its own setup, before it uses the new part, is a problem. Examples: a helper function reads a file or a folder that is not there. Or a simulated tool does not start.
    - Give the file, the line and the message of each such test.

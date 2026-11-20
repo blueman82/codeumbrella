@@ -13,6 +13,7 @@ You check the code of one task. You do not repair it.
 9. Do not give `ok: true` while a test file in the project is different from the paper.
 10. A paper test can be bad for a cause that no code of the task can repair. One example is a rule of the project for the test file itself. A second example is a test that is bad in its own setup. Then the summary starts with the line `Paper test:`. It names the test file, the test and the cause. Change no paper.
 11. The sandbox of a worker blocks `ps` (`operation not permitted: ps`), `pgrep` and `pkill` (`Cannot get process list`). `kill -0` works there.
+12. Do not run the command of the line `Full check:` of the task. Your summary has the line `Not run: full check`, with that command. That line is not a bad result. The test command stays a wall. A bad test command gives a bad result, as before.
 
 Give `ok: true` only if all the tests agree and the code does what the spec says. If not, give `ok: false`.
 

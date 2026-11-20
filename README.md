@@ -65,6 +65,9 @@ The step `set_version` sets the version of the project before the PR text. It ru
 - Workers can connect to a server on your computer, for example a test database.
 - Put the test command at the end of the task: `Test command: <command>`
 - A tool in your project folder, for example in `.venv`, needs its full path in the test command.
+- The workers run the test command in a sandbox, in a clone of your project. A git hook and a second sandbox do not work there.
+- Your full check can fail in the sandbox. Then end the task with `Test command: <command>` and `Full check: <command>`.
+- The test command works in the sandbox. No worker runs the full check. The chat offers to run it at the PR question.
 - The workers write in a copy in the run folder. A run does not change your project folder or its branch.
 - After status Done, get the code with `git pull`. The step `clean_up` removed the copies of the run. Its record stays.
 
