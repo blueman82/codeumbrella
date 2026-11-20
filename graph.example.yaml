@@ -178,8 +178,9 @@ steps:
   # becomes a lesson test on the branch. Each other lesson becomes a short
   # entry in the paper `lessons`. After a no, the run comes here again.
   # A bad result stops the run. The step `repair` does not come here.
-  # For a faster run, remove three parts together: this step, `lessons` in
-  # the `reads` of `check_safety`, and `next: save_lessons` of `merge`.
+  # For a faster run, remove four parts together: this step, `lessons` in
+  # the `reads` of `check_safety`, `lessons` in the `reads` of
+  # `check_review`, and `next: save_lessons` of `merge`.
   # Then set `next` of `simplify` to `write_pr`.
   learn:
     role: learner
@@ -261,6 +262,7 @@ steps:
   # A reviewer reads the change for errors, hidden errors, tests that show
   # nothing, wrong comments and broken project rules. It cannot write a file.
   # It also compares the paper `pr` with the change.
+  # It also reads the paper `lessons` for plain words.
   # This is for new runs.
   # A run reads the sheet at each command, so do not change the sheet
   # while a run is active. For a faster run, remove this step
@@ -268,7 +270,7 @@ steps:
   # The reviewer reads the language pages in `roles/languages/` too.
   check_review:
     role: reviewer
-    reads: [spec, pr]
+    reads: [spec, pr, lessons]
 
   # A security checker reads the change for unchecked input, weaker checks of
   # a person, weak keys, new packages and safety settings that are off. It

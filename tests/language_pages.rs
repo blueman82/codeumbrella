@@ -125,7 +125,9 @@ fn the_reviewer_does_not_run_the_code_and_leaves_weak_paper_tests_to_the_summary
     let paper = page.contains("`tests`");
     assert!(paper, "no rule about the paper tests");
     // The list of problems for `ok: false` keeps its five items.
-    assert_eq!(page.matches("\n   - ").count(), 5);
+    let five = page.split("\n5. ").nth(1).expect("rule 5");
+    let five = five.split("\n6. ").next().expect("rule 6");
+    assert_eq!(five.matches("\n   - ").count(), 5);
 }
 
 fn rule_six(page: &str) -> &str {

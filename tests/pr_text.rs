@@ -206,7 +206,7 @@ fn write_pr_is_a_worker_step_of_the_writer_after_learn_and_repair() {
 fn check_review_reads_spec_and_pr_and_the_other_parts_keep_their_reads() {
     let graph = default_sheet();
     let reads = |name: &str| graph.step(name).unwrap().reads.clone();
-    assert_eq!(reads("check_review"), ["spec", "pr"]);
+    assert_eq!(reads("check_review"), ["spec", "pr", "lessons"]);
     assert_eq!(reads("check_tests"), ["spec", "tests"]);
     assert_eq!(reads("check_safety"), ["spec", "lessons"]);
     assert_eq!(reads("check_security"), ["spec"]);
@@ -432,7 +432,7 @@ fn a_run_does_write_pr_after_learn_and_before_check() {
     assert_eq!(plan[0].writes, ["spec", "tests", "pr"]);
     let review = sim.calls("check_review");
     assert_eq!(review.len(), 1, "{review:?}");
-    assert_eq!(review[0].reads, ["spec", "pr"]);
+    assert_eq!(review[0].reads, ["spec", "pr", "lessons"]);
 }
 
 #[test]
