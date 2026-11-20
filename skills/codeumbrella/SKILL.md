@@ -45,6 +45,9 @@ Before you start a run, you must put all that the task uses into the project fol
 - Run the test command of the project one time. This shows that the tools start with no download.
 - Put that test command at the end of the task text, for example: `Test command: <command>`. The workers then use the same command.
 - A number in a task text is a limit only if the task names it as a limit. A run on 18 November 2026 made a goal for lines of code into a hard rule. The run stopped.
+- Before the first run of a project, tell the person this. The workers run the test command in a sandbox, in a clone of the project. A tool of the project folder, a git hook and a second sandbox do not work there.
+- The full check of a project can fail in that sandbox. Then the task text gets two lines at its end. `Test command: <command>` is a command that works in the sandbox. `Full check: <command>` is the check that does not work there.
+- Run the `Test command:` one time before the run, as above. Do not add a `Full check:` line if the full check works as the test command.
 
 If a run stops because a package is not on the computer, install that package. Then run `codeumbrella resume <run id>` only after the person says yes.
 
@@ -84,6 +87,10 @@ The output has one fact on each line: `Run:`, `Status:`, `Note:` and more. A run
 - Status `Waiting` at the step `approval`: give the person the PR link from the note. Then get a yes or a no from the person.
 - At the question `approval`, read `.codeumbrella/runs/<run id>/papers/pr/title.txt` and `body.md` of the same paper. Show the person the title from `title.txt`. Show each `[ ]` line of the checklist in `body.md`, with its cause. If no line has `[ ]`, tell the person that.
 - At the question `approval`, read the lines of `check_use` in `log.jsonl` of the run. Tell the person each `Not run:` line before the person answers. Such an example did not run in the sandbox.
+- At the question `approval`, read the task of the run in `state.json` of the run folder. If the task has a line `Full check:`, tell the person that no worker ran that check.
+- Then offer to run the full check on the run branch, with no sandbox. Run it only after the person says yes. The cause: the check runs code that a worker wrote, with no sandbox.
+- Run the full check in a new clone of the run branch from GitHub, in the temp folder. Do not run it in the project folder. Tell the person the result before the person answers.
+- A bad full check is not an answer. The person can say no with the text of the result. That no sends the work back to the planner.
 - At the question `approval`, compare `.codeumbrella/runs/<run id>/papers/lessons/lessons.md` with `.codeumbrella/lessons.md` of the project. Show the person the change of the paper `lessons`. Also tell the person if the PR adds a lesson test. The file `tests.txt` of that paper names each lesson test.
 - Before you send an answer, tell the person what it does. A yes continues the run. A no at `look_at_tests` sends the work back to the planner. A no at `approval` sends the work back to the planner. The person then sees the tests again. The PR stays open.
 - If the person gives you corrections, that is a no with a text. Send the full text of the person.

@@ -9,7 +9,7 @@ You write the code for one task.
 5. Do not change the papers. Do not push. Do not merge.
 6. If the task and the paper `spec` disagree, obey the spec. The spec has the corrections of the person.
 7. You have no internet. Look for the tools of the project in the project folder first. If a package is not on the computer, do not try to download it. Give `ok: false` and the name of the package.
-8. Some reports ask for a change that you cannot make. Example: the spec and a checker disagree. Then change no code. Give `ok: false`, and tell what the person must do.
+8. Some reports ask for a change that you cannot make. Example: the spec and a checker disagree. Then change no code. Give `ok: false`, and give the cause in the summary. The builder does not tell the person to run a check. A check that it cannot run in the sandbox gets a line `Not run:` with its cause.
 9. The builder does not change a test file that came from the paper `tests`. If a paper test is incorrect, the builder changes no code for it and does not change the test. It gives `ok: false`.
    - This rule is also for the step `repair`.
    - The report of a checker can have a line `Paper test:`. Then the builder does the same.
@@ -24,6 +24,7 @@ You write the code for one task.
    - A bad result of the step `work_was_done` means that no commit came after the yes of the person. Then do the work and commit it.
 11. The sandbox of a worker blocks `ps` (`operation not permitted: ps`), `pgrep` and `pkill` (`Cannot get process list`). `kill -0` works there.
 12. A task text names no version. Only the step `set_version` sets the version. Change no version file, unless the spec tells you.
+13. Do not run the command of the line `Full check:` of the task. Your summary has the line `Not run: full check`, with that command. That line is not a bad result. The test command stays a wall. A bad test command gives a bad result, as before.
 
 Give `ok: true` when the code is complete and committed.
 
