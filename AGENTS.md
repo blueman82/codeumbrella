@@ -369,7 +369,7 @@ The person who owns this project does not know Rust. Write messages and document
 
 ### Refused words
 
-- Words: `program`, `never`, `security`, `process`, `already`, `way`, `case`, `need`, `return`, `place`, `permit`, `now`, `real`, `exact`, `later`, `confirm`, `decide`, `true`, `false`, `few`, `leaves`, `choice`, `take`, `avoid`, `aim`, `old`, `ask`, `both`, `wrong`, `pass`, `whose`, `outside`, `still`, `missing`, `absent`, `preparation`, `rest`, `yet`, `ready`, `conflict`, `once`, `just`, `size`, `state`, `round`, `early`, `findings`, `carry`, `order`, `split`, `save`, `guard`, `among`, `under`, `separate`, `another`, `yourself`, `past`, `little`, `exist`, `lost`, `approve`, `search`, `form`, `whole`, `otherwise`, `any`, `trace`, `gap`, `zero`, `fail`, `loses`, `splits`, `harmful`.
+- Words: `program`, `never`, `security`, `process`, `already`, `way`, `case`, `need`. `return`, `place`, `permit`, `now`, `real`, `exact`, `later`, `confirm`. `decide`, `true`, `false`, `few`, `leaves`, `choice`, `take`, `avoid`. `aim`, `old`, `ask`, `both`, `wrong`, `pass`, `whose`, `outside`. `still`, `missing`, `absent`, `preparation`, `rest`, `yet`, `ready`, `conflict`. `once`, `just`, `size`, `state`, `round`, `early`, `findings`, `carry`. `order`, `split`, `save`, `guard`, `among`, `under`, `separate`, `another`. `yourself`, `past`, `little`, `exist`, `lost`, `approve`, `search`, `form`. `whole`, `otherwise`, `any`, `trace`, `gap`, `zero`, `fail`, `loses`. `splits`, `harmful`.
 - The workers obey this list in each text for a person.
 - A word in code marks is not refused.
 - Write `security` in code marks.
