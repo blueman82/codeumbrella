@@ -675,6 +675,54 @@ fn the_commit_of_the_script_runs_no_hook_of_the_work_copy() {
     assert!(!marker.exists(), "a hook ran");
 }
 
+/// A script in `base` that makes the file `name` in `base` and gives the
+/// path of the script and of that file.
+fn marker_script(base: &Path, name: &str) -> (PathBuf, PathBuf) {
+    let marker = base.join(name);
+    let path = base.join(format!("{name}.sh"));
+    let body = format!("#!/bin/sh\ntouch {}\n", marker.display());
+    fs::write(&path, body).unwrap();
+    let mode = fs::Permissions::from_mode(0o755);
+    fs::set_permissions(&path, mode).unwrap();
+    (path, marker)
+}
+
+#[test]
+fn the_script_runs_no_fsmonitor_and_no_sign_program_of_the_work_copy() {
+    let (base, work) = copy_with_origin();
+    let (monitor, ran) = marker_script(&base, "monitor-ran");
+    let (sign, signed) = marker_script(&base, "sign-ran");
+    let monitor = monitor.display().to_string();
+    let sign = sign.display().to_string();
+    git(&work, &["config", "core.fsmonitor", &monitor]);
+    git(&work, &["config", "commit.gpgSign", "true"]);
+    git(&work, &["config", "gpg.program", &sign]);
+    let out = set_version(&base, &work);
+    assert!(!ran.exists(), "the fsmonitor ran: {}", all(&out));
+    assert!(!signed.exists(), "the sign program ran: {}", all(&out));
+}
+
+#[test]
+fn the_script_runs_no_filter_of_the_work_copy() {
+    let (base, work) = copy_with_origin();
+    let (filter, ran) = marker_script(&base, "filter-ran");
+    let clean = filter.display().to_string();
+    git(&work, &["config", "filter.x.clean", &clean]);
+    let attributes = "Cargo.toml filter=x\n";
+    fs::write(work.join(".gitattributes"), attributes).unwrap();
+    let out = set_version(&base, &work);
+    assert!(!ran.exists(), "the filter ran: {}", all(&out));
+}
+
+#[test]
+fn the_script_writes_through_no_link_in_the_work_copy() {
+    let (base, work) = copy_with_origin();
+    let outside = base.join("outside.txt");
+    symlink(&outside, work.join("Cargo.toml.new")).unwrap();
+    let out = set_version(&base, &work);
+    assert!(!outside.exists(), "it wrote outside: {}", all(&out));
+}
+
 #[test]
 fn the_script_gives_an_error_if_the_work_copy_is_not_there() {
     let (base, work) = copy_with_origin();
