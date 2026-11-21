@@ -32,12 +32,7 @@ jobs:
       # A test that skips itself prints a line with `skipped:`. Such a line
       # stops CI. So does a log that grep cannot read. Only "no such line"
       # (grep gives 1) lets the step continue.
-      # The tests use only the git settings that they make themselves. The
-      # GitHub machine has Git LFS, which puts a filter into its own settings.
-      - env:
-          GIT_CONFIG_NOSYSTEM: "1"
-          GIT_CONFIG_GLOBAL: /dev/null
-        run: |
+      - run: |
           set -o pipefail
           cargo test --locked -- --nocapture 2>&1 | tee "$RUNNER_TEMP/test.log"
           found=0

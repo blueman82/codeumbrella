@@ -16,7 +16,13 @@ g() {
   git -c core.fsmonitor=false -c core.hooksPath=/dev/null \
     -c commit.gpgSign=false "$@"
 }
-if g config --get-regexp '^filter\.' > /dev/null; then
+# The check reads only the settings of the work copy, with each file that
+# they include. The settings of the computer are of the person, for example
+# the filter of Git LFS. A worker cannot write them.
+if (
+  export GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null
+  g config --get-regexp '^filter\.' > /dev/null
+); then
   echo "set-version: the work copy has a git filter" >&2
   exit 1
 fi
