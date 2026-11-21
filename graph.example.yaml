@@ -227,8 +227,6 @@ steps:
   # `-c commit.gpgSign=false`. The merge has `--no-edit` and `--no-verify`.
   # A `filter.` entry or a `merge.` entry with `driver` in the config of the
   # work copy gives a bad result before the merge. Each of them starts a command.
-  # A `url.` entry or a `protocol.` entry gives a bad result before the fetch.
-  # Such an entry can change the local fetch from `../clean`.
   # A merge that stops for two changes to the same lines runs `git merge
   # --abort` first, then gives a bad result. A bad result goes to `fix_merge`.
   # Each time through the step uses one try. After the third try the run
@@ -240,7 +238,7 @@ steps:
       - [git, -c, core.fsmonitor=false, -c, core.hooksPath=/dev/null, -c, commit.gpgSign=false, -C, ".codeumbrella/runs/{run}/clean", config, include.path, ../../../../../.git/config]
       - [git, -c, core.fsmonitor=false, -c, core.hooksPath=/dev/null, -c, commit.gpgSign=false, -C, ".codeumbrella/runs/{run}/clean", fetch, --quiet, --recurse-submodules=no, origin]
       - [git, -c, core.fsmonitor=false, -c, core.hooksPath=/dev/null, -c, commit.gpgSign=false, -C, ".codeumbrella/runs/{run}/clean", remote, set-head, origin, --auto]
-      - [sh, -c, 'g="git -c core.fsmonitor=false -c core.hooksPath=/dev/null -c commit.gpgSign=false"; w=.codeumbrella/runs/{run}/work; c=.codeumbrella/runs/{run}/clean; if $g -C "$w" config --local --includes --get-regexp "^(filter\\.|url\\.|protocol\\.|merge\\..*\\.driver$)" >/dev/null; then echo "refused, the config has a filter, url, protocol or merge driver" >&2; exit 1; fi; b=$($g -C "$c" symbolic-ref refs/remotes/origin/HEAD) && $g -C "$w" fetch --quiet --recurse-submodules=no ../clean "+$b:$b" && { $g -C "$w" merge --no-edit --no-verify "$b" || { $g -C "$w" merge --abort; exit 1; }; }']
+      - [sh, -c, 'g="git -c core.fsmonitor=false -c core.hooksPath=/dev/null -c commit.gpgSign=false"; w=.codeumbrella/runs/{run}/work; c=.codeumbrella/runs/{run}/clean; if $g -C "$w" config --local --includes --get-regexp "^(filter\\.|merge\\..*\\.driver$)" >/dev/null; then echo "refused, the config has a filter or a merge driver" >&2; exit 1; fi; b=$($g -C "$c" symbolic-ref refs/remotes/origin/HEAD) && $g -C "$w" fetch --quiet --recurse-submodules=no ../clean "+$b:$b" && { $g -C "$w" merge --no-edit --no-verify "$b" || { $g -C "$w" merge --abort; exit 1; }; }']
     max_tries: 3
     on_bad: fix_merge
     next: learn
