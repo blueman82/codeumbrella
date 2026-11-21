@@ -1,0 +1,55 @@
+# A GitHub machine runs the checks of AGENTS.md on each PR.
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+permissions:
+  contents: read
+
+# A new push to a PR stops the run of the push before it. A run on `master`
+# always gets its result.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/master' }}
+
+jobs:
+  test:
+    # The README says macOS. The tests use `ps` and `pgrep` of macOS.
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      # actions/checkout v7.0.1, by its commit, so a moved tag changes nothing.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      # `rust-toolchain.toml` sets the Rust version.
+      - run: rustup show active-toolchain || rustup toolchain install
+      - run: cargo fmt --check
+      - run: cargo clippy --all-targets --locked -- -D warnings
+      # A test that skips itself prints a line with `skipped:`. Such a line
+      # stops CI. So does a log that grep cannot read. Only "no such line"
+      # (grep gives 1) lets the step continue.
+      - run: |
+          set -o pipefail
+          cargo test --locked -- --nocapture 2>&1 | tee "$RUNNER_TEMP/test.log"
+          found=0
+          grep -F 'skipped:' "$RUNNER_TEMP/test.log" || found=$?
+          test "$found" -eq 1
+      - run: cargo build --locked
+
+  packages:
+    # Looks for bad packages. A Linux machine does this work.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - run: rustup show active-toolchain || rustup toolchain install
+      - run: cargo install --locked cargo-deny@0.22.0 cargo-audit@0.23.0
+      - run: cargo deny check
+      # A package warning also stops this check.
+      - run: cargo audit --deny warnings
