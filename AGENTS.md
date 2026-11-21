@@ -68,7 +68,7 @@ To install the command and the chat command on a computer, run `./install.sh`.
 | `default.set-version` | The default script of the step `set_version`. It does nothing. `init` writes it to `.codeumbrella/set-version`, and `init --update` keeps a script that is there. |
 | `scripts/set-version` | The script of this project. The person copies it to `.codeumbrella/set-version`. It sets the next patch version in the four version files. |
 | `.codeumbrella/queue/` | The queue: one text file for each task that waits. The file name sets the sequence. A line `Files:` names the files of the task. `run --next` moves the first file into the run as `task.txt`. |
-| `tests/same_time.rs` | Tests of two runs at the same time: `run --next`, the line `Run:`, `take_master`, `fix_merge`, `same_master`, `work_was_done`, `do_work` and the documents. |
+| `tests/same_time.rs` | Tests of two runs at the same time. They test `run --next`, the line `Run:`, `take_master`, `fix_merge`, `same_master`, `work_was_done`, `do_work` and the documents. |
 | `tests/queue.rs` | Tests of the queue, `run --next`, `set_version`, `files.txt`, the default script, the script of this project and the documents. |
 | `default.gitignore` | The default ignore file. `init` gives it to a project that has no `.gitignore`. |
 | `roles/<role>.md` | The default rules page of each role, written by hand. |
