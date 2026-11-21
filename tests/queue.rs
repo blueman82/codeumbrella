@@ -226,7 +226,7 @@ fn run_next_with_an_empty_queue_is_an_error_and_starts_nothing() {
 }
 
 #[test]
-fn run_next_with_a_waiting_run_is_an_error_and_the_queue_stays() {
+fn run_next_with_a_waiting_run_starts_the_next_task() {
     let dir = project();
     let first = cu(&dir, &["run", "a task"]);
     let shown = all(&first);
@@ -234,15 +234,15 @@ fn run_next_with_a_waiting_run_is_an_error_and_the_queue_stays() {
     let waiting = id(&first);
     put(&dir, "01-next.txt", "Next task");
     let out = cu(&dir, &["run", "--next"]);
-    assert!(!out.status.success(), "{}", all(&out));
-    assert!(all(&out).contains(&waiting), "{}", all(&out));
-    assert_eq!(queued(&dir), ["01-next.txt"]);
+    assert!(out.status.success(), "{}", all(&out));
+    assert_ne!(id(&out), waiting);
+    assert_eq!(queued(&dir).len(), 0);
     let runs = fs::read_dir(dir.join(".codeumbrella/runs")).unwrap();
-    assert_eq!(runs.count(), 1, "a second run started");
+    assert_eq!(runs.count(), 2, "no second run");
 }
 
 #[test]
-fn run_next_with_a_running_run_is_an_error_and_the_queue_stays() {
+fn run_next_with_a_running_run_starts_the_next_task() {
     let dir = project();
     let first = cu(&dir, &["run", "a task"]);
     let running = id(&first);
@@ -253,9 +253,9 @@ fn run_next_with_a_running_run_is_an_error_and_the_queue_stays() {
     fs::write(&state, changed).unwrap();
     put(&dir, "01-next.txt", "Next task");
     let out = cu(&dir, &["run", "--next"]);
-    assert!(!out.status.success(), "{}", all(&out));
-    assert!(all(&out).contains(&running), "{}", all(&out));
-    assert_eq!(queued(&dir), ["01-next.txt"]);
+    assert!(out.status.success(), "{}", all(&out));
+    assert_ne!(id(&out), running);
+    assert_eq!(queued(&dir).len(), 0);
 }
 
 #[test]

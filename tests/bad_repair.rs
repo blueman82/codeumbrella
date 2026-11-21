@@ -60,26 +60,33 @@ const NOT_PERMITTED: [&str; 47] = [
 ];
 
 /// Each step of the default sheet with an `on_bad` line, and its target.
-const ON_BAD: [(&str, &str); 10] = [
+const ON_BAD: [(&str, &str); 14] = [
     ("attack_plan", "correct_plan"),
     ("attack_plan_2", "correct_plan_2"),
     ("attack_plan_3", "correct_plan_3"),
     ("look_at_tests", "plan"),
     ("build", "plan"),
     ("check", "repair"),
-    ("work_was_done", "repair"),
+    ("work_was_done", "do_work"),
+    ("take_master", "fix_merge"),
+    ("fix_merge", "plan"),
+    ("do_work", "plan"),
     ("repair", "plan"),
     ("find_pr", "open_pr"),
     ("approval", "plan"),
+    ("same_master", "take_master"),
 ];
 
 /// Each step of the default sheet with a `max_tries` line, and its number.
-const MAX_TRIES: [(&str, u32); 6] = [
+const MAX_TRIES: [(&str, u32); 9] = [
     ("plan", 3),
     ("correct_plan", 3),
     ("correct_plan_2", 3),
     ("correct_plan_3", 3),
     ("repair", 3),
+    ("take_master", 3),
+    ("fix_merge", 3),
+    ("do_work", 3),
     ("open_pr", 2),
 ];
 

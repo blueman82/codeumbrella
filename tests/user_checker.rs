@@ -134,7 +134,7 @@ fn the_check_is_a_fan_of_five_parts_in_this_sequence() {
     assert_eq!(check.kind, Kind::Fan);
     assert_eq!(check.fan, PARTS);
     assert_eq!(check.on_bad.as_deref(), Some("repair"));
-    assert_eq!(check.next.as_deref(), Some("work_was_done"));
+    assert_eq!(check.next.as_deref(), Some("no_locked_files"));
 }
 
 #[test]
@@ -170,6 +170,10 @@ fn the_sheet_has_one_new_step_and_no_other_step_goes_or_comes() {
         "mark",
         "build",
         "simplify",
+        "take_master",
+        "fix_merge",
+        "do_work",
+        "same_master",
         "learn",
         "set_version",
         "write_pr",
@@ -692,6 +696,8 @@ fn a_bad_check_use_alone_goes_to_repair_with_its_report() {
         ("mark", true),
         ("build", true),
         ("simplify", true),
+        ("work_was_done", true),
+        ("take_master", true),
         ("learn", true),
         ("set_version", true),
         ("write_pr", true),
@@ -699,7 +705,6 @@ fn a_bad_check_use_alone_goes_to_repair_with_its_report() {
         ("repair", true),
         ("write_pr", true),
         ("check", true),
-        ("work_was_done", true),
         ("no_locked_files", true),
         ("push", true),
         ("find_pr", true),
@@ -719,7 +724,7 @@ fn a_bad_check_use_alone_goes_to_repair_with_its_report() {
 }
 
 #[test]
-fn with_good_workers_the_run_goes_from_check_to_work_was_done() {
+fn with_good_workers_the_run_goes_from_check_to_the_locked_files() {
     let sim = Sim::new(&[]);
     let run = run_with(&sim);
     assert_eq!(run.state.status, Status::Waiting);
@@ -728,11 +733,12 @@ fn with_good_workers_the_run_goes_from_check_to_work_was_done() {
         ("mark", true),
         ("build", true),
         ("simplify", true),
+        ("work_was_done", true),
+        ("take_master", true),
         ("learn", true),
         ("set_version", true),
         ("write_pr", true),
         ("check", true),
-        ("work_was_done", true),
         ("no_locked_files", true),
         ("push", true),
         ("find_pr", true),

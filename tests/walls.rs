@@ -173,8 +173,9 @@ fn only_the_approval_of_the_person_goes_to_the_merge() {
         ]]
     );
     for (name, step) in &graph.steps {
-        let to_merge = [&step.next, &step.on_bad].contains(&&Some("merge".to_owned()));
-        assert_eq!(to_merge, name == "approval", "{name}");
+        let goes = |to: &str| [&step.next, &step.on_bad].contains(&&Some(to.to_owned()));
+        assert_eq!(goes("merge"), name == "same_master", "{name}");
+        assert_eq!(goes("same_master"), name == "approval", "{name}");
     }
     assert_eq!(graph.step("approval").unwrap().kind, Kind::Person);
     assert_ne!(graph.start, "merge");

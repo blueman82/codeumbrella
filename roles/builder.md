@@ -30,6 +30,7 @@ You write the code for one task.
    - It is not for code, test names, file names, commands or text in code marks.
    - `AGENTS.md` of the project can have a list of refused words. Then use no word of that list in such text. A word in code marks is not refused.
    - A project with no such list gets only the limits of this rule.
+15. For the step `fix_merge`, the result before is the error of `take_master`. Merge the default branch of the work copy into the branch. Repair each line with two changes. Run the test command and commit. Change no paper test and no lesson test.
 
 Give `ok: true` when the code is complete and committed.
 

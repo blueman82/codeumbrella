@@ -165,13 +165,91 @@ steps:
   # It changes no test file. This is for new runs.
   # A run reads the sheet at each command, so do not change the sheet
   # while a run is active.
-  # For a faster run, remove this step. Then set `next` of `build` to `check`.
+  # For a faster run, remove this step. Then set `next` of `build` to
+  # `work_was_done`.
   # The simplifier reads the language pages in `roles/languages/` for the
   # languages of the changed files.
   simplify:
     role: simplifier
     reads: [spec]
+    next: work_was_done
+
+  # No AI. This step looks for a commit after the step `mark`. It comes right
+  # after `simplify`, so only the commits of `build` and `simplify` count.
+  # The commits of `set_version` and `take_master` come later and do not
+  # count. It writes the new commits into `new-work.bundle` in the run folder.
+  # No step reads that file. With no new commit, git gives an error, so the
+  # result is bad. A bad result goes to `do_work`, then to `take_master`, so
+  # the run still gets the newest master and a new version before `write_pr`.
+  # The second command writes the names of the changed files into `files.txt`
+  # in the run folder. A task after this one can read it. It lists only the
+  # files of the builder and the simplifier, because the merge of master
+  # comes later. The two options `--no-ext-diff` and `--no-textconv` keep a
+  # program of the work copy from running.
+  # A worker can write in `.git` of its work copy. So this step is not a wall
+  # against a worker that cheats. It is a check for a worker that did nothing
+  # by error.
+  work_was_done:
+    type: command
+    run:
+      - [git, -C, ".codeumbrella/runs/{run}/work", bundle, create, ../new-work.bundle, "refs/codeumbrella/before..HEAD"]
+      - [git, -C, ".codeumbrella/runs/{run}/work", diff, --name-only, --no-ext-diff, --no-textconv, --output, ../files.txt, "refs/codeumbrella/before", HEAD]
+    on_bad: do_work
+    next: take_master
+
+  # A builder does the work that the step `work_was_done` did not find. The
+  # builder gets the error text of that step. The run then goes to
+  # `take_master`, with no second check. A bad result goes to the planner.
+  do_work:
+    role: builder
+    reads: [spec]
+    max_tries: 3
+    on_bad: plan
+    next: take_master
+
+  # No AI. Two runs of a project can work at the same time, so master can
+  # change during a run. This step merges the newest master into the branch
+  # of the run, before `learn` and `set_version`. Thus the writer and the
+  # checkers see only the change of the run, and each run gets its own version.
+  # The clean copy fetches the default branch of GitHub. Only the clean copy
+  # fetches from GitHub. A worker can write the git config of the work copy,
+  # for example `url.*.insteadOf`. So the work copy fetches that commit from
+  # the clean copy, with a local fetch. The fetch writes the ref of the
+  # default branch in the work copy, for example `refs/remotes/origin/master`.
+  # Then the merge puts that ref into the branch, with a merge commit. No
+  # rebase and no forced push. A branch with the newest master stays as it is.
+  # The step runs with no sandbox in a copy that a worker can write. So each
+  # git call has `-c core.fsmonitor=false`, `-c core.hooksPath=/dev/null` and
+  # `-c commit.gpgSign=false`. The merge has `--no-edit` and `--no-verify`.
+  # A `filter.` entry or a `merge.` entry with `driver` in the config of the
+  # work copy gives a bad result before the merge. Both start a command.
+  # A merge that stops for two changes to the same lines runs `git merge
+  # --abort` first, then gives a bad result. A bad result goes to `fix_merge`.
+  # Each time through the step uses one try. After the third try the run
+  # stops. A short `sh -c` text does the check, the fetch and the merge.
+  take_master:
+    type: command
+    run:
+      - [git, -c, core.fsmonitor=false, -c, core.hooksPath=/dev/null, -c, commit.gpgSign=false, init, --quiet, ".codeumbrella/runs/{run}/clean"]
+      - [git, -c, core.fsmonitor=false, -c, core.hooksPath=/dev/null, -c, commit.gpgSign=false, -C, ".codeumbrella/runs/{run}/clean", config, include.path, ../../../../../.git/config]
+      - [git, -c, core.fsmonitor=false, -c, core.hooksPath=/dev/null, -c, commit.gpgSign=false, -C, ".codeumbrella/runs/{run}/clean", fetch, --quiet, --recurse-submodules=no, origin]
+      - [git, -c, core.fsmonitor=false, -c, core.hooksPath=/dev/null, -c, commit.gpgSign=false, -C, ".codeumbrella/runs/{run}/clean", remote, set-head, origin, --auto]
+      - [sh, -c, 'g="git -c core.fsmonitor=false -c core.hooksPath=/dev/null -c commit.gpgSign=false"; w=.codeumbrella/runs/{run}/work; c=.codeumbrella/runs/{run}/clean; if $g -C "$w" config --local --includes --get-regexp "^(filter\\.|merge\\..*\\.driver$)" >/dev/null; then echo "refused, the config has a filter or a merge driver" >&2; exit 1; fi; b=$($g -C "$c" symbolic-ref refs/remotes/origin/HEAD) && $g -C "$w" fetch --quiet --recurse-submodules=no ../clean "+$b:$b" && { $g -C "$w" merge --no-edit --no-verify "$b" || { $g -C "$w" merge --abort; exit 1; }; }']
+    max_tries: 3
+    on_bad: fix_merge
     next: learn
+
+  # A builder repairs a merge that `take_master` could not do. The builder
+  # gets the error of `take_master`. It merges the default branch of the work
+  # copy, repairs each line with two changes, runs the test command and
+  # commits. Then the run goes to `take_master` again. A bad result goes to
+  # the planner.
+  fix_merge:
+    role: builder
+    reads: [spec]
+    max_tries: 3
+    on_bad: plan
+    next: take_master
 
   # A learner reads the log of this run and of the runs before it. It finds
   # each bad result and each no of yours. A lesson that a test can show
@@ -181,7 +259,7 @@ steps:
   # For a faster run, remove four parts together: this step, `lessons` in
   # the `reads` of `check_safety`, `lessons` in the `reads` of
   # `check_review`, and `next: save_lessons` of `merge`.
-  # Then set `next` of `simplify` to `write_pr`.
+  # Then set `next` of `take_master` to `set_version`.
   learn:
     role: learner
     reads: [spec]
@@ -222,27 +300,6 @@ steps:
   check:
     type: fan
     fan: [check_tests, check_safety, check_review, check_security, check_use]
-    on_bad: repair
-    next: work_was_done
-
-  # No AI. This step looks for a commit after the step `mark`. It writes the
-  # new commits into `new-work.bundle` in the run folder. No step reads that
-  # file. With no new commit, git gives an error, so the result is bad. A bad
-  # result means no commit after your yes for the tests. The builder in
-  # `repair` then gets the error text. The step comes after `check`, because
-  # after a no for one paper test only the tests checker makes a commit.
-  # The second command writes the names of the changed files into `files.txt`
-  # in the run folder. A task after this one can read it. The two options
-  # `--no-ext-diff` and `--no-textconv` keep a program of the work copy from
-  # running.
-  # A worker can write in `.git` of its work copy. So this step is not a wall
-  # against a worker that cheats. It is a check for a worker that did nothing
-  # by error.
-  work_was_done:
-    type: command
-    run:
-      - [git, -C, ".codeumbrella/runs/{run}/work", bundle, create, ../new-work.bundle, "refs/codeumbrella/before..HEAD"]
-      - [git, -C, ".codeumbrella/runs/{run}/work", diff, --name-only, --no-ext-diff, --no-textconv, --output, ../files.txt, "refs/codeumbrella/before", HEAD]
     on_bad: repair
     next: no_locked_files
 
@@ -369,6 +426,25 @@ steps:
   approval:
     type: person
     on_bad: plan
+    next: same_master
+
+  # No AI. Master can change while you look at the PR. This step fetches the
+  # default branch of GitHub into the clean copy, as `no_locked_files` does.
+  # The result is good only if the branch of the run in the clean copy has
+  # that commit. A bad result goes to `take_master`. The run then does
+  # `learn`, `set_version`, `write_pr`, `check`, `no_locked_files`, `push` and
+  # `find_pr` again, and you get the PR question again. The push stays a
+  # plain push, because the merge only adds commits to the branch. This
+  # step runs no `gh` command and no push.
+  same_master:
+    type: command
+    run:
+      - [git, init, --quiet, ".codeumbrella/runs/{run}/clean"]
+      - [git, -C, ".codeumbrella/runs/{run}/clean", config, include.path, ../../../../../.git/config]
+      - [git, -C, ".codeumbrella/runs/{run}/clean", fetch, --quiet, --recurse-submodules=no, origin]
+      - [git, -C, ".codeumbrella/runs/{run}/clean", remote, set-head, origin, --auto]
+      - [git, -C, ".codeumbrella/runs/{run}/clean", merge-base, --is-ancestor, refs/remotes/origin/HEAD, "refs/heads/codeumbrella/{run}"]
+    on_bad: take_master
     next: merge
 
   # GitHub refuses the merge if a necessary check of the PR is not good.

@@ -183,34 +183,20 @@ fn main() -> Result<()> {
         Cmd::Run { task, .. } => {
             let (task, queued) = match task {
                 Some(task) => (task.clone(), None),
-                None => next_task(&runs)?,
+                None => next_task()?,
             };
-            // Four digits from the clock and the command number make a same id in two folders rare.
-            let now = SystemTime::now().duration_since(UNIX_EPOCH)?;
-            let digits = (u64::from(now.subsec_nanos()) + u64::from(std::process::id())) % 10_000;
-            let stamp = format!("{}-{digits:04}", now.as_secs());
-            fs::create_dir_all(&runs)
-                .with_context(|| format!("cannot make the folder {}", runs.display()))?;
-            // `create_dir` fails if the id exists, so two runs never share an id.
-            // Only "the folder is there already" makes it try the next id.
-            let mut id = format!("run-{stamp}");
-            for n in 1.. {
-                match fs::create_dir(runs.join(&id)) {
-                    Ok(()) => break,
-                    Err(e) if e.kind() == ErrorKind::AlreadyExists => {
-                        id = format!("run-{stamp}-{n}");
-                    }
-                    Err(e) => bail!("cannot make the folder {}/{id}: {e}", runs.display()),
+            let dir = new_run_dir(&runs)?;
+            // The move decides which command gets the task. A loser leaves no run folder.
+            if let Some(file) = queued {
+                let moved = fs::rename(&file, dir.join("task.txt"));
+                if let Err(e) = moved {
+                    let _ = fs::remove_dir_all(&dir);
+                    bail!("cannot move {}: {e}", file.display());
                 }
             }
-            let dir = runs.join(id);
             let mut run = Run::start(dir, &task, graph.as_ref().context("no sheet")?)?;
             // Default is Claude: the factory was built for it, and old notebooks have no tool.
             run.state.tool = Some(cli.tool.unwrap_or(Tool::Claude));
-            if let Some(file) = queued {
-                fs::rename(&file, run.dir.join("task.txt"))
-                    .with_context(|| format!("cannot move {}", file.display()))?;
-            }
             run
         }
         Cmd::Status { wait: true, .. } => wait_for(target.as_deref().context("no run")?)?,
@@ -249,12 +235,40 @@ fn main() -> Result<()> {
         if run.state.tool.is_none() {
             println!("This run has no tool, so the command uses Claude.");
         }
+        if matches!(cli.command, Cmd::Run { .. }) {
+            let id = run.dir.file_name().unwrap_or_default().to_string_lossy();
+            println!("{:<10}{id}", "Run:");
+        }
         let time_limit = Duration::from_secs(cli.step_minutes * 60);
         let tool = run.state.tool.unwrap_or(Tool::Claude);
         run.go(&graph, &cli.roles, &Mixed { tool, time_limit })?;
     }
     show(&run);
     Ok(())
+}
+
+/// Makes the folder of a new run with a new id.
+fn new_run_dir(runs: &Path) -> Result<PathBuf> {
+    // Four digits from the clock and the command number make a same id in two folders rare.
+    let now = SystemTime::now().duration_since(UNIX_EPOCH)?;
+    let digits = (u64::from(now.subsec_nanos()) + u64::from(std::process::id())) % 10_000;
+    let stamp = format!("{}-{digits:04}", now.as_secs());
+    fs::create_dir_all(runs)
+        .with_context(|| format!("cannot make the folder {}", runs.display()))?;
+    // `create_dir` fails if the id exists, so two runs never share an id.
+    // Only "the folder is there already" makes it try the next id.
+    let mut id = format!("run-{stamp}");
+    for n in 1.. {
+        match fs::create_dir(runs.join(&id)) {
+            Ok(()) => break,
+            Err(e) if e.kind() == ErrorKind::AlreadyExists => {
+                id = format!("run-{stamp}-{n}");
+            }
+            Err(e) => bail!("cannot make the folder {}/{id}: {e}", runs.display()),
+        }
+    }
+
+    Ok(runs.join(id))
 }
 
 /// Waits until the run is not `Running`, then gives it. It repairs a run
@@ -526,18 +540,9 @@ fn queue() -> Result<()> {
 }
 
 /// Gives the first task of the queue and its file. It changes nothing. It gives
-/// an error for an empty queue and for a run that is `Running` or `Waiting`.
-fn next_task(runs: &Path) -> Result<(String, Option<PathBuf>)> {
+/// an error for an empty queue. A different active run does not stop it.
+fn next_task() -> Result<(String, Option<PathBuf>)> {
     let first = queued()?.into_iter().next().context("the queue is empty")?;
-    let found = fs::read_dir(runs).into_iter().flatten();
-    for dir in found.filter_map(|e| e.ok().map(|e| e.path())) {
-        let active = Run::open(dir.clone()).ok();
-        let active = active.filter(|r| matches!(r.state.status, Status::Running | Status::Waiting));
-        if active.is_some() {
-            let id = dir.file_name().unwrap_or_default().to_string_lossy();
-            bail!("the run {id} is active, so no new run can start");
-        }
-    }
     Ok((task_text(&first)?, Some(first)))
 }
 

@@ -265,7 +265,11 @@ fn new_rule(who: &str) -> (usize, String) {
     assert_eq!(found.len(), 1, "{who}: {found:?}");
     let (at, one) = found.remove(0);
     let next = rule_in(&text_of, at + 1);
-    assert!(next.is_empty(), "{who}: rule {at} is not the last");
+    // The builder page has the rule for `fix_merge` after it.
+    assert!(
+        who == "builder" || next.is_empty(),
+        "{who}: rule {at} is not the last"
+    );
     (at, one)
 }
 

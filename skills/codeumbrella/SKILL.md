@@ -28,7 +28,7 @@ Do these steps in sequence.
 3. If the project has no file `.codeumbrella/graph.yaml`, run `codeumbrella init`. Tell the person that the factory files are in `.codeumbrella/` and that the person can change them. Then run `git status --short`. If it shows a new file `.gitignore`, tell the person and commit that file.
 4. Run `git status --short`. If it shows changes, stop. Tell the person to commit the changes or to put them away. If not, the changes get into the work of the run.
 5. Run `git remote get-url origin`. If it gives an error, stop. Tell the person that the default sheet sends the work to GitHub, and that the project has no GitHub connection. Offer to make a private GitHub project. After a yes from the person, run `gh repo create <name of the project folder> --private --source . --remote origin --push`. Do not make a public project.
-6. Run `codeumbrella status`. The error "there are no runs in this folder" means no run, so go on. If the newest run has the status `Running` or `Waiting`, do not start a new run. Tell the person the run id and its status. Start the new run only after the person says to start it.
+6. Run `codeumbrella status`. The error "there are no runs in this folder" means no run, so go on. If the newest run has the status `Running` or `Waiting`, tell the person the run id and its status. Start the new run only after the person says to start it. A task from the queue starts with `run --next` while a run is active.
 7. Run `gh pr list`. If a PR is open, tell the person its number and its title before the start. This step stops nothing. The person can say to start. If `gh pr list` gives an error, tell the person and go on.
 8. Make sure that the packages of the project are on the computer. See "Packages". A tool in the project folder, for example in `.venv`, needs its full path in the test command.
 
@@ -56,15 +56,17 @@ If a run stops because a package is not on the computer, install that package. T
 | The person gives you | You run |
 |---|---|
 | A task | `codeumbrella run "<task>"` |
-| A task, while a run of the project is `Running` or `Waiting` | Write the task as a file in `.codeumbrella/queue/`, for example `01-name.txt`. Add a line `Files: a, b` if you know the files. Do not start a run. |
+| A task, while a run of the project is `Running` or `Waiting` | Write the task as a file in `.codeumbrella/queue/`, for example `01-name.txt`. Add a line `Files: a, b` if you know the files. Tell the person the ids of the active runs first. Then run `codeumbrella run --next`. |
 | The next task of the queue | `codeumbrella run --next` |
 | No task | `codeumbrella status` |
 
 A `run`, `answer` or `resume` command can run longer than the time limit of a chat shell. A shell of the chat can end, or a time limit of the chat can stop it. The command then stops, and the file `lock` stays. So start each of these commands so that it continues after the shell ends and after a time limit. Send the output to a file. For a usual shell:
 
-`nohup codeumbrella run "<task>" > .codeumbrella/out.txt 2>&1 &`
+`nohup codeumbrella run "<task>" > .codeumbrella/out-<time>.txt 2>&1 &`
 
-Use the same command line for `answer` and `resume`, with no `--tool`. Then run `codeumbrella status --wait <run id>`, not `status`. It waits until the status is not `Running`. Run it again each 3 minutes if your shell has a time limit. Read the output file after that.
+Pick a new file name for each `run` command, for example with the time. The chat does not know the run id before the start. Read the run id from the line `Run:` in that file. Two runs then write two files.
+
+For `answer` and `resume`, use `nohup codeumbrella answer ... > .codeumbrella/out-<run id>.txt 2>&1 &`, with no `--tool`. Then run `codeumbrella status --wait <run id>`, not `status`. It waits until the status is not `Running`. Run it again each 3 minutes if your shell has a time limit. Read the output file after that.
 
 `codeumbrella --step-minutes <number> run|answer|resume` gives a long check more time: "The maximum number of minutes for one step", default 30.
 
@@ -85,6 +87,7 @@ The output has one fact on each line: `Run:`, `Status:`, `Note:` and more. A run
 - At `look_at_tests`, the result before can start with `Not complete:`. Then tell the person that no worker ran that check on the paper tests. Offer to run that check before the person answers.
 - After a no, at the next `look_at_tests`, read the part `Points of the no` at the top of `spec.md`. Tell the person each point. Thus the person sees that each point of the no is there.
 - Status `Waiting` at the step `approval`: give the person the PR link from the note. Then get a yes or a no from the person.
+- At `approval`, tell the person that a new master can bring the PR question a second time.
 - At the question `approval`, read `.codeumbrella/runs/<run id>/papers/pr/title.txt` and `body.md` of the same paper. Show the person the title from `title.txt`. Show each `[ ]` line of the checklist in `body.md`, with its cause. If no line has `[ ]`, tell the person that.
 - At the question `approval`, read the lines of `check_use` in `log.jsonl` of the run. Tell the person each `Not run:` line before the person answers. Such an example did not run in the sandbox.
 - At the question `approval`, read the task of the run in `state.json` of the run folder. If the task has a line `Full check:`, tell the person that no worker ran that check.
@@ -111,7 +114,7 @@ The run folder is `.codeumbrella/runs/<run id>/`.
 - `log.jsonl` has one line for each step that ended. The line has the time, the step, good or bad, the seconds and the summary. The line of a worker step also has the numbers of its worker, for example `worker_seconds` and `dollars`.
 - `<step>.<number>.trace.jsonl` has all that one worker did in one try. These files are large.
 
-After status `Done`, run `codeumbrella queue`. If the queue has a task, start `codeumbrella run --next` (as you start `run`, with `nohup`) and tell the person which task started. The new run stops at `look_at_tests`, as each run does. Do not answer it. If the queue is empty, say nothing more.
+After status `Done` of a run, run `codeumbrella queue`. If the queue has a task, start `codeumbrella run --next` (as you start `run`, with `nohup`) and tell the person which task started. The new run stops at `look_at_tests`, as each run does. Do not answer it. If the queue is empty, say nothing more.
 
 When the status is `Done` or `Stopped`, read `log.jsonl`. Give the person a short table: the time of each step, the slowest step, the number of repair tries, and the answers of the person.
 
