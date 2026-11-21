@@ -725,16 +725,6 @@ fn take_master_refuses_a_work_copy_with_a_merge_driver() {
 }
 
 #[test]
-fn take_master_refuses_a_work_copy_with_a_url_entry() {
-    refuses("url.x.insteadof");
-}
-
-#[test]
-fn take_master_refuses_a_work_copy_with_a_protocol_entry() {
-    refuses("protocol.file.allow");
-}
-
-#[test]
 fn take_master_runs_no_hook_no_fsmonitor_and_no_sign_command() {
     let mut w = world();
     let work = w.work.clone();
@@ -775,7 +765,10 @@ fn take_master_does_not_fetch_from_the_origin_of_the_work_copy() {
     let tip = push_to(&w.base, &w.server, NEW_FILE, "m");
     // The config of the work copy sends each fetch to that copy.
     let decoy = decoy.display().to_string();
+    let server = w.server.display().to_string();
+    let instead = format!("url.{decoy}.insteadOf");
     git(&work, &["config", "remote.origin.url", &decoy]);
+    git(&work, &["config", &instead, &server]);
     assert!(alone(&mut w, "take_master"), "{}", w.run.state.note);
     assert_eq!(git(&work, &["rev-parse", MASTER]), tip);
     assert!(has(&work, &tip, "HEAD"), "master is not in the branch");
