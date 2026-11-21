@@ -734,33 +734,74 @@ fn take_master_refuses_a_work_copy_with_a_protocol_entry() {
     refuses("protocol.x.allow");
 }
 
+/// A test on 21 November 2026 showed that each of these entries ran its
+/// command in `take_master`, with no sandbox.
 #[test]
-fn take_master_runs_no_hook_no_fsmonitor_and_no_sign_command() {
+fn take_master_refuses_each_entry_that_is_not_of_a_clean_clone() {
+    let keys = [
+        "remote.../clean.uploadpack",
+        "core.alternateRefsCommand",
+        "core.sshCommand",
+        "core.hooksPath",
+        "core.fsmonitor",
+        "gpg.program",
+    ];
+    for key in keys {
+        refuses(key);
+    }
+}
+
+#[test]
+fn take_master_refuses_a_filter_in_the_worktree_config() {
+    let mut w = world();
+    let work = w.work.clone();
+    let built = commit(&work, "built.txt", "b");
+    push_to(&w.base, &w.server, NEW_FILE, "m");
+    let (script, ran) = marker(&w.base, "ran");
+    git(&work, &["config", "extensions.worktreeConfig", "true"]);
+    git(&work, &["config", "--worktree", "filter.x.smudge", &script]);
+    fs::create_dir_all(work.join(".git/info")).unwrap();
+    fs::write(work.join(".git/info/attributes"), "* filter=x\n").unwrap();
+    assert!(!alone(&mut w, "take_master"), "a good result");
+    assert!(w.run.state.note.contains("extensions.worktreeconfig"));
+    assert!(!ran.exists(), "the filter ran");
+    assert_eq!(head(&work), built);
+}
+
+#[test]
+fn take_master_runs_no_hook_of_the_work_copy() {
     let mut w = world();
     let work = w.work.clone();
     commit(&work, "built.txt", "b");
     push_to(&w.base, &w.server, NEW_FILE, "m");
     let (hook, hooked) = marker(&w.base, "hook-ran");
-    let other = w.base.join("other-hooks");
-    for folder in [work.join(".git/hooks"), other.clone()] {
-        fs::create_dir_all(&folder).unwrap();
-        for name in HOOKS {
-            fs::copy(&hook, folder.join(name)).unwrap();
-        }
+    let folder = work.join(".git/hooks");
+    fs::create_dir_all(&folder).unwrap();
+    for name in HOOKS {
+        fs::copy(&hook, folder.join(name)).unwrap();
     }
-    let (monitor, watched) = marker(&w.base, "monitor-ran");
-    let (sign, signed) = marker(&w.base, "sign-ran");
-    let path = other.display().to_string();
-    git(&work, &["config", "core.hooksPath", &path]);
-    git(&work, &["config", "core.fsmonitor", &monitor]);
-    git(&work, &["config", "commit.gpgSign", "true"]);
-    git(&work, &["config", "gpg.program", &sign]);
     let good = alone(&mut w, "take_master");
     assert!(!hooked.exists(), "a hook ran");
-    assert!(!watched.exists(), "the fsmonitor ran");
-    assert!(!signed.exists(), "the sign command ran");
     assert!(good, "{}", w.run.state.note);
     assert!(work.join(NEW_FILE).is_file(), "no merge");
+}
+
+/// A test on 21 November 2026 showed that `mark` ran this hook.
+#[test]
+fn mark_runs_no_hook_that_a_config_entry_names() {
+    let mut w = world();
+    let work = w.work.clone();
+    let built = commit(&work, "built.txt", "b");
+    let (hook, hooked) = marker(&w.base, "hook-ran");
+    let other = w.base.join("other-hooks");
+    fs::create_dir_all(&other).unwrap();
+    fs::copy(&hook, other.join("reference-transaction")).unwrap();
+    let path = other.display().to_string();
+    git(&work, &["config", "core.hooksPath", &path]);
+    assert!(alone(&mut w, "mark"), "{}", w.run.state.note);
+    assert!(!hooked.exists(), "a hook ran");
+    let mark = git(&work, &["rev-parse", "refs/codeumbrella/before"]);
+    assert_eq!(mark, built);
 }
 
 #[test]

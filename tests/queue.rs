@@ -673,10 +673,15 @@ fn the_commit_of_the_script_runs_no_hook_of_the_work_copy() {
             fs::set_permissions(&path, mode).unwrap();
         }
     }
-    git(&work, &["config", "core.hooksPath", "other-hooks"]);
     let out = set_version(&base, &work);
     assert!(out.status.success(), "{}", all(&out));
     assert!(read(&work, "Cargo.toml").contains(NEW));
+    assert!(!marker.exists(), "a hook ran");
+    // An entry that names a hooks folder is not of a clean clone.
+    git(&work, &["config", "core.hooksPath", "other-hooks"]);
+    let out = set_version(&base, &work);
+    assert!(!out.status.success(), "{}", all(&out));
+    assert!(all(&out).contains("core.hookspath"), "{}", all(&out));
     assert!(!marker.exists(), "a hook ran");
 }
 

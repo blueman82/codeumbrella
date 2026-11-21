@@ -143,10 +143,12 @@ steps:
   # `refs/codeumbrella/before` of the work copy. The step `work_was_done`
   # looks for a new commit after it. After each yes for the tests, it runs
   # again. Thus a commit from before a no does not count.
+  # A worker can write the git config of the work copy, and `update-ref` can
+  # start a hook. So the call has `-c core.hooksPath=/dev/null`.
   mark:
     type: command
     run:
-      - [git, -C, ".codeumbrella/runs/{run}/work", update-ref, refs/codeumbrella/before, HEAD]
+      - [git, -c, core.hooksPath=/dev/null, -C, ".codeumbrella/runs/{run}/work", update-ref, refs/codeumbrella/before, HEAD]
     next: build
 
   # A builder writes the code and commits it.
@@ -225,10 +227,12 @@ steps:
   # The step runs with no sandbox in a copy that a worker can write. So each
   # git call has `-c core.fsmonitor=false`, `-c core.hooksPath=/dev/null` and
   # `-c commit.gpgSign=false`. The merge has `--no-edit` and `--no-verify`.
-  # A `filter.` entry or a `merge.` entry with `driver` in the config of the
-  # work copy gives a bad result before the merge. Each of them starts a command.
-  # A `url.` entry or a `protocol.` entry gives a bad result before the fetch.
-  # Such an entry can change the local fetch from `../clean`.
+  # The config of the work copy can have only the names of a clean clone, and
+  # `user.name` and `user.email`. Each other name gives a bad result before
+  # the fetch, and the message shows that name. Examples are a `filter.`
+  # entry, a merge `driver`, a `url.` entry, a `protocol.` entry,
+  # `core.sshCommand` and `remote.<name>.uploadpack`. Each of them can start a
+  # command or change the local fetch from `../clean`.
   # A merge that stops for two changes to the same lines runs `git merge
   # --abort` first, then gives a bad result. A bad result goes to `fix_merge`.
   # Each time through the step uses one try. After the third try the run
@@ -240,7 +244,7 @@ steps:
       - [git, -c, core.fsmonitor=false, -c, core.hooksPath=/dev/null, -c, commit.gpgSign=false, -C, ".codeumbrella/runs/{run}/clean", config, include.path, ../../../../../.git/config]
       - [git, -c, core.fsmonitor=false, -c, core.hooksPath=/dev/null, -c, commit.gpgSign=false, -C, ".codeumbrella/runs/{run}/clean", fetch, --quiet, --recurse-submodules=no, origin]
       - [git, -c, core.fsmonitor=false, -c, core.hooksPath=/dev/null, -c, commit.gpgSign=false, -C, ".codeumbrella/runs/{run}/clean", remote, set-head, origin, --auto]
-      - [sh, -c, 'g="git -c core.fsmonitor=false -c core.hooksPath=/dev/null -c commit.gpgSign=false"; w=.codeumbrella/runs/{run}/work; c=.codeumbrella/runs/{run}/clean; if $g -C "$w" config --local --includes --get-regexp "^(filter\\.|url\\.|protocol\\.|merge\\..*\\.driver$)" >/dev/null; then echo "refused, the config has a filter, url, protocol or merge driver" >&2; exit 1; fi; b=$($g -C "$c" symbolic-ref refs/remotes/origin/HEAD) && $g -C "$w" fetch --quiet --recurse-submodules=no ../clean "+$b:$b" && { $g -C "$w" merge --no-edit --no-verify "$b" || { $g -C "$w" merge --abort; exit 1; }; }']
+      - [sh, -c, 'g="git -c core.fsmonitor=false -c core.hooksPath=/dev/null -c commit.gpgSign=false"; w=.codeumbrella/runs/{run}/work; c=.codeumbrella/runs/{run}/clean; n=$($g -C "$w" config --local --includes --list --name-only) || { echo "refused, git cannot read the config of the work copy" >&2; exit 1; }; n=$(printf "%s\\n" "$n" | grep -Evx "core\\.(repositoryformatversion|filemode|bare|logallrefupdates|ignorecase|precomposeunicode|symlinks)|remote\\.origin\\.(url|fetch)|branch\\..*\\.(remote|merge)|user\\.(name|email)"); if [ -n "$n" ]; then echo "refused, the config of the work copy has: $n" >&2; exit 1; fi; b=$($g -C "$c" symbolic-ref refs/remotes/origin/HEAD) && $g -C "$w" fetch --quiet --recurse-submodules=no ../clean "+$b:$b" && { $g -C "$w" merge --no-edit --no-verify "$b" || { $g -C "$w" merge --abort; exit 1; }; }']
     max_tries: 3
     on_bad: fix_merge
     next: learn
