@@ -136,7 +136,7 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - The default sheet has two command steps with no AI. `mark` comes after `look_at_tests` and before `build`. It writes the commit of that moment into `refs/codeumbrella/before` of the work copy.
 - The steps of the planner write the papers `spec`, `tests` and `pr`.
 - The worker step `write_pr` comes after `set_version` and after `repair`, before `check`. The writer completes the PR text in the paper `pr`.
-- `work_was_done` comes right after `simplify`. It makes `new-work.bundle` in the run folder from the commits after `mark`. Only the commits of `build` and `simplify` count. With no new commit, git gives an error, and the run goes to the builder step `do_work`. Then it goes to `take_master`.
+- `work_was_done` comes right after `simplify`. It makes `new-work.bundle` in the run folder from the commits after `mark`. Only the commits of `build` and `simplify` count. With no new commit, git gives an error, and the run goes to the builder step `do_work`. Then it checks again. After the third try of `do_work` the run stops.
 - `take_master` comes after `work_was_done` and before `learn`. It merges the newest master into the branch. It has `max_tries: 3`. A bad merge goes to the builder step `fix_merge`, then back to `take_master`.
 - `same_master` comes after `approval` and before `merge`. A branch with no newest master goes to `take_master`. The person then gets the PR question again.
 - `check` goes to `no_locked_files`. Only `same_master` goes to `merge`.

@@ -119,7 +119,7 @@ an error · a bad result with no path for it · a changed paper · a maximum
 - The queue is the folder `.codeumbrella/queue/`: one text file for each task that waits. `codeumbrella queue` shows it. `codeumbrella run --next` starts the first file and moves it into the run as `task.txt`. The supervisor does not start a run by itself.
 - The step `set_version` comes after `learn` and before `write_pr`. It runs the script `.codeumbrella/set-version` on the work copy. The script sets the version and commits it. No task text names a version. `work_was_done` also writes `files.txt`, the names of the changed files.
 - The step `mark` writes the commit of your yes for the tests into a git name. It has no AI.
-- The step `work_was_done` comes right after `simplify`. With no commit of `build` or `simplify` after `mark`, git gives an error. The run then goes to `do_work`, and to `take_master`.
+- The step `work_was_done` comes right after `simplify`. With no commit of `build` or `simplify` after `mark`, git gives an error. The run then goes to `do_work` and back to this check. After the third try of `do_work` the run stops.
 - A worker can write in `.git`, so `work_was_done` is not a wall against a worker that cheats. It finds a worker that did nothing by error.
 - The step `simplify` and the three new checkers are for new runs. You can remove them for a faster run.
 - The step `take_master` merges the newest master into the branch before `learn`. Two runs of a project can work at the same time. The step `same_master` before `merge` sends the run back to `take_master` if master changed.

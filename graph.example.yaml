@@ -179,8 +179,9 @@ steps:
   # The commits of `set_version` and `take_master` come after it and do not
   # count. It writes the new commits into `new-work.bundle` in the run folder.
   # No step reads that file. With no new commit, git gives an error, so the
-  # result is bad. A bad result goes to `do_work`, then to `take_master`, so
-  # the run gets the newest master and a new version before `write_pr`.
+  # result is bad. A bad result goes to `do_work`, then back to this step.
+  # A good second check goes to `take_master`, so the run gets the newest
+  # master and a new version before `write_pr`.
   # The second command writes the names of the changed files into `files.txt`
   # in the run folder. A task after this one can read it. It lists only the
   # files of the builder and the simplifier, because the merge of master
@@ -198,14 +199,17 @@ steps:
     next: take_master
 
   # A builder does the work that the step `work_was_done` did not find. The
-  # builder gets the error text of that step. The run then goes to
-  # `take_master`, with no second check. A bad result goes to the planner.
+  # builder gets the error text of that step. The run then goes back to
+  # `work_was_done`, as a second check. A builder that makes no commit gives
+  # a bad check again. After the third try the run stops. A bad result goes
+  # to the planner. So a PR with no work and no new version never gets to
+  # the PR question.
   do_work:
     role: builder
     reads: [spec]
     max_tries: 3
     on_bad: plan
-    next: take_master
+    next: work_was_done
 
   # No AI. Two runs of a project can work at the same time, so master can
   # change during a run. This step merges the newest master into the branch

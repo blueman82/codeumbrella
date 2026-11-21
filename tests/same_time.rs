@@ -412,13 +412,16 @@ fn the_default_sheet_has_take_master_between_simplify_and_learn() {
     assert_eq!(step.kind, Kind::Command);
     assert_eq!(step.max_tries, Some(3));
     assert_eq!(ways_to(&graph, "learn"), ["take_master"]);
-    let into = ["do_work", "fix_merge", "same_master", "work_was_done"];
+    let into = ["fix_merge", "same_master", "work_was_done"];
     assert_eq!(ways_to(&graph, "take_master"), into);
 }
 
 #[test]
-fn fix_merge_and_do_work_are_builder_steps_that_go_to_take_master() {
+fn fix_merge_and_do_work_are_builder_steps_with_a_next_step() {
     let graph = default_sheet();
+    // `do_work` goes back to the check, so a builder with no commit
+    // does not get to the PR question.
+    assert_eq!(next(&graph, "do_work"), "work_was_done");
     for name in ["fix_merge", "do_work"] {
         let step = graph.step(name).unwrap();
         assert_eq!(step.kind, Kind::Worker, "{name}");
@@ -427,10 +430,12 @@ fn fix_merge_and_do_work_are_builder_steps_that_go_to_take_master() {
         assert!(step.writes.is_empty(), "{name}");
         assert_eq!(step.max_tries, Some(3), "{name}");
         assert_eq!(step.on_bad.as_deref(), Some("plan"), "{name}");
-        assert_eq!(step.next.as_deref(), Some("take_master"), "{name}");
     }
+    assert_eq!(next(&graph, "fix_merge"), "take_master");
     assert_eq!(ways_to(&graph, "fix_merge"), ["take_master"]);
     assert_eq!(ways_to(&graph, "do_work"), ["work_was_done"]);
+    let into = ["do_work", "simplify"];
+    assert_eq!(ways_to(&graph, "work_was_done"), into);
 }
 
 #[test]
@@ -460,7 +465,7 @@ fn the_default_sheet_has_same_master_between_approval_and_merge() {
 fn work_was_done_comes_after_simplify_and_check_goes_to_the_locked_files() {
     let graph = default_sheet();
     assert_eq!(on_bad(&graph, "work_was_done"), "do_work");
-    assert_eq!(ways_to(&graph, "work_was_done"), ["simplify"]);
+    assert_eq!(next(&graph, "do_work"), "work_was_done");
     assert_eq!(next(&graph, "check"), "no_locked_files");
     assert_eq!(on_bad(&graph, "check"), "repair");
     assert_eq!(next(&graph, "repair"), "write_pr");
@@ -926,20 +931,43 @@ fn files_txt_does_not_name_a_file_that_only_the_merge_changed() {
 }
 
 #[test]
-fn with_no_commit_of_the_builder_work_was_done_is_bad_before_take_master() {
+fn with_no_commit_of_any_builder_the_run_stops_before_the_pr() {
+    let mut w = world();
+    let graph = sheet(&w.project);
+    push_to(&w.base, &w.server, NEW_FILE, "m");
+    let worker = Sim::new(&[]);
+    to_build(&mut w, &graph, &worker);
+    // `do_work` goes back to `work_was_done`. With no commit the
+    // run stops after the tries of `do_work`.
+    assert_eq!(w.run.state.status, Status::Stopped, "{}", w.run.state.note);
+    let ran = after(&w.run, "look_at_tests");
+    let names: Vec<&str> = ran.iter().map(|(s, _)| s.as_str()).collect();
+    for gone in ["take_master", "set_version", "write_pr", "push", "find_pr"] {
+        assert!(!names.contains(&gone), "{gone}: {names:?}");
+    }
+    let tries = names.iter().filter(|s| **s == "do_work").count();
+    assert_eq!(tries, 3, "{names:?}");
+    // The builder of `do_work` gets the error text of git.
+    let got = worker.got("do_work");
+    let first = got[0].to_lowercase();
+    assert!(first.contains("empty bundle"), "{got:?}");
+    assert!(!w.run.dir.join("new-work.bundle").exists());
+}
+
+#[test]
+fn a_commit_of_do_work_passes_the_second_check_and_goes_to_take_master() {
     let mut w = world();
     let graph = sheet(&w.project);
     let tip = push_to(&w.base, &w.server, NEW_FILE, "m");
-    let worker = Sim::new(&[]);
+    let worker = Sim::new(&["do_work"]);
     to_build(&mut w, &graph, &worker);
-    // The bad path: `do_work`, then `take_master`, `learn` and
-    // `set_version` before `write_pr`.
     let path = pairs(&[
         ("mark", true),
         ("build", true),
         ("simplify", true),
         ("work_was_done", false),
         ("do_work", true),
+        ("work_was_done", true),
         ("take_master", true),
         ("learn", true),
         ("set_version", true),
@@ -951,11 +979,7 @@ fn with_no_commit_of_the_builder_work_was_done_is_bad_before_take_master() {
     ]);
     let ran = after(&w.run, "look_at_tests");
     assert_eq!(ran, path, "{}", w.run.state.note);
-    // The builder of `do_work` gets the error text of git.
-    let got = worker.got("do_work");
-    let first = got[0].to_lowercase();
-    assert!(first.contains("empty bundle"), "{got:?}");
-    assert!(!w.run.dir.join("new-work.bundle").exists());
+    assert!(w.run.dir.join("new-work.bundle").is_file(), "no bundle");
     // The merge and the version are commits after `mark`.
     assert!(has(&w.work, &tip, "HEAD"), "master is not in the branch");
     assert!(w.work.join("version.txt").is_file(), "no version commit");
@@ -976,21 +1000,16 @@ fn after_a_no_the_commits_of_the_merge_and_the_version_do_not_count() {
     assert_eq!(w.run.state.at.as_deref(), Some("look_at_tests"));
     w.run.answer(true, "").unwrap();
     w.run.go(&graph, &roles, &worker).unwrap();
-    // The builder made no commit after the second yes.
-    let path = pairs(&[
-        ("mark", true),
-        ("build", true),
-        ("simplify", true),
-        ("work_was_done", false),
-        ("do_work", true),
-        ("take_master", true),
-        ("learn", true),
-        ("set_version", true),
-        ("write_pr", true),
-    ]);
+    // The builder made no commit after the second yes. The commits
+    // of the merge and the version do not count, so `do_work` runs
+    // and, with no commit, the run stops before `take_master`.
     let ran = after(&w.run, "look_at_tests");
-    assert_eq!(ran.get(..9), Some(&path[..]), "{ran:?}");
-    assert!(w.work.join("second.txt").is_file(), "no second merge");
+    let names: Vec<&str> = ran.iter().map(|(s, _)| s.as_str()).collect();
+    assert_eq!(&names[..4], ["mark", "build", "simplify", "work_was_done"]);
+    assert!(!ran[3].1, "{ran:?}");
+    assert!(names.contains(&"do_work"), "{names:?}");
+    assert!(!names.contains(&"write_pr"), "{names:?}");
+    assert_eq!(w.run.state.status, Status::Stopped);
 }
 
 #[test]
