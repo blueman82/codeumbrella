@@ -176,16 +176,16 @@ steps:
 
   # No AI. This step looks for a commit after the step `mark`. It comes right
   # after `simplify`, so only the commits of `build` and `simplify` count.
-  # The commits of `set_version` and `take_master` come later and do not
+  # The commits of `set_version` and `take_master` come after it and do not
   # count. It writes the new commits into `new-work.bundle` in the run folder.
   # No step reads that file. With no new commit, git gives an error, so the
   # result is bad. A bad result goes to `do_work`, then to `take_master`, so
-  # the run still gets the newest master and a new version before `write_pr`.
+  # the run gets the newest master and a new version before `write_pr`.
   # The second command writes the names of the changed files into `files.txt`
   # in the run folder. A task after this one can read it. It lists only the
   # files of the builder and the simplifier, because the merge of master
-  # comes later. The two options `--no-ext-diff` and `--no-textconv` keep a
-  # program of the work copy from running.
+  # comes after it. The two options `--no-ext-diff` and `--no-textconv` keep a
+  # command of the work copy from running.
   # A worker can write in `.git` of its work copy. So this step is not a wall
   # against a worker that cheats. It is a check for a worker that did nothing
   # by error.
@@ -222,7 +222,7 @@ steps:
   # git call has `-c core.fsmonitor=false`, `-c core.hooksPath=/dev/null` and
   # `-c commit.gpgSign=false`. The merge has `--no-edit` and `--no-verify`.
   # A `filter.` entry or a `merge.` entry with `driver` in the config of the
-  # work copy gives a bad result before the merge. Both start a command.
+  # work copy gives a bad result before the merge. Each of them starts a command.
   # A merge that stops for two changes to the same lines runs `git merge
   # --abort` first, then gives a bad result. A bad result goes to `fix_merge`.
   # Each time through the step uses one try. After the third try the run
