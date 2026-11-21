@@ -202,7 +202,7 @@ steps:
   # builder gets the error text of that step. The run then goes back to
   # `work_was_done`, as a second check. A builder that makes no commit gives
   # a bad check again. After the third try the run stops. A bad result goes
-  # to the planner. So a PR with no work and no new version never gets to
+  # to the planner. So a PR with no work and no new version does not get to
   # the PR question.
   do_work:
     role: builder
