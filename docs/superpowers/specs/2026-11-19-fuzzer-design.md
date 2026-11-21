@@ -1,6 +1,6 @@
 # A fuzzer for the code of codeumbrella
 
-Date: 19 November 2026. Status: design. The person did not approve it yet.
+Date: 19 November 2026. Status: design. The person gave no approval for it.
 
 ## Why
 
@@ -80,7 +80,7 @@ From the guides:
 - It writes no file and writes nothing on the screen.
 - It gives the same result for the same input.
 
-For `fuzz_sheet`: `Graph::check` looks for the rules page of each role on the disk. The target gives it the folder `roles/` of this repository. Thus a sheet with a correct role gets to the rest of `Graph::check`. The target writes nothing in that folder.
+For `fuzz_sheet`: `Graph::check` looks for the rules page of each role on the disk. The target gives it the folder `roles/` of this repository. Thus a sheet with a correct role gets to the other parts of `Graph::check`. The target writes nothing in that folder.
 
 A crash is a `panic`, or a target that does not stop. A target that does not stop shows a circle in `Graph::check`.
 
@@ -133,8 +133,8 @@ Then the session gives the task to codeumbrella. The run copies only what is in 
 The person can change each of these.
 
 - `bolero` goes into `[dev-dependencies]`. Thus `cargo build --locked` builds no bolero code. The builder makes sure that the release build stays the same.
-- If a package of bolero has a license that `deny.toml` does not give approval to, the builder stops and tells the person. The builder does not change `deny.toml`.
-- A `panic` is never correct. A repair that gives an error for that input is correct. "The factory does the same work as before" is a rule for the changes of step 2 only.
+- A package of bolero can have a license that `deny.toml` gives no approval to. Then the builder stops and tells the person. The builder does not change `deny.toml`.
+- No `panic` is correct. A repair that gives an error for that input is correct. "The factory does the same work as before" is a rule for the changes of step 2 only.
 - If the crash is in a package, for example `yaml_serde` or `serde_json`, the builder stops and tells the person.
 - The 15-second limit is a measured check. The builder runs `cargo test` before and after the change, and compares the clock times.
 - `fuzz_sheet` reads the disk for each input. This is correct, because it gives the same result each time. It writes nothing.
@@ -143,7 +143,7 @@ The person can change each of these.
 
 ## Left to the builder
 
-- The form of each target: a `#[test]` in one file, or a different test target as the bolero page shows.
+- The shape of each target: a `#[test]` in one file, or a different test target as the bolero page shows.
 - The folders of the saved inputs and the crash inputs. The bolero pages do not tell them.
 - The exact time limit or count of inputs for each target in `cargo test`.
 - The names of the new functions in `src/claude.rs` and `src/codex.rs`.
@@ -153,14 +153,14 @@ The person can change each of these.
 1. The four `cargo` commands of AGENTS.md give a good result.
 2. `cargo deny check` and `cargo audit` give a good result with no change to `deny.toml`.
 3. Each new package had a release in the last 12 months.
-4. After the PR opens and before the yes, the chat session runs `cargo bolero test` for 10 minutes on each target, on this Mac. A worker does not do this step, because of its time limit.
+4. The PR opens. Before the yes, the chat session runs `cargo bolero test` for 10 minutes on each target, on this Mac. A worker does not do this step, because of its time limit.
 5. The count of lines of code of the supervisor did not change.
 
 ## Sources
 
 - [What makes a good fuzz target](https://github.com/google/fuzzing/blob/master/docs/good-fuzz-target.md)
 - [OSS-Fuzz: ideal integration](https://google.github.io/oss-fuzz/advanced-topics/ideal-integration)
-- [Chromium: efficient fuzzing](https://chromium.googlesource.com/chromium/src/+/refs/heads/main/testing/libfuzzer/efficient_fuzzing.md)
+- [Chromium: fuzzing with good results](https://chromium.googlesource.com/chromium/src/+/refs/heads/main/testing/libfuzzer/efficient_fuzzing.md)
 - [Trail of Bits Testing Handbook: fuzzing](https://appsec.guide/docs/fuzzing/) and [cargo-fuzz](https://appsec.guide/docs/fuzzing/rust/cargo-fuzz/)
 - [Rust Fuzz Book](https://rust-fuzz.github.io/book/print.html) and [cargo-fuzz](https://github.com/rust-fuzz/cargo-fuzz)
 - [bolero](https://github.com/camshaft/bolero), [bolero book](https://camshaft.github.io/bolero/), [check! macro](https://docs.rs/bolero/latest/bolero/macro.check.html), [DefaultEngine](https://docs.rs/bolero/latest/bolero/struct.DefaultEngine.html), [package file](https://docs.rs/crate/bolero/latest/source/Cargo.toml.orig)
