@@ -245,8 +245,8 @@ steps:
 
   # A builder repairs a merge that `take_master` could not do. The builder
   # gets the error of `take_master`. It merges the default branch of the work
-  # copy, repairs each line with two changes, runs the test command and
-  # commits. Then the run goes to `take_master` again. A bad result goes to
+  # copy, repairs each line with two changes, and runs the test command.
+  # Then it commits. Then the run goes to `take_master` again. A bad result goes to
   # the planner.
   fix_merge:
     role: builder
