@@ -309,9 +309,11 @@ fn the_default_sheet_has_mark_before_build_and_work_was_done_after_simplify() {
     let graph = default_sheet();
     let mark = graph.step("mark").unwrap();
     assert_eq!(mark.kind, Kind::Command);
-    let words = ["git", "-C", WORK, "update-ref"];
+    let hooks = ["git", "-c", "core.hooksPath=/dev/null"];
+    let words = ["-C", WORK, "update-ref"];
     let ends = ["refs/codeumbrella/before", "HEAD"];
-    let all: Vec<&str> = words.iter().chain(&ends).copied().collect();
+    let all = hooks.iter().chain(&words).chain(&ends);
+    let all: Vec<&str> = all.copied().collect();
     assert_eq!(mark.run, [all]);
     assert_eq!(mark.next.as_deref(), Some("build"));
     let tests = graph.step("look_at_tests").unwrap();

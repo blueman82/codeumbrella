@@ -19,11 +19,15 @@ g() {
 # The check reads only the settings of the work copy, with each file that
 # they include. The settings of the computer are of the person, for example
 # the filter of Git LFS. A worker cannot write them.
-if (
-  export GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null
-  g config --get-regexp '^filter\.' > /dev/null
-); then
-  echo "set-version: the work copy has a git filter" >&2
+# Only the names of a clean clone are good, and `user.name` and `user.email`.
+# Each other name can start a command, for example a filter.
+names=$(g config --local --includes --list --name-only) || {
+  echo "set-version: git cannot read the config of the work copy" >&2
+  exit 1
+}
+names=$(printf '%s\n' "$names" | grep -Evx 'core\.(repositoryformatversion|filemode|bare|logallrefupdates|ignorecase|precomposeunicode|symlinks)|remote\.origin\.(url|fetch)|branch\..*\.(remote|merge)|user\.(name|email)') || true
+if [ -n "$names" ]; then
+  echo "set-version: the config of the work copy has: $names" >&2
   exit 1
 fi
 old=$(g show origin/master:Cargo.toml | sed -n 's/^version = "\(.*\)"$/\1/p' | head -n 1)
