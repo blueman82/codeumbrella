@@ -559,8 +559,8 @@ fn copy_with_origin() -> (PathBuf, PathBuf) {
     (base, work)
 }
 
-/// Starts the script of this project on a work copy.
-fn set_version(base: &Path, work: &Path) -> Output {
+/// The command that starts the script of this project on a work copy.
+fn script_command(base: &Path, work: &Path) -> Command {
     let script = root().join("scripts/set-version");
     let mut command = Command::new("sh");
     command.arg(script).arg(work).current_dir(base);
@@ -568,7 +568,12 @@ fn set_version(base: &Path, work: &Path) -> Output {
         command.env(format!("GIT_{who}_NAME"), "t");
         command.env(format!("GIT_{who}_EMAIL"), "t@t");
     }
-    command.output().unwrap()
+    command
+}
+
+/// Starts the script of this project on a work copy.
+fn set_version(base: &Path, work: &Path) -> Output {
+    script_command(base, work).output().unwrap()
 }
 
 fn read(work: &Path, rel: &str) -> String {
@@ -711,6 +716,56 @@ fn the_script_runs_no_filter_of_the_work_copy() {
     let attributes = "Cargo.toml filter=x\n";
     fs::write(work.join(".gitattributes"), attributes).unwrap();
     let out = set_version(&base, &work);
+    assert!(!ran.exists(), "the filter ran: {}", all(&out));
+}
+
+// A computer with Git LFS has a filter in its own git settings. A CI run
+// showed that the script stopped there. A worker cannot write those settings.
+#[test]
+fn a_filter_in_the_settings_of_the_computer_does_not_stop_the_script() {
+    let (base, work) = copy_with_origin();
+    let computer = base.join("computer.gitconfig");
+    fs::write(
+        &computer,
+        "[filter \"lfs\"]\n\tclean = git-lfs clean -- %f\n",
+    )
+    .unwrap();
+    let mut command = script_command(&base, &work);
+    command.env("GIT_CONFIG_GLOBAL", &computer);
+    let out = command.output().unwrap();
+    assert!(out.status.success(), "{}", all(&out));
+    assert!(read(&work, "Cargo.toml").contains(NEW), "{}", all(&out));
+}
+
+// A worker can write `.git/config` of the work copy. So a filter that this
+// file gets from a second file must stop the script too.
+#[test]
+fn a_filter_in_a_file_that_the_work_copy_includes_stops_the_script() {
+    let (base, work) = copy_with_origin();
+    let (filter, ran) = marker_script(&base, "filter-ran");
+    let more = base.join("more.gitconfig");
+    let text = format!("[filter \"x\"]\n\tclean = {}\n", filter.display());
+    fs::write(&more, text).unwrap();
+    git(
+        &work,
+        &["config", "include.path", &more.display().to_string()],
+    );
+    fs::write(work.join(".gitattributes"), "Cargo.toml filter=x\n").unwrap();
+    let out = set_version(&base, &work);
+    assert!(!out.status.success(), "{}", all(&out));
+    assert!(!ran.exists(), "the filter ran: {}", all(&out));
+}
+
+#[test]
+fn a_filter_in_the_worktree_settings_of_the_work_copy_stops_the_script() {
+    let (base, work) = copy_with_origin();
+    let (filter, ran) = marker_script(&base, "filter-ran");
+    let clean = filter.display().to_string();
+    git(&work, &["config", "extensions.worktreeConfig", "true"]);
+    git(&work, &["config", "--worktree", "filter.x.clean", &clean]);
+    fs::write(work.join(".gitattributes"), "Cargo.toml filter=x\n").unwrap();
+    let out = set_version(&base, &work);
+    assert!(!out.status.success(), "{}", all(&out));
     assert!(!ran.exists(), "the filter ran: {}", all(&out));
 }
 
