@@ -8,6 +8,7 @@
 # Files of AI tools that are only for one computer
 /.remember
 .claude/settings.local.json
+/docs/superpowers/
 
 # Secrets. Do not commit them.
 .env
