@@ -182,56 +182,48 @@ fn to_build(run: &mut Run, graph: &Graph, worker: &Sim) {
 }
 
 #[test]
-fn with_no_commit_work_was_done_is_bad_and_goes_to_repair() {
+fn with_no_commit_work_was_done_is_bad_and_the_run_stops_after_do_work() {
     let dir = project();
     let graph = sheet(&dir);
     let mut run = start(&dir, &graph);
     let worker = Sim::new(&[]);
     to_build(&mut run, &graph, &worker);
-    let path = pairs(&[
-        ("mark", true),
-        ("build", true),
-        ("simplify", true),
-        ("learn", true),
-        ("set_version", true),
-        ("write_pr", true),
-        ("check", true),
-        ("work_was_done", false),
-        ("repair", true),
-        ("write_pr", true),
-    ]);
     let after = after_yes(&run);
-    assert_eq!(after.get(..10), Some(&path[..]), "{after:?}");
-    // The builder in `repair` gets the error text of git.
-    let got = worker.got("repair");
+    let names: Vec<&str> = after.iter().map(|(s, _)| s.as_str()).collect();
+    let head = ["mark", "build", "simplify", "work_was_done", "do_work"];
+    assert_eq!(names.get(..5), Some(&head[..]), "{after:?}");
+    assert!(!after[3].1, "{after:?}");
+    let tries = names.iter().filter(|s| **s == "do_work").count();
+    assert_eq!(tries, 3, "{after:?}");
+    // The builder in `do_work` gets the error text of git.
+    let got = worker.got("do_work");
     let first = got[0].to_lowercase();
     assert!(first.contains("empty bundle"), "{got:?}");
-    // No repair makes a commit, so the run stops at the maximum of `repair`.
+    // The run never gets to the merge of master or the PR question.
+    assert!(!names.contains(&"take_master"), "{names:?}");
     assert_eq!(run.state.status, Status::Stopped);
-    assert_eq!(run.state.at.as_deref(), Some("repair"));
     assert!(!run.dir.join("new-work.bundle").exists());
 }
 
 #[test]
-fn a_commit_of_the_repair_makes_work_was_done_good() {
+fn a_commit_of_do_work_passes_the_second_check_and_goes_to_take_master() {
     let dir = project();
     let graph = sheet(&dir);
     let mut run = start(&dir, &graph);
-    let worker = Sim::new(&["repair"]);
+    let worker = Sim::new(&["do_work"]);
     to_build(&mut run, &graph, &worker);
     let path = pairs(&[
         ("mark", true),
         ("build", true),
         ("simplify", true),
+        ("work_was_done", false),
+        ("do_work", true),
+        ("work_was_done", true),
+        ("take_master", true),
         ("learn", true),
         ("set_version", true),
         ("write_pr", true),
         ("check", true),
-        ("work_was_done", false),
-        ("repair", true),
-        ("write_pr", true),
-        ("check", true),
-        ("work_was_done", true),
         ("no_locked_files", true),
         ("push", true),
         ("find_pr", true),
@@ -254,11 +246,12 @@ fn with_a_new_commit_work_was_done_is_good_and_changes_no_file() {
         ("mark", true),
         ("build", true),
         ("simplify", true),
+        ("work_was_done", true),
+        ("take_master", true),
         ("learn", true),
         ("set_version", true),
         ("write_pr", true),
         ("check", true),
-        ("work_was_done", true),
         ("no_locked_files", true),
         ("push", true),
         ("find_pr", true),
@@ -301,26 +294,18 @@ fn after_a_no_at_the_approval_a_commit_from_before_does_not_count() {
     assert_eq!(marks, 2, "{all:?}");
     let mark = git(&work, &["rev-parse", "refs/codeumbrella/before"]);
     assert_eq!(mark, made[0]);
-    // The builder made no commit after that yes.
-    let path = pairs(&[
-        ("mark", true),
-        ("build", true),
-        ("simplify", true),
-        ("learn", true),
-        ("set_version", true),
-        ("write_pr", true),
-        ("check", true),
-        ("work_was_done", false),
-        ("repair", true),
-        ("write_pr", true),
-    ]);
+    // The builder made no commit after that yes, so the run stops.
     let after = after_yes(&run);
-    assert_eq!(after.get(..10), Some(&path[..]), "{after:?}");
-    assert!(!run.state.results["work_was_done"].ok);
+    let names: Vec<&str> = after.iter().map(|(s, _)| s.as_str()).collect();
+    let head = ["mark", "build", "simplify", "work_was_done", "do_work"];
+    assert_eq!(names.get(..5), Some(&head[..]), "{after:?}");
+    assert!(!after[3].1, "{after:?}");
+    assert!(!names.contains(&"take_master"), "{names:?}");
+    assert_eq!(run.state.status, Status::Stopped);
 }
 
 #[test]
-fn the_default_sheet_has_mark_before_build_and_work_was_done_after_check() {
+fn the_default_sheet_has_mark_before_build_and_work_was_done_after_simplify() {
     let graph = default_sheet();
     let mark = graph.step("mark").unwrap();
     assert_eq!(mark.kind, Kind::Command);
@@ -345,10 +330,10 @@ fn the_default_sheet_has_mark_before_build_and_work_was_done_after_check() {
         "refs/codeumbrella/before..HEAD",
     ];
     assert_eq!(done.run[0], bundle);
-    assert_eq!(done.on_bad.as_deref(), Some("repair"));
-    assert_eq!(done.next.as_deref(), Some("no_locked_files"));
+    assert_eq!(done.on_bad.as_deref(), Some("do_work"));
+    assert_eq!(done.next.as_deref(), Some("take_master"));
     let check = graph.step("check").unwrap();
-    assert_eq!(check.next.as_deref(), Some("work_was_done"));
+    assert_eq!(check.next.as_deref(), Some("no_locked_files"));
     assert_eq!(check.on_bad.as_deref(), Some("repair"));
     let repair = graph.step("repair").unwrap();
     assert_eq!(repair.next.as_deref(), Some("write_pr"));
@@ -357,8 +342,7 @@ fn the_default_sheet_has_mark_before_build_and_work_was_done_after_check() {
     let ways = [
         ("mark", "look_at_tests"),
         ("build", "mark"),
-        ("work_was_done", "check"),
-        ("no_locked_files", "work_was_done"),
+        ("no_locked_files", "check"),
     ];
     for (name, step) in &graph.steps {
         let targets = [&step.next, &step.on_bad];

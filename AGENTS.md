@@ -46,7 +46,7 @@ cargo deny check && cargo audit                # look for bad packages, after a 
 codeumbrella init                              # put the default sheet and rules pages into a project
 codeumbrella init --update                     # replace changed factory files with the new defaults, keep a copy of each as `.before`
 codeumbrella run "<task>"                      # start a run with Claude workers
-codeumbrella run --next                        # start the first task of the queue `.codeumbrella/queue/`. An error if the queue is empty or a run is `Running` or `Waiting`
+codeumbrella run --next                        # start the first task of the queue `.codeumbrella/queue/`. An error if the queue is empty. It starts also while a different run is `Running` or `Waiting`
 codeumbrella queue                             # show the tasks that wait: the file name and its `Files:` line
 codeumbrella --tool codex run "<task>"         # start a run with Codex workers. The run keeps this tool
 codeumbrella status [run-id]                   # show where a run is: the step of this moment and the total of the workers. After a kill, it repairs the run first (see Safety rules)
@@ -68,6 +68,7 @@ To install the command and the chat command on a computer, run `./install.sh`.
 | `default.set-version` | The default script of the step `set_version`. It does nothing. `init` writes it to `.codeumbrella/set-version`, and `init --update` keeps a script that is there. |
 | `scripts/set-version` | The script of this project. The person copies it to `.codeumbrella/set-version`. It sets the next patch version in the four version files. |
 | `.codeumbrella/queue/` | The queue: one text file for each task that waits. The file name sets the sequence. A line `Files:` names the files of the task. `run --next` moves the first file into the run as `task.txt`. |
+| `tests/same_time.rs` | Tests of two runs at the same time: `run --next`, the line `Run:`, `take_master`, `fix_merge`, `same_master`, `work_was_done`, `do_work` and the documents. |
 | `tests/queue.rs` | Tests of the queue, `run --next`, `set_version`, `files.txt`, the default script, the script of this project and the documents. |
 | `default.gitignore` | The default ignore file. `init` gives it to a project that has no `.gitignore`. |
 | `roles/<role>.md` | The default rules page of each role, written by hand. |
@@ -135,7 +136,10 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - The default sheet has two command steps with no AI. `mark` comes after `look_at_tests` and before `build`. It writes the commit of that moment into `refs/codeumbrella/before` of the work copy.
 - The steps of the planner write the papers `spec`, `tests` and `pr`.
 - The worker step `write_pr` comes after `set_version` and after `repair`, before `check`. The writer completes the PR text in the paper `pr`.
-- `work_was_done` comes after a good `check` and before `no_locked_files`. It makes `new-work.bundle` in the run folder from the commits after `mark`. With no new commit, git gives an error, and the run goes to `repair`.
+- `work_was_done` comes right after `simplify`. It makes `new-work.bundle` in the run folder from the commits after `mark`. Only the commits of `build` and `simplify` count. With no new commit, git gives an error, and the run goes to the builder step `do_work`. Then it checks again. After the third try of `do_work` the run stops.
+- `take_master` comes after `work_was_done` and before `learn`. It merges the newest master into the branch. It has `max_tries: 3`. A bad merge goes to the builder step `fix_merge`, then back to `take_master`.
+- `same_master` comes after `approval` and before `merge`. A branch with no newest master goes to `take_master`. The person then gets the PR question again.
+- `check` goes to `no_locked_files`. Only `same_master` goes to `merge`.
 
 ## Safety rules
 
@@ -233,6 +237,10 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - The attacker names each new paper test that is good before the code is written. Such a test shows nothing.
 - The step `mark` keeps the commit of the yes for the tests. The step `work_was_done` gives a bad result with no commit after it.
 - A worker can write in `.git` of its work copy. So `work_was_done` is not a wall against a worker that cheats. It finds a worker that did nothing by error.
+- `run --next` starts while a different run is active. The move of the queue file to the run folder gives the task to one command only. A command that gets no task ends with an error and removes its run folder. Cause: on 20 November 2026 four tasks waited in a queue, one at a time.
+- `take_master` merges the newest master into the branch with a merge commit. The push stays plain. It has no rebase and no forced push. The clean copy fetches from GitHub. The work copy fetches only from the clean copy. A `filter.` entry or a merge driver in the config of the work copy gives a bad result. Cause: on 20 November 2026 two PRs of two runs could change the same file or get the same version. A worker can write that config.
+- `same_master` gives a good result only if the pushed branch has the newest master. Cause: on 20 November 2026 master could change while the person looked at the PR. Only `same_master` goes to `merge`.
+- `work_was_done` comes before `take_master` and counts only the commits of `build` and `simplify`. A bad result goes to `do_work`. Cause: on 20 November 2026 the commits of `set_version` and `take_master` hid a builder that did nothing.
 - The end of the workers first looks at each file `worker.<number>`. Thus an error of `ps` changes no file.
 - On 18 November 2026 a person ran the built command by hand with a live worker. The person found two errors that no checker found.
 - Thus the role `user` runs the software as a user. Its step is `check_use` in the fan of `check`.
@@ -245,7 +253,7 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - An example that cannot run in the sandbox gets `Not run:`. That is not a bad result. The chat tells the person each such line at the approval.
 - Only an example that ran and differs from the spec gives a bad result. The user checker does not run the test command.
 - The planner writes the examples, with the names `E1`, `E2` and so on. A task with no command for a user gets `No example:` and a cause.
-- The step `learn` follows `simplify`. After a no of the person, the run comes to it again. The step `repair` does not go through it.
+- The step `learn` follows `take_master`. After a no of the person, the run comes to it again. The step `repair` does not go through it.
 - The learner has the settings of the simplifier and one write entry for the paper `lessons`. A test on 19 November 2026 showed that this entry works for Claude.
 - The Codex learner has no entry for the temp folder. A test on 19 November 2026 showed that the sandbox of the simplifier can write there.
 - The learner reads the log of this run and of each run after the line `Runs read to:`. Thus a stopped run also gives its lessons.
@@ -360,7 +368,7 @@ The factory keeps each number that a tool gives. The documents tell each limit.
 
 ## Not in version 1
 
-- Builders that work at the same time. The fan of today is only for workers that write no file.
+- Two runs of a project can work at the same time, each with its own builder. A fan of builders in one run stays out of version 1. The fan of today is only for workers that write no file.
 - A different worker that writes the tests. The learner writes only lesson tests, not tests for the task.
 - Custom hooks.
 

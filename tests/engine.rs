@@ -410,15 +410,14 @@ fn the_sheet_check_finds_errors() {
 fn the_sheet_of_the_project_is_correct() {
     let graph = Graph::load(&root().join("graph.example.yaml"), &root().join("roles")).unwrap();
     assert!(Path::new(&root().join("roles/planner.md")).is_file());
-    // A good check goes to `work_was_done`. Then the check for locked
-    // folders comes, and then the push.
+    // A good check goes to the check for locked folders, then the push.
     assert_eq!(
         graph.step("check").unwrap().next.as_deref(),
-        Some("work_was_done")
+        Some("no_locked_files")
     );
     assert_eq!(
         graph.step("work_was_done").unwrap().next.as_deref(),
-        Some("no_locked_files")
+        Some("take_master")
     );
     assert_eq!(
         graph.step("no_locked_files").unwrap().next.as_deref(),

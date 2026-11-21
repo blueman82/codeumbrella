@@ -59,6 +59,11 @@ build: a bad result goes to plan, as a no does          │
   ▼                                                     │
 simplify: the simplifier makes the code simpler         │
   ▼                                                     │
+work_was_done: a commit after mark? no ──► do_work      │
+  ▼ yes (or after do_work)                              │
+take_master: merge the newest master (no AI)            │
+  ├── a bad merge ──► fix_merge ──► take_master         │
+  ▼ good (3 tries)                                      │
 learn: the learner reads the logs, writes the lessons   │
   ▼                                                     │
 set_version: the script of your project sets the        │
@@ -76,14 +81,15 @@ check: a FAN of 5 checkers at the same time             │
   ├── one of them bad ──► repair (3 tries) ──► write_pr │
   │                   a bad repair goes to plan         │
   ▼ all good                                            │
-work_was_done: a commit after mark? no ──► repair       │
-  ▼ yes                                                 │
 no change in a locked folder? (clean copy)              │
   ▼ yes                                                 │
 push ──► find the PR, give it the new text, or open one │
   ▼                                                     │
 YOU: PR? ───────────────────────────────────────────────┘
   ▼ yes
+same_master: the branch has the newest master? no ──►   │
+  take_master, then the PR question again               │
+  ▼ yes                                                 │
 merge
   ▼
 save_lessons: copies the lessons into your project (no AI)
@@ -113,10 +119,11 @@ an error · a bad result with no path for it · a changed paper · a maximum
 - The queue is the folder `.codeumbrella/queue/`: one text file for each task that waits. `codeumbrella queue` shows it. `codeumbrella run --next` starts the first file and moves it into the run as `task.txt`. The supervisor does not start a run by itself.
 - The step `set_version` comes after `learn` and before `write_pr`. It runs the script `.codeumbrella/set-version` on the work copy. The script sets the version and commits it. No task text names a version. `work_was_done` also writes `files.txt`, the names of the changed files.
 - The step `mark` writes the commit of your yes for the tests into a git name. It has no AI.
-- The step `work_was_done` comes after a good check. With no commit after `mark`, git gives an error. The run then goes to `repair`.
+- The step `work_was_done` comes right after `simplify`. With no commit of `build` or `simplify` after `mark`, git gives an error. The run then goes to `do_work` and back to this check. After the third try of `do_work` the run stops.
 - A worker can write in `.git`, so `work_was_done` is not a wall against a worker that cheats. It finds a worker that did nothing by error.
 - The step `simplify` and the three new checkers are for new runs. You can remove them for a faster run.
-- The step `learn` comes after `simplify`, and after each no it runs again. The step `repair` goes to `write_pr` with no `learn`.
+- The step `take_master` merges the newest master into the branch before `learn`. Two runs of a project can work at the same time. The step `same_master` before `merge` sends the run back to `take_master` if master changed.
+- The step `learn` comes after `take_master`, and after each no it runs again. The step `repair` goes to `write_pr` with no `learn`.
 - The step `write_pr` comes after `set_version` and after each `repair`. Then the PR text agrees with the change before each check. A bad result of the writer stops the run.
 - The reviewer compares the paper `pr` with the change. One `[x]` of the checklist that the change does not show is a bad result.
 - `open_pr` opens the PR with the title and the text of the paper `pr`. After a no, `find_pr` puts the new title and text into the open PR.

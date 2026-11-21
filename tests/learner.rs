@@ -188,7 +188,7 @@ fn goes_to(graph: &Graph, from: &str, to: &str) -> bool {
 }
 
 #[test]
-fn the_step_learn_comes_after_simplify_and_goes_to_check() {
+fn the_step_learn_comes_after_take_master_and_goes_to_set_version() {
     let graph = default_sheet();
     let learn = graph.step("learn").unwrap();
     assert_eq!(learn.kind, Kind::Worker);
@@ -201,10 +201,10 @@ fn the_step_learn_comes_after_simplify_and_goes_to_check() {
     assert!(learn.run.is_empty() && learn.fan.is_empty());
     assert!(learn.tool.is_none());
     assert!(learn.model.is_none() && learn.effort.is_none());
-    // Only `simplify` goes to `learn`.
+    // Only `take_master` goes to `learn`.
     for name in graph.steps.keys() {
         let goes = goes_to(&graph, name, "learn");
-        assert_eq!(goes, name == "simplify", "{name}");
+        assert_eq!(goes, name == "take_master", "{name}");
     }
 }
 
@@ -214,7 +214,9 @@ fn the_repair_goes_to_check_and_not_through_learn() {
     let repair = graph.step("repair").unwrap();
     assert_eq!(repair.next.as_deref(), Some("write_pr"));
     let simplify = graph.step("simplify").unwrap();
-    assert_eq!(simplify.next.as_deref(), Some("learn"));
+    assert_eq!(simplify.next.as_deref(), Some("work_was_done"));
+    let merge = graph.step("take_master").unwrap();
+    assert_eq!(merge.next.as_deref(), Some("learn"));
     let build = graph.step("build").unwrap();
     assert_eq!(build.next.as_deref(), Some("simplify"));
 }
@@ -672,11 +674,12 @@ fn a_run_does_learn_after_simplify_and_check_after_learn() {
         ("mark", true),
         ("build", true),
         ("simplify", true),
+        ("work_was_done", true),
+        ("take_master", true),
         ("learn", true),
         ("set_version", true),
         ("write_pr", true),
         ("check", true),
-        ("work_was_done", true),
         ("no_locked_files", true),
         ("push", true),
         ("find_pr", true),
@@ -707,6 +710,8 @@ fn a_bad_check_goes_to_repair_and_back_to_check_with_no_learn() {
         ("mark", true),
         ("build", true),
         ("simplify", true),
+        ("work_was_done", true),
+        ("take_master", true),
         ("learn", true),
         ("set_version", true),
         ("write_pr", true),
@@ -714,7 +719,6 @@ fn a_bad_check_goes_to_repair_and_back_to_check_with_no_learn() {
         ("repair", true),
         ("write_pr", true),
         ("check", true),
-        ("work_was_done", true),
         ("no_locked_files", true),
         ("push", true),
         ("find_pr", true),
@@ -739,11 +743,12 @@ fn after_a_no_at_approval_the_run_does_learn_again_before_check() {
         ("mark", true),
         ("build", true),
         ("simplify", true),
+        ("work_was_done", true),
+        ("take_master", true),
         ("learn", true),
         ("set_version", true),
         ("write_pr", true),
         ("check", true),
-        ("work_was_done", true),
         ("no_locked_files", true),
         ("push", true),
         ("find_pr", true),
