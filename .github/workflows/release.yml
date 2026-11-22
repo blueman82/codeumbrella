@@ -1,0 +1,63 @@
+# A GitHub machine builds the macOS command of each version and uploads it
+# to Cloudsmith. A new computer then gets the command with no Rust build.
+name: release
+
+# The version is in `Cargo.toml`. Each factory PR sets a new one there, so
+# the upload runs only when that file changes on `master`. A person can also
+# start it by hand on the GitHub page.
+on:
+  push:
+    branches: [master]
+    paths: [Cargo.toml]
+  workflow_dispatch:
+
+# `id-token: write` lets GitHub give this run a short token that tells which
+# project and branch it is. Cloudsmith trusts that token, so no key is kept
+# as a secret.
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  CLOUDSMITH_WORKSPACE: tester-mjrq
+  CLOUDSMITH_REPO: tester-mjrq/tester
+  CLOUDSMITH_SERVICE_SLUG: github-codeumbrella
+
+jobs:
+  macos:
+    # An upload only from `master` of this project, also for a start by hand.
+    if: github.repository == 'blueman82/codeumbrella' && github.ref == 'refs/heads/master'
+    # This machine has an Apple chip. The command does not run on an Intel Mac.
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      # actions/checkout v7.0.1, by its commit, so a moved tag changes nothing.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      # `rust-toolchain.toml` sets the Rust version.
+      - run: rustup show active-toolchain || rustup toolchain install
+      - run: cargo build --release --locked
+      # The version is the first `version = "..."` line of `Cargo.toml`.
+      - name: Pack the command
+        run: |
+          set -euo pipefail
+          version="$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -n 1)"
+          test -n "$version"
+          file="codeumbrella-$version-aarch64-apple-darwin.tar.gz"
+          tar -czf "$file" -C target/release codeumbrella
+          shasum -a 256 "$file" > "$file.sha256"
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+          echo "FILE=$file" >> "$GITHUB_ENV"
+      - run: python3 -m pip install --user cloudsmith-cli==1.31.3
+      # Cloudsmith refuses a second file with the same name and version. So a
+      # change of `Cargo.toml` with no new version makes this step bad, and
+      # the files in Cloudsmith stay as they are.
+      - name: Upload to Cloudsmith
+        run: |
+          set -euo pipefail
+          bin="$(python3 -m site --user-base)/bin"
+          "$bin/cloudsmith" push raw "$CLOUDSMITH_REPO" "$FILE" \
+            --name codeumbrella-aarch64-apple-darwin --version "$VERSION"
+          "$bin/cloudsmith" push raw "$CLOUDSMITH_REPO" "$FILE.sha256" \
+            --name codeumbrella-aarch64-apple-darwin-sha256 --version "$VERSION"
