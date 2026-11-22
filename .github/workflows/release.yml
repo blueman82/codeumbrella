@@ -49,14 +49,19 @@ jobs:
           shasum -a 256 "$file" > "$file.sha256"
           echo "VERSION=$version" >> "$GITHUB_ENV"
           echo "FILE=$file" >> "$GITHUB_ENV"
-      - run: python3 -m pip install --user cloudsmith-cli==1.31.3
+      # The Python of the GitHub Mac refuses a plain `pip install`. So the
+      # Cloudsmith tool gets a Python folder of its own.
+      - run: |
+          set -euo pipefail
+          python3 -m venv "$RUNNER_TEMP/cloudsmith"
+          "$RUNNER_TEMP/cloudsmith/bin/pip" install cloudsmith-cli==1.31.3
       # Cloudsmith refuses a second file with the same name and version. So a
       # change of `Cargo.toml` with no new version makes this step bad, and
       # the files in Cloudsmith stay as they are.
       - name: Upload to Cloudsmith
         run: |
           set -euo pipefail
-          bin="$(python3 -m site --user-base)/bin"
+          bin="$RUNNER_TEMP/cloudsmith/bin"
           "$bin/cloudsmith" push raw "$CLOUDSMITH_REPO" "$FILE" \
             --name codeumbrella-aarch64-apple-darwin --version "$VERSION"
           "$bin/cloudsmith" push raw "$CLOUDSMITH_REPO" "$FILE.sha256" \
