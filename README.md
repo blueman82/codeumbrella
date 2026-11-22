@@ -43,6 +43,17 @@ The plugin brings only the chat command `/codeumbrella`. The `codeumbrella` comm
 1. Install the command. In this folder, run one of these:
    - `./install.sh`. It also puts the chat command into `~/.claude` and `~/.codex`. The plugin is for a person who does not run `./install.sh`.
    - `cargo install --path . --locked`
+   - A built command, with no Rust build. It is only for a Mac with Apple hardware, not for an Intel Mac. A public Cloudsmith store has each version from 0.1.31. Put the version in the first line:
+     ```
+     V=0.1.31
+     F=codeumbrella-$V-aarch64-apple-darwin.tar.gz
+     B=https://dl.cloudsmith.io/public/tester-mjrq/tester/raw/names/codeumbrella-aarch64-apple-darwin
+     curl -fLO "$B/versions/$V/$F"
+     curl -fLO "$B-sha256/versions/$V/$F.sha256"
+     shasum -a 256 -c "$F.sha256"
+     tar -xzf "$F"
+     ```
+     The line with `shasum` must print `OK`. Then move the file `codeumbrella` into a folder of your `PATH`. This path does not install the chat command, so do step 2.
 2. Install the plugin for the chat command.
    - Claude Code:
      ```
