@@ -99,10 +99,17 @@ jobs:
           version="$(gh api "repos/$GH_REPO/contents/Cargo.toml?ref=$GITHUB_SHA" \
             -H 'Accept: application/vnd.github.raw' |
             sed -n 's/^version = "\(.*\)"$/\1/p' | head -n 1)"
-          test -n "$version"
+          # Only three numbers with points are a version.
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
           if gh release view "v$version" >/dev/null 2>&1; then
             echo "The release v$version is there."
             exit 0
+          fi
+          # A tag with no release is not from this step. The step does not
+          # put the built command on a tag that it did not make.
+          if gh api "repos/$GH_REPO/git/ref/tags/v$version" >/dev/null 2>&1; then
+            echo "Stop: the tag v$version is there, but it has no release."
+            exit 1
           fi
           named="codeumbrella-$version-aarch64-apple-darwin.tar.gz"
           cp "codeumbrella-$GITHUB_SHA-aarch64-apple-darwin.tar.gz" "$named"
