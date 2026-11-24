@@ -14,10 +14,9 @@ on:
 # `id-token: write` lets GitHub give this run a short token that tells which
 # project and branch it is. Cloudsmith trusts that token, so no key is kept
 # as a secret.
-# `contents: write` lets one step make a GitHub release. Only that step gets
-# the GitHub token.
+# The step for the GitHub release is in a second machine, with its own right.
 permissions:
-  contents: write
+  contents: read
   id-token: write
 
 env:
@@ -48,25 +47,14 @@ jobs:
           tar -czf "$file" -C target/release codeumbrella
           shasum -a 256 "$file" > "$file.sha256"
           echo "FILE=$file" >> "$GITHUB_ENV"
-      # A new version in `Cargo.toml` gets a GitHub release with the built
-      # command. A version that has a release gets no second one. This step
-      # comes before Cloudsmith, so it does not use that store.
-      - name: Make a GitHub release for a new version
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          version="$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -n 1)"
-          test -n "$version"
-          if gh release view "v$version" >/dev/null 2>&1; then
-            echo "The release v$version is there."
-            exit 0
-          fi
-          named="codeumbrella-$version-aarch64-apple-darwin.tar.gz"
-          cp "$FILE" "$named"
-          shasum -a 256 "$named" > "$named.sha256"
-          gh release create "v$version" "$named" "$named.sha256" \
-            --target "$GITHUB_SHA" --title "codeumbrella $version" --generate-notes
+      # The second machine gets the two files from here.
+      # actions/upload-artifact v7.0.2, by its commit.
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: command
+          path: codeumbrella-*-aarch64-apple-darwin.tar.gz*
+          if-no-files-found: error
+          retention-days: 1
       # The Python of the GitHub Mac refuses a plain `pip install`. So the
       # Cloudsmith tool gets a Python folder of its own.
       - run: |
@@ -84,3 +72,40 @@ jobs:
             --name codeumbrella-aarch64-apple-darwin --version "$GITHUB_SHA"
           "$bin/cloudsmith" push raw "$CLOUDSMITH_REPO" "$FILE.sha256" \
             --name codeumbrella-aarch64-apple-darwin-sha256 --version "$GITHUB_SHA"
+
+  # A new version in `Cargo.toml` gets a GitHub release with the built
+  # command. A version that has a release gets no second one. Only this
+  # machine can write a release. It runs no code of the project and no code
+  # of a package: it gets the built files and reads `Cargo.toml` from GitHub.
+  # It does not use Cloudsmith.
+  github-release:
+    needs: macos
+    if: github.repository == 'blueman82/codeumbrella' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      # actions/download-artifact v8.0.2, by its commit.
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: command
+      - name: Make a GitHub release for a new version
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          version="$(gh api "repos/$GH_REPO/contents/Cargo.toml?ref=$GITHUB_SHA" \
+            -H 'Accept: application/vnd.github.raw' |
+            sed -n 's/^version = "\(.*\)"$/\1/p' | head -n 1)"
+          test -n "$version"
+          if gh release view "v$version" >/dev/null 2>&1; then
+            echo "The release v$version is there."
+            exit 0
+          fi
+          named="codeumbrella-$version-aarch64-apple-darwin.tar.gz"
+          cp "codeumbrella-$GITHUB_SHA-aarch64-apple-darwin.tar.gz" "$named"
+          sha256sum "$named" > "$named.sha256"
+          gh release create "v$version" "$named" "$named.sha256" \
+            --target "$GITHUB_SHA" --title "codeumbrella $version" --generate-notes
