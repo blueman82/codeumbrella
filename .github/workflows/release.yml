@@ -14,8 +14,10 @@ on:
 # `id-token: write` lets GitHub give this run a short token that tells which
 # project and branch it is. Cloudsmith trusts that token, so no key is kept
 # as a secret.
+# `contents: write` lets one step make a GitHub release. Only that step gets
+# the GitHub token.
 permissions:
-  contents: read
+  contents: write
   id-token: write
 
 env:
@@ -46,6 +48,25 @@ jobs:
           tar -czf "$file" -C target/release codeumbrella
           shasum -a 256 "$file" > "$file.sha256"
           echo "FILE=$file" >> "$GITHUB_ENV"
+      # A new version in `Cargo.toml` gets a GitHub release with the built
+      # command. A version that has a release gets no second one. This step
+      # comes before Cloudsmith, so it does not use that store.
+      - name: Make a GitHub release for a new version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          version="$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -n 1)"
+          test -n "$version"
+          if gh release view "v$version" >/dev/null 2>&1; then
+            echo "The release v$version is there."
+            exit 0
+          fi
+          named="codeumbrella-$version-aarch64-apple-darwin.tar.gz"
+          cp "$FILE" "$named"
+          shasum -a 256 "$named" > "$named.sha256"
+          gh release create "v$version" "$named" "$named.sha256" \
+            --target "$GITHUB_SHA" --title "codeumbrella $version" --generate-notes
       # The Python of the GitHub Mac refuses a plain `pip install`. So the
       # Cloudsmith tool gets a Python folder of its own.
       - run: |
