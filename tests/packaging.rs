@@ -1,5 +1,5 @@
-//! Tests of the plugin files and the README. They read files only.
-//! They do not start Claude, Codex or the network.
+//! Tests of the plugin files, the README and `install.sh`. They do not
+//! start Claude, Codex or the network.
 
 use serde_json::Value;
 use std::path::{Path, PathBuf};
@@ -180,6 +180,103 @@ fn skill_keeps_its_name() {
 fn install_script_still_installs_the_command() {
     let s = text("install.sh");
     assert!(s.contains("cargo install --path . --locked"));
+}
+
+/// Runs a copy of `install.sh` in a new git folder. The tools `gh` and
+/// `claude` are simulated, `cargo` is not there, and the store is a folder.
+/// `store` is `good`, `bad` (a checksum that does not agree) or `none`.
+/// It gives the output, the result and the home folder.
+fn run_install(test: &str, store: &str) -> (String, bool, PathBuf) {
+    use std::os::unix::fs::PermissionsExt;
+    use std::process::Command;
+    let dir = std::env::temp_dir().join(format!("cu-install-{test}-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    let (repo, home, bin) = (dir.join("repo"), dir.join("home"), dir.join("bin"));
+    for d in [
+        &repo.join("skills/codeumbrella"),
+        &home.join(".claude"),
+        &bin,
+    ] {
+        std::fs::create_dir_all(d).expect("make a folder");
+    }
+    std::fs::copy(root().join("install.sh"), repo.join("install.sh")).expect("copy install.sh");
+    std::fs::write(repo.join("skills/codeumbrella/SKILL.md"), "x").expect("write a page");
+    for tool in ["gh", "claude"] {
+        std::fs::write(bin.join(tool), "#!/bin/sh\nexit 0\n").expect("write a tool");
+        let mode = std::fs::Permissions::from_mode(0o755);
+        std::fs::set_permissions(bin.join(tool), mode).expect("set the mode");
+    }
+    let path = format!("{}:/usr/bin:/bin", bin.display());
+    let sh = |cwd: &Path, line: &str| {
+        let out = Command::new("/bin/sh")
+            .args(["-c", line])
+            .current_dir(cwd)
+            .env("HOME", &home)
+            .env("PATH", &path)
+            .env("PACKED", env!("CARGO_BIN_EXE_codeumbrella"))
+            .env(
+                "CODEUMBRELLA_STORE",
+                format!("file://{}/store", dir.display()),
+            )
+            .output()
+            .expect("start a shell");
+        let mut text = String::from_utf8_lossy(&out.stdout).into_owned();
+        text.push_str(&String::from_utf8_lossy(&out.stderr));
+        (text, out.status.success())
+    };
+    let commit =
+        "git init -q && git add . && git -c user.name=t -c user.email=t@t.t commit -q -m t";
+    let (text, ok) = sh(&repo, commit);
+    assert!(ok, "git: {text}");
+    if store != "none" {
+        // The same file names and folders as the GitHub step and Cloudsmith.
+        let pack = "c=$(git -C repo rev-parse HEAD) n=codeumbrella-aarch64-apple-darwin
+            f=codeumbrella-$c-aarch64-apple-darwin.tar.gz
+            a=store/raw/names/$n/versions/$c b=store/raw/names/$n-sha256/versions/$c
+            mkdir -p pack $a $b && cp \"$PACKED\" pack/codeumbrella
+            tar -czf $a/$f -C pack codeumbrella && (cd $a && shasum -a 256 $f) > $b/$f.sha256";
+        let (text, ok) = sh(&dir, &format!("cd {} && {pack}", dir.display()));
+        assert!(ok, "pack: {text}");
+        if store == "bad" {
+            let (text, ok) = sh(
+                &dir,
+                "for f in store/raw/names/*-sha256/versions/*/*; do sed -i.x 's/^..../0000/' $f; done",
+            );
+            assert!(ok, "bad checksum: {text}");
+        }
+    }
+    let (text, ok) = sh(&repo, "./install.sh");
+    (text, ok, home)
+}
+
+#[test]
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+fn install_script_downloads_the_built_command_with_no_cargo() {
+    let (text, ok, home) = run_install("good", "good");
+    assert!(ok, "{text}");
+    assert!(text.contains("Checksum: OK"), "{text}");
+    assert!(home.join(".cargo/bin/codeumbrella").is_file(), "{text}");
+    assert!(home.join(".claude/skills/codeumbrella").exists(), "{text}");
+}
+
+#[test]
+fn install_script_tells_how_to_get_cargo_when_the_store_has_no_file() {
+    let (text, ok, home) = run_install("none", "none");
+    assert!(!ok, "{text}");
+    for part in ["Not found: cargo", "sh.rustup.rs", "Nothing was installed."] {
+        assert!(text.contains(part), "the output lacks `{part}`: {text}");
+    }
+    assert!(!home.join(".cargo").exists(), "{text}");
+    assert!(!home.join(".claude/skills").exists(), "{text}");
+}
+
+#[test]
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+fn install_script_refuses_a_file_with_a_bad_checksum() {
+    let (text, ok, home) = run_install("bad", "bad");
+    assert!(!ok, "{text}");
+    assert!(text.contains("checksum of the downloaded file"), "{text}");
+    assert!(!home.join(".cargo").exists(), "{text}");
 }
 
 #[test]
