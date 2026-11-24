@@ -186,10 +186,10 @@ fn install_script_still_installs_the_command() {
 /// `claude` are simulated, `cargo` is not there, and the store is a folder.
 /// `store` is `good`, `bad` (a checksum that does not agree) or `none`.
 /// It gives the output, the result and the home folder.
-fn run_install(test: &str, store: &str) -> (String, bool, PathBuf) {
+fn run_install(label: &str, store: &str) -> (String, bool, PathBuf) {
     use std::os::unix::fs::PermissionsExt;
     use std::process::Command;
-    let dir = std::env::temp_dir().join(format!("cu-install-{test}-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("cu-install-{label}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     let (repo, home, bin) = (dir.join("repo"), dir.join("home"), dir.join("bin"));
     for d in [

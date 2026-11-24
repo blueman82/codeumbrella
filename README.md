@@ -42,7 +42,7 @@ The plugin brings only the chat command `/codeumbrella`. The `codeumbrella` comm
 
 1. Install the command. In this folder, run one of these:
    - `./install.sh`. It also puts the chat command into `~/.claude` and `~/.codex`. The plugin is for a person who does not run `./install.sh`.
-     On a Mac with Apple hardware, it first tries to download the built command of your commit. The file comes from a public Cloudsmith store, and the script compares its checksum. With no file there, it builds the command on your computer with Rust. If a tool is not on the computer, it tells you how to install it. Then it installs nothing.
+     On a Mac with Apple hardware, it first tries to download the built command of your commit. The file comes from a public Cloudsmith store, and the script compares its checksum. With no file there, it builds the command on your computer with Rust. If a tool is not on the computer, it tells you how to install it. It then stops and installs nothing.
    - `cargo install --path . --locked`
 2. Install the plugin for the chat command.
    - Claude Code:
