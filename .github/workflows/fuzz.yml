@@ -1,0 +1,141 @@
+# The fuzzer of the project. AGENTS.md tells about `fuzz/`.
+# On each PR, a GitHub machine fuzzes the PR branch for 10 minutes.
+# Each night, a GitHub machine fuzzes `master` for a longer time.
+# After a crash on `master`, the night job opens an issue `fuzz-crash`.
+# `scripts/fuzz-repair` on the Mac of the person reads that issue.
+name: fuzz
+
+on:
+  pull_request:
+  schedule:
+    # Each night at 02:00 UTC, on the default branch.
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fuzz-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  CARGO_FUZZ: cargo-fuzz@0.13.2
+
+jobs:
+  fuzz_pr:
+    # Each target for 200 seconds, thus 10 minutes in total.
+    # A crash makes the job bad, and the crash file becomes an artifact.
+    if: github.event_name == 'pull_request'
+    # cargo-fuzz works on x86-64 Linux. The fuzz needs no part of macOS.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      # actions/checkout v7.0.1, by its commit, so a moved tag changes nothing.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - run: rustup toolchain install nightly --profile minimal
+      - run: cargo install --locked "$CARGO_FUZZ"
+      # actions/cache/restore v6.1.0, by its commit. It reads the inputs of
+      # the night job. A PR job keeps no inputs of its own.
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: fuzz/corpus
+          key: fuzz-corpus-${{ github.run_id }}
+          restore-keys: fuzz-corpus-
+      - name: fuzz each target
+        run: |
+          for t in fuzz_sheet fuzz_claude_reply fuzz_codex_trace; do
+            mkdir -p "fuzz/corpus/$t"
+            cargo +nightly fuzz run "$t" --sanitizer none \
+              "fuzz/corpus/$t" "fuzz/seeds/$t" -- -max_total_time=200
+          done
+      # actions/upload-artifact v7.0.2, by its commit.
+      - if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: fuzz-crash
+          path: fuzz/artifacts
+          if-no-files-found: ignore
+
+  fuzz_master:
+    # Each target for 20 minutes on `master`. The job keeps the inputs from
+    # night to night, and removes the inputs that add no coverage.
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    permissions:
+      contents: read
+      # The only write permission: to open an issue `fuzz-crash`.
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - run: rustup toolchain install nightly --profile minimal
+      - run: cargo install --locked "$CARGO_FUZZ"
+      # actions/cache/restore v6.1.0, by its commit.
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: fuzz/corpus
+          key: fuzz-corpus-${{ github.run_id }}
+          restore-keys: fuzz-corpus-
+      - name: fuzz each target, and open an issue for a crash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh label create fuzz-crash --color B60205 \
+            --description "A crash that the night fuzz found on master" 2>/dev/null || true
+          bad=0
+          for t in fuzz_sheet fuzz_claude_reply fuzz_codex_trace; do
+            mkdir -p "fuzz/corpus/$t"
+            if cargo +nightly fuzz run "$t" --sanitizer none \
+              "fuzz/corpus/$t" "fuzz/seeds/$t" -- -max_total_time=1200; then
+              continue
+            fi
+            bad=1
+            # A build error gives no crash file. The bad job shows it.
+            crash="$(ls -t "fuzz/artifacts/$t"/* 2>/dev/null | head -n 1)"
+            if [ -z "$crash" ]; then
+              continue
+            fi
+            cargo +nightly fuzz tmin "$t" --sanitizer none "$crash" || true
+            small="$(ls -t "fuzz/artifacts/$t"/* | head -n 1)"
+            # One open issue for each target at the maximum.
+            open="$(gh issue list --label fuzz-crash --state open \
+              --search "in:title \"fuzz-crash: $t\"" --json number --jq length)"
+            if [ "$open" != "0" ]; then
+              continue
+            fi
+            input="$(base64 -w0 "$small")"
+            {
+              echo "The night fuzz found a crash in the target $t on master."
+              echo
+              echo "Commit: $GITHUB_SHA"
+              echo "Job: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+              echo
+              echo "Input: $input"
+            } > "$RUNNER_TEMP/issue.md"
+            gh issue create --title "fuzz-crash: $t" --label fuzz-crash \
+              --body-file "$RUNNER_TEMP/issue.md"
+          done
+          for t in fuzz_sheet fuzz_claude_reply fuzz_codex_trace; do
+            cargo +nightly fuzz cmin "$t" --sanitizer none "fuzz/corpus/$t" || true
+          done
+          exit "$bad"
+      # actions/cache/save v6.1.0, by its commit. It keeps the inputs also
+      # after a crash.
+      - if: always()
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: fuzz/corpus
+          key: fuzz-corpus-${{ github.run_id }}
+      # actions/upload-artifact v7.0.2, by its commit.
+      - if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: fuzz-crash
+          path: fuzz/artifacts
+          if-no-files-found: ignore

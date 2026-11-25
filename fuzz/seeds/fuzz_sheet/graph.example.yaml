@@ -1,0 +1,488 @@
+# The instruction sheet of codeumbrella: the steps of the factory and the
+# rules between them. `codeumbrella init` copies this file to
+# `.codeumbrella/graph.yaml` in your project. Change that copy for your project.
+# `codeumbrella init --update` replaces that copy with this file. It keeps the
+# old one as `graph.yaml.before`, so move your changes back by hand.
+#
+# The lines that a step can have:
+#
+#   type       Who does the step. `worker` (the default), `person`, `command`
+#              or `fan`.
+#              worker:  an AI worker does the step.
+#              person:  the run stops until you answer yes or no.
+#              command: the supervisor runs the commands in `run`. No AI.
+#              fan:     the supervisor does the steps in `fan` at the same time.
+#   role       Only for a worker step. The rules page of the worker is
+#              `.codeumbrella/roles/<role>.md`. You can add your own roles.
+#              A new role must also have its two settings files in that
+#              folder: `<role>.claude.json` and `<role>.codex.txt`.
+#   run        Only for a command step. A list of commands. Each command is a
+#              list of words. In a word, {run} is the id of the run.
+#              If a command gives an error, the result of the step is bad.
+#   fan        Only for a fan step. A list of worker steps. They run at the
+#              same time. The fan step waits for all of them. Its result is
+#              good only if all of them are good. A step in this list has
+#              only `role`, `reads`, `tool`, `model` and `effort`.
+#   tool       Only for a worker step. `claude` or `codex`. With no line, the
+#              step uses the tool of the run (`--tool` of `run`, default claude).
+#   model      Only for a worker step. A model name of that tool. With no line,
+#              the tool uses its default. Letters, digits, `.`, `-`, `_`; no `-` first.
+#   effort     Only for a worker step. How much the AI thinks, for example
+#              `low`, `medium`, `high` or `xhigh`. With no line, the tool uses
+#              its default. Same characters as `model`.
+#   reads      The papers that the step reads. A paper is a folder of files
+#              that one step writes for other steps.
+#   writes     The papers that the step writes. No other worker can change them.
+#              You can change a paper while the run waits for your answer.
+#   next       The step after a good result. With no `next`, the run ends.
+#              The next worker gets the short result of the step before.
+#   on_bad     The step after a bad result. With no `on_bad`, a bad result
+#              stops the run. The step that `on_bad` goes to must have `max_tries`.
+#              For a person step, a no is a bad result. The text that you give
+#              with the no goes to the next worker.
+#   max_tries  The maximum number of times that the run does this step.
+#              At the maximum, the run stops and tells you. The count is for
+#              the full run. The command `resume` sets it to 0 for that step.
+
+# Guide for `model` and `effort`. Set them in a step only when you need them.
+#   Claude models: `fable` for the hardest work with many steps; `opus` for
+#     hard work; `sonnet` for usual coding; `haiku` for simple work that
+#     occurs many times.
+#   Codex models: `gpt-6.2-astra` for the hardest work; `gpt-6.2-sol` for usual
+#     coding; `gpt-6.1-sol` for long work at a lower cost; `gpt-6-luna` for
+#     focused work that occurs many times.
+#   Effort, for both tools: `low` for fast tasks with clear limits; `medium`
+#     for tasks that have some planning; `high` for hard work with many steps;
+#     `xhigh` for the hardest work, when time is not important.
+#   Start in the middle. Go higher only when a run shows a better result.
+#   Model names change. The pages of Anthropic and OpenAI have the current names.
+# Example step:
+#   build:
+#     role: builder
+#     tool: codex
+#     model: gpt-6.2-sol
+#     effort: medium
+#     reads: [spec]
+#     next: check
+
+# The name of the first step.
+start: copy
+
+steps:
+  # The workers write in a copy of the project in the run folder. A run does
+  # not change your project folder or its branch. After status Done, get the
+  # code with `git pull`. A tool in your project folder, for example in `.venv`,
+  # needs its full path in the test command.
+  copy:
+    type: command
+    run:
+      - [git, clone, --quiet, --no-hardlinks, ., ".codeumbrella/runs/{run}/work"]
+    next: plan
+
+  # A planner writes the description of the work and the tests. It also
+  # writes the paper `pr`: the title of the PR and parts 1 to 5 of its text.
+  plan:
+    role: planner
+    writes: [spec, tests, pr]
+    max_tries: 3
+    next: attack_plan
+
+  # An attacker looks for the weak points of the spec and the tests. It
+  # writes only in a scratch folder in the temp folder of the computer.
+  # A bad result goes to the planner, who corrects the plan.
+  # Then the attacker looks again. There are 3 attacks at the maximum
+  # for each plan. After the last correction, you see the tests.
+  # The steps go in one line, with no path back. Thus the two workers
+  # cannot go in a circle.
+  # Remove these six steps for a faster run, and set `next` of `plan` to
+  # `look_at_tests`.
+  attack_plan:
+    role: attacker
+    reads: [spec, tests]
+    on_bad: correct_plan
+    next: look_at_tests
+
+  correct_plan:
+    role: planner
+    writes: [spec, tests, pr]
+    max_tries: 3
+    next: attack_plan_2
+
+  attack_plan_2:
+    role: attacker
+    reads: [spec, tests]
+    on_bad: correct_plan_2
+    next: look_at_tests
+
+  correct_plan_2:
+    role: planner
+    writes: [spec, tests, pr]
+    max_tries: 3
+    next: attack_plan_3
+
+  attack_plan_3:
+    role: attacker
+    reads: [spec, tests]
+    on_bad: correct_plan_3
+    next: look_at_tests
+
+  correct_plan_3:
+    role: planner
+    writes: [spec, tests, pr]
+    max_tries: 3
+    next: look_at_tests
+
+  # You look at the tests. A no sends the work back to the planner.
+  # When you trust the planner, remove this step and change `next` of `plan`.
+  look_at_tests:
+    type: person
+    on_bad: plan
+    next: mark
+
+  # No AI. This step writes the commit of this moment into the git name
+  # `refs/codeumbrella/before` of the work copy. The step `work_was_done`
+  # looks for a new commit after it. After each yes for the tests, it runs
+  # again. Thus a commit from before a no does not count.
+  # A worker can write the git config of the work copy, and `update-ref` can
+  # start a hook. So the call has `-c core.hooksPath=/dev/null`.
+  mark:
+    type: command
+    run:
+      - [git, -c, core.hooksPath=/dev/null, -C, ".codeumbrella/runs/{run}/work", update-ref, refs/codeumbrella/before, HEAD]
+    next: build
+
+  # A builder writes the code and commits it.
+  # A bad result goes to the planner, as a no of yours does. This is for a
+  # paper test that is bad in its own setup. The planner corrects only that
+  # test. The attacker looks, you see the tests again, and the builder works
+  # again. A bad build uses one of the 3 tries of `plan`. After the third try
+  # the run stops.
+  build:
+    role: builder
+    reads: [spec]
+    on_bad: plan
+    next: simplify
+
+  # A simplifier makes the new code simpler, and does not change what it does.
+  # It changes no test file. This is for new runs.
+  # A run reads the sheet at each command, so do not change the sheet
+  # while a run is active.
+  # For a faster run, remove this step. Then set `next` of `build` to
+  # `work_was_done`.
+  # The simplifier reads the language pages in `roles/languages/` for the
+  # languages of the changed files.
+  simplify:
+    role: simplifier
+    reads: [spec]
+    next: work_was_done
+
+  # No AI. This step looks for a commit after the step `mark`. It comes right
+  # after `simplify`, so only the commits of `build` and `simplify` count.
+  # The commits of `set_version` and `take_master` come after it and do not
+  # count. It writes the new commits into `new-work.bundle` in the run folder.
+  # No step reads that file. With no new commit, git gives an error, so the
+  # result is bad. A bad result goes to `do_work`, then back to this step.
+  # A good second check goes to `take_master`, so the run gets the newest
+  # master and a new version before `write_pr`.
+  # The second command writes the names of the changed files into `files.txt`
+  # in the run folder. A task after this one can read it. It lists only the
+  # files of the builder and the simplifier, because the merge of master
+  # comes after it. The two options `--no-ext-diff` and `--no-textconv` keep a
+  # command of the work copy from running.
+  # A worker can write in `.git` of its work copy. So this step is not a wall
+  # against a worker that cheats. It is a check for a worker that did nothing
+  # by error.
+  work_was_done:
+    type: command
+    run:
+      - [git, -C, ".codeumbrella/runs/{run}/work", bundle, create, ../new-work.bundle, "refs/codeumbrella/before..HEAD"]
+      - [git, -C, ".codeumbrella/runs/{run}/work", diff, --name-only, --no-ext-diff, --no-textconv, --output, ../files.txt, "refs/codeumbrella/before", HEAD]
+    on_bad: do_work
+    next: take_master
+
+  # A builder does the work that the step `work_was_done` did not find. The
+  # builder gets the error text of that step. The run then goes back to
+  # `work_was_done`, as a second check. A builder that makes no commit gives
+  # a bad check again. After the third try the run stops. A bad result goes
+  # to the planner. So a PR with no work and no new version does not get to
+  # the PR question.
+  do_work:
+    role: builder
+    reads: [spec]
+    max_tries: 3
+    on_bad: plan
+    next: work_was_done
+
+  # No AI. Two runs of a project can work at the same time, so master can
+  # change during a run. This step merges the newest master into the branch
+  # of the run, before `learn` and `set_version`. Thus the writer and the
+  # checkers see only the change of the run, and each run gets its own version.
+  # The clean copy fetches the default branch of GitHub. Only the clean copy
+  # fetches from GitHub. A worker can write the git config of the work copy,
+  # for example `url.*.insteadOf`. So the work copy fetches that commit from
+  # the clean copy, with a local fetch. The fetch writes the ref of the
+  # default branch in the work copy, for example `refs/remotes/origin/master`.
+  # Then the merge puts that ref into the branch, with a merge commit. No
+  # rebase and no forced push. A branch with the newest master stays as it is.
+  # The step runs with no sandbox in a copy that a worker can write. So each
+  # git call has `-c core.fsmonitor=false`, `-c core.hooksPath=/dev/null` and
+  # `-c commit.gpgSign=false`. The merge has `--no-edit` and `--no-verify`.
+  # The config of the work copy can have only the names of a clean clone, and
+  # `user.name` and `user.email`. Each other name gives a bad result before
+  # the fetch, and the message shows that name. Examples are a `filter.`
+  # entry, a merge `driver`, a `url.` entry, a `protocol.` entry,
+  # `core.sshCommand` and `remote.<name>.uploadpack`. Each of them can start a
+  # command or change the local fetch from `../clean`.
+  # A merge that stops for two changes to the same lines runs `git merge
+  # --abort` first, then gives a bad result. A bad result goes to `fix_merge`.
+  # Each time through the step uses one try. After the third try the run
+  # stops. A short `sh -c` text does the check, the fetch and the merge.
+  take_master:
+    type: command
+    run:
+      - [git, -c, core.fsmonitor=false, -c, core.hooksPath=/dev/null, -c, commit.gpgSign=false, init, --quiet, ".codeumbrella/runs/{run}/clean"]
+      - [git, -c, core.fsmonitor=false, -c, core.hooksPath=/dev/null, -c, commit.gpgSign=false, -C, ".codeumbrella/runs/{run}/clean", config, include.path, ../../../../../.git/config]
+      - [git, -c, core.fsmonitor=false, -c, core.hooksPath=/dev/null, -c, commit.gpgSign=false, -C, ".codeumbrella/runs/{run}/clean", fetch, --quiet, --recurse-submodules=no, origin]
+      - [git, -c, core.fsmonitor=false, -c, core.hooksPath=/dev/null, -c, commit.gpgSign=false, -C, ".codeumbrella/runs/{run}/clean", remote, set-head, origin, --auto]
+      - [sh, -c, 'g="git -c core.fsmonitor=false -c core.hooksPath=/dev/null -c commit.gpgSign=false"; w=.codeumbrella/runs/{run}/work; c=.codeumbrella/runs/{run}/clean; n=$($g -C "$w" config --local --includes --list --name-only) || { echo "refused, git cannot read the config of the work copy" >&2; exit 1; }; n=$(printf "%s\\n" "$n" | grep -Evx "core\\.(repositoryformatversion|filemode|bare|logallrefupdates|ignorecase|precomposeunicode|symlinks)|remote\\.origin\\.(url|fetch)|branch\\..*\\.(remote|merge)|user\\.(name|email)"); if [ -n "$n" ]; then echo "refused, the config of the work copy has: $n" >&2; exit 1; fi; b=$($g -C "$c" symbolic-ref refs/remotes/origin/HEAD) && $g -C "$w" fetch --quiet --recurse-submodules=no ../clean "+$b:$b" && { $g -C "$w" merge --no-edit --no-verify "$b" || { $g -C "$w" merge --abort; exit 1; }; }']
+    max_tries: 3
+    on_bad: fix_merge
+    next: learn
+
+  # A builder repairs a merge that `take_master` could not do. The builder
+  # gets the error of `take_master`. It merges the default branch of the work
+  # copy, repairs each line with two changes, and runs the test command.
+  # Then it commits. Then the run goes to `take_master` again. A bad result goes to
+  # the planner.
+  fix_merge:
+    role: builder
+    reads: [spec]
+    max_tries: 3
+    on_bad: plan
+    next: take_master
+
+  # A learner reads the log of this run and of the runs before it. It finds
+  # each bad result and each no of yours. A lesson that a test can show
+  # becomes a lesson test on the branch. Each other lesson becomes a short
+  # entry in the paper `lessons`. After a no, the run comes here again.
+  # A bad result stops the run. The step `repair` does not come here.
+  # For a faster run, remove four parts together: this step, `lessons` in
+  # the `reads` of `check_safety`, `lessons` in the `reads` of
+  # `check_review`, and `next: save_lessons` of `merge`.
+  # Then set `next` of `take_master` to `set_version`.
+  learn:
+    role: learner
+    reads: [spec]
+    writes: [lessons]
+    next: set_version
+
+  # No AI. This step runs the script `.codeumbrella/set-version` of your
+  # project on the work copy. The script sets the version of the project and
+  # commits it, only if a file changed. It does not push. `init` writes a
+  # default script that does nothing, and `init --update` keeps your script.
+  # Without a script, the run stops here. A bad result stops the run. The
+  # writer then reads the version for the PR text from the branch.
+  # The script runs with no sandbox, as each command step does. Only you
+  # write it: a worker cannot write in `.codeumbrella`. A worker can write the
+  # git config of the work copy. So each git call in it should have
+  # `-c core.fsmonitor=false`, and a commit `-c core.hooksPath=/dev/null` and
+  # `--no-verify`. Stop with an error if the copy has a git filter.
+  set_version:
+    type: command
+    run:
+      - [sh, .codeumbrella/set-version, ".codeumbrella/runs/{run}/work"]
+    next: write_pr
+
+  # A writer reads the change with git and adds parts 6 to 8 to the PR text
+  # in the paper `pr`: the version line, one part for each area of the change
+  # with the file names, and the PR text checklist. It changes only `body.md`
+  # of that paper. It comes after `learn` and after each `repair`, so the PR
+  # text agrees with the change before each check. A bad result stops the run.
+  write_pr:
+    role: writer
+    reads: [spec]
+    writes: [pr]
+    next: check
+
+  # Five checkers look at the work at the same time. This step is a fan.
+  # The result is good only if all the steps in the `fan` line are good.
+  # A bad result goes to the repair step, with the report of each checker.
+  check:
+    type: fan
+    fan: [check_tests, check_safety, check_review, check_security, check_use]
+    on_bad: repair
+    next: no_locked_files
+
+  # This checker runs the tests that you gave approval for.
+  check_tests:
+    role: checker
+    reads: [spec, tests]
+
+  # This checker reads the change. It looks for keys, weaker tests and
+  # changes that the task does not want. It cannot write a file.
+  # It does not read the commit that the tests checker makes at the same time.
+  # It also reads the paper `lessons` for an entry that makes a wall weaker.
+  check_safety:
+    role: safety
+    reads: [spec, lessons]
+
+  # A reviewer reads the change for errors, hidden errors, tests that show
+  # nothing, wrong comments and broken project rules. It cannot write a file.
+  # It also compares the paper `pr` with the change.
+  # It also reads the paper `lessons` for plain words.
+  # This is for new runs.
+  # A run reads the sheet at each command, so do not change the sheet
+  # while a run is active. For a faster run, remove this step
+  # and its name in the `fan` line of `check`.
+  # The reviewer reads the language pages in `roles/languages/` too.
+  check_review:
+    role: reviewer
+    reads: [spec, pr, lessons]
+
+  # A security checker reads the change for unchecked input, weaker checks of
+  # a person, weak keys, new packages and safety settings that are off. It
+  # cannot write a file. This is for new runs.
+  # A run reads the sheet at each command, so do not change the sheet
+  # while a run is active. For a faster run, remove this step
+  # and its name in the `fan` line of `check`.
+  check_security:
+    role: security
+    reads: [spec]
+
+  # This checker uses the work as a user does. It clones the run branch into
+  # a scratch folder in the temp folder and builds it there. It runs each
+  # example of the section "Examples for a user" of the spec. It compares
+  # each result with the spec. It changes no file of the project.
+  # For a faster run, remove this step and its name in the `fan` line of
+  # `check`.
+  check_use:
+    role: user
+    reads: [spec]
+
+  # A builder repairs the code. Then the writer makes the PR text agree with
+  # the new change, and the checkers look again.
+  # The builder gets the report of the checker.
+  # The 3 tries are for all the bad checks of one run.
+  # A bad result of the builder goes to the plan, as a bad build does.
+  # This is for a paper test that no code can repair. The planner corrects
+  # only that test. A bad repair uses one of the 3 tries of `plan`.
+  # After the third try of `repair` the run stops here.
+  repair:
+    role: builder
+    reads: [spec]
+    max_tries: 3
+    on_bad: plan
+    next: write_pr
+
+  # The run stops here if the work changes a file in a locked folder.
+  # A worker cannot write to these folders, but git can put such a file
+  # into a commit. Remove a folder from the last command if your task must
+  # change it.
+  # A worker can write to the `.git` folder of the project. Thus this step
+  # and the push use a clean copy in the run folder, which no worker can
+  # write to. The copy gets the code of GitHub from GitHub, and only the
+  # branch of the run from the copy in `work`.
+  no_locked_files:
+    type: command
+    run:
+      - [git, init, --quiet, ".codeumbrella/runs/{run}/clean"]
+      - [git, -C, ".codeumbrella/runs/{run}/clean", config, include.path, ../../../../../.git/config]
+      - [git, -C, ".codeumbrella/runs/{run}/clean", fetch, --quiet, --recurse-submodules=no, origin]
+      - [git, -C, ".codeumbrella/runs/{run}/clean", remote, set-head, origin, --auto]
+      - [git, -C, ".codeumbrella/runs/{run}/clean", fetch, --quiet, --recurse-submodules=no, ../work, "+refs/heads/codeumbrella/{run}:refs/heads/codeumbrella/{run}"]
+      - [git, -C, ".codeumbrella/runs/{run}/clean", --no-replace-objects, diff, --quiet, --no-ext-diff, --no-textconv, "refs/remotes/origin/HEAD...refs/heads/codeumbrella/{run}", --, ":(icase).github", ":(icase).claude", ":(icase).codeumbrella"]
+    next: push
+
+  # The supervisor sends the code to GitHub. No worker can push or merge.
+  # Change the three steps below if your project does not use GitHub.
+  # The push sends the commit that the step before looked at, from the
+  # clean copy. The two full names make it go only to the branch of the run.
+  push:
+    type: command
+    run:
+      - [git, -C, ".codeumbrella/runs/{run}/clean", push, --quiet, --no-follow-tags, origin, "refs/heads/codeumbrella/{run}:refs/heads/codeumbrella/{run}"]
+    next: find_pr
+
+  # The word GIT_DIR makes `gh` read the clean copy, not the `.git` folder
+  # of the project. A worker can write to that folder.
+  # Is there a PR for this run? Yes: put the title and the text of the paper
+  # `pr` into it, so the PR has no text of an earlier try. Go to your approval.
+  # No: open one.
+  # The command `check_pr` of `find_pr` and `open_pr` refuses the paper `pr`
+  # if its folder or one of its two files is a link. Thus no file outside the paper goes to
+  # GitHub. A refused paper gives a bad result, and the run stops at `open_pr`.
+  find_pr:
+    type: command
+    run:
+      - [env, "GIT_DIR=.codeumbrella/runs/{run}/clean/.git", gh, pr, view, "codeumbrella/{run}", --json, url, --jq, .url]
+      - &check_pr [sh, -c, 'd=.codeumbrella/runs/{run}/papers/pr; [ -d "$d" ] && [ ! -L "$d" ] || { echo "the paper pr is not a folder: $d" >&2; exit 1; }; for f in .codeumbrella/runs/{run}/papers/pr/title.txt .codeumbrella/runs/{run}/papers/pr/body.md; do [ -f "$f" ] && [ ! -L "$f" ] && [ -n "$(find "$f" -prune -links 1)" ] || { echo "refused, not a plain file with one link: $f" >&2; exit 1; }; done']
+      - [env, "GIT_DIR=.codeumbrella/runs/{run}/clean/.git", sh, -c, 'gh pr edit "codeumbrella/{run}" --title "$(cat .codeumbrella/runs/{run}/papers/pr/title.txt)" --body-file .codeumbrella/runs/{run}/papers/pr/body.md']
+    on_bad: open_pr
+    next: approval
+
+  # Opens the PR of the run branch. The title is `title.txt` of the paper
+  # `pr`, and the text is `body.md`.
+  open_pr:
+    type: command
+    run:
+      - *check_pr
+      - [env, "GIT_DIR=.codeumbrella/runs/{run}/clean/.git", sh, -c, 'gh pr create --head "codeumbrella/{run}" --title "$(cat .codeumbrella/runs/{run}/papers/pr/title.txt)" --body-file .codeumbrella/runs/{run}/papers/pr/body.md']
+    max_tries: 2
+    next: approval
+
+  # You look at the PR on GitHub and answer yes or no.
+  # A no with your text sends the work to the planner. The planner corrects
+  # the spec and the tests. You then see the tests again.
+  approval:
+    type: person
+    on_bad: plan
+    next: same_master
+
+  # No AI. Master can change while you look at the PR. This step fetches the
+  # default branch of GitHub into the clean copy, as `no_locked_files` does.
+  # The result is good only if the branch of the run in the clean copy has
+  # that commit. A bad result goes to `take_master`. The run then does
+  # `learn`, `set_version`, `write_pr`, `check`, `no_locked_files`, `push` and
+  # `find_pr` again, and you get the PR question again. The push stays a
+  # plain push, because the merge only adds commits to the branch. This
+  # step runs no `gh` command and no push.
+  same_master:
+    type: command
+    run:
+      - [git, init, --quiet, ".codeumbrella/runs/{run}/clean"]
+      - [git, -C, ".codeumbrella/runs/{run}/clean", config, include.path, ../../../../../.git/config]
+      - [git, -C, ".codeumbrella/runs/{run}/clean", fetch, --quiet, --recurse-submodules=no, origin]
+      - [git, -C, ".codeumbrella/runs/{run}/clean", remote, set-head, origin, --auto]
+      - [git, -C, ".codeumbrella/runs/{run}/clean", merge-base, --is-ancestor, refs/remotes/origin/HEAD, "refs/heads/codeumbrella/{run}"]
+    on_bad: take_master
+    next: merge
+
+  # GitHub refuses the merge if a necessary check of the PR is not good.
+  # Other merge types are --merge and --rebase.
+  merge:
+    type: command
+    run:
+      - [env, "GIT_DIR=.codeumbrella/runs/{run}/clean/.git", gh, pr, merge, "codeumbrella/{run}", --squash]
+    next: save_lessons
+
+  # No AI. After the merge, this step copies the paper `lessons` of the run
+  # to `.codeumbrella/lessons.md` in your project. Git does not see that file.
+  # The learner of the next run reads it. A bad merge stops the run before
+  # this step.
+  save_lessons:
+    type: command
+    run:
+      - [cp, ".codeumbrella/runs/{run}/papers/lessons/lessons.md", .codeumbrella/lessons.md]
+    next: clean_up
+
+  # No AI. After the merge, this step removes the two copies of the run:
+  # `work` and `clean`. The code is in `master` at that time.
+  # The record of the run stays: the notebook, the log, the papers and the
+  # bundle. To keep the copies, remove this step. Also remove
+  # `next: clean_up` of `save_lessons`.
+  # `rm` gives an error if a folder is not there. Then the run stops with
+  # status Stopped, after a good merge. You can remove the folder by hand.
+  clean_up:
+    type: command
+    run:
+      - [rm, -r, ".codeumbrella/runs/{run}/work", ".codeumbrella/runs/{run}/clean"]

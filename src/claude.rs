@@ -1,7 +1,7 @@
 //! The tool part for Claude: it starts one `claude -p` worker for one step.
 
 use crate::engine::{Job, Numbers, Outcome, Worker};
-use anyhow::{Context, Result, bail, ensure};
+use anyhow::{Context, Error, Result, bail, ensure};
 use serde::Deserialize;
 use std::process::{Child, Command, ExitStatus, Stdio};
 use std::time::{Duration, Instant};
@@ -12,6 +12,9 @@ pub(crate) const SCHEMA: &str = r#"{"type":"object","properties":{"ok":{"type":"
 
 /// The advice for a role file that is not there.
 pub(crate) const INIT: &str = "Run `codeumbrella init --update`.";
+
+/// The error for a reply with no `structured_output`.
+const NO_FORMAT: &str = "claude gave no result in the correct format";
 
 /// Starts Claude workers.
 #[derive(Debug)]
@@ -95,26 +98,47 @@ impl Claude {
             .context("cannot start the claude command")?;
         let (status, seconds) = wait(child, self.time_limit, job.dir)?;
         numbers.seconds = Some(seconds);
-        // The last line of the trace is the result.
         let text = fs::read_to_string(&out)?;
-        let reply: Reply = serde_json::from_str(text.lines().last().unwrap_or_default())
-            .with_context(|| format!("claude gave no result; see {}", err.display()))?;
-        numbers.dollars = reply.total_cost_usd;
-        numbers.turns = reply.num_turns;
-        numbers.model = reply.model_usage.and_then(|m| m.keys().next().cloned());
-        if let Some(u) = reply.usage {
-            let input = u.input_tokens + u.cache_creation_input_tokens;
-            numbers.tokens_in = Some(input + u.cache_read_input_tokens);
-            numbers.tokens_out = Some(u.output_tokens);
-        }
-        if reply.is_error {
-            bail!("claude reported an error: {}", reply.result);
-        }
-        ensure!(status.success(), "claude ended with an error: {status}");
-        reply
-            .structured_output
-            .context("claude gave no result in the correct format")
+        let result = read_reply(&text, numbers).map_err(|e| {
+            // With no reply, the error names the file that tells why.
+            match e.downcast::<serde_json::Error>() {
+                Ok(json) => Error::new(json)
+                    .context(format!("claude gave no result; see {}", err.display())),
+                Err(other) => other,
+            }
+        });
+        // No reply, and an error that claude reported, come before the exit status.
+        let first = matches!(&result, Err(e) if e.to_string() != NO_FORMAT);
+        ensure!(
+            first || status.success(),
+            "claude ended with an error: {status}"
+        );
+        result
     }
+}
+
+/// Reads the reply text of a Claude worker: the last line is the result. It
+/// writes the cost, the turns, the model and the tokens into `numbers`.
+///
+/// # Errors
+/// Gives an error for a last line that is not a reply, for an error that
+/// claude reported, and for a reply with no result in the correct format.
+pub fn read_reply(text: &str, numbers: &mut Numbers) -> Result<Outcome> {
+    let reply: Reply = serde_json::from_str(text.lines().last().unwrap_or_default())
+        .context("claude gave no result")?;
+    numbers.dollars = reply.total_cost_usd;
+    numbers.turns = reply.num_turns;
+    numbers.model = reply.model_usage.and_then(|m| m.keys().next().cloned());
+    if let Some(u) = reply.usage {
+        // A sum that is too large stays at the maximum.
+        let input = u.input_tokens.saturating_add(u.cache_creation_input_tokens);
+        numbers.tokens_in = Some(input.saturating_add(u.cache_read_input_tokens));
+        numbers.tokens_out = Some(u.output_tokens);
+    }
+    if reply.is_error {
+        bail!("claude reported an error: {}", reply.result);
+    }
+    reply.structured_output.context(NO_FORMAT)
 }
 
 /// The trace file and the error file of this try. A new try gets a new number.

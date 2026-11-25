@@ -838,7 +838,7 @@ fn agents_md_has_the_two_commands_the_two_rows_and_the_word() {
 #[test]
 fn agents_md_has_the_new_limit_and_the_safety_line_for_the_script() {
     let agents = text("AGENTS.md");
-    assert!(agents.contains("`src/lib.rs`): 1100 lines of code."));
+    assert!(agents.contains("`src/lib.rs`): 2000 lines of code."));
     assert!(!agents.contains("`src/lib.rs`): 1000 lines of code."));
     let rules = section("AGENTS.md", "Safety rules");
     let line = rules.lines().find(|l| l.contains("set-version"));
