@@ -121,7 +121,7 @@ an error · a bad result with no path for it · a changed paper · a maximum
 - The queue is the folder `.codeumbrella/queue/`: one text file for each task that waits. `codeumbrella queue` shows it. `codeumbrella run --next` starts the first file and moves it into the run as `task.txt`. The supervisor does not start a run by itself.
 - The step `set_version` comes after `learn` and before `write_pr`. It runs the script `.codeumbrella/set-version` on the work copy. The script sets the version and commits it. No task text names a version. `work_was_done` also writes `files.txt`, the names of the files of the new commits.
 - The step `mark` writes the commit of your yes for the tests into a git name. It has no AI.
-- Before that, `mark` writes `new-work.bundle` and `files.txt` for builder commits that no check saw, also after a bad build.
+- Before that, `mark` writes `new-work.bundle` and `files.txt` for builder commits that no check saw, also after a bad build. It does this only while the run folder has no `new-work.bundle`.
 - The step `copy_tests` copies the paper tests into the work copy and commits them. Then it moves that git name to its commit. It has no AI.
 - A worker that runs again in a run gets the list of papers changed since its last run.
 - The step `work_was_done` comes right after `simplify`. With no commit of `build` or `simplify` after `copy_tests` and no `new-work.bundle`, git gives an error. The run then goes to `do_work` and back to this check. After the third try of `do_work` the run stops.

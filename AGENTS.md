@@ -257,7 +257,7 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - `work_was_done` is good with no new commit if `new-work.bundle` is in the run folder. A worker cannot write that file.
 - A run of this project showed the cause. A build with complete code stopped a run after a no.
 - The check cannot see why the run came back. A bad repair or `fix_merge` that goes to the plan gets the same path.
-- `mark` and `work_was_done` run git in the work copy with no sandbox. Their git calls with a script have `-c core.fsmonitor=false`.
+- `mark` and `work_was_done` run git in the work copy with no sandbox. The git calls in their shell text have `-c core.fsmonitor=false`. The diff of `work_was_done` does not have it.
 - A worker can write in `.git` of its work copy. So `work_was_done` is not a wall against a worker that cheats. It finds a worker that did nothing by error.
 - `run --next` starts while a different run is active. The move of the queue file to the run folder gives the task to one command only. A command that gets no task ends with an error and removes its run folder. Cause: on 20 November 2026 four tasks waited in a queue, one at a time.
 - `take_master` merges the newest master into the branch with a merge commit. The push stays plain. It has no rebase and no forced push. The clean copy fetches from GitHub. The work copy fetches only from the clean copy. A `filter.` entry or a merge driver in the config of the work copy gives a bad result. Cause: on 20 November 2026 two PRs of two runs could change the same file or get the same version. A worker can write that config.

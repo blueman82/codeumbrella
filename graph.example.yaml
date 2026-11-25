@@ -145,7 +145,7 @@ steps:
   # commit after it. After each yes for the tests, the two steps run
   # again.
   #
-  # A bad build, for example, leaves work that no check saw. The first
+  # After a bad build, for example, no check saw the work. The first
   # command keeps that work before the step moves the name. It writes
   # `new-work.bundle` and `files.txt` in the run folder only if three things
   # are correct. The git name is there, the run folder has no
