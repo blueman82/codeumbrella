@@ -133,7 +133,7 @@ an error · a bad result with no path for it · a changed paper · a maximum
 - The learner writes a lesson test on the run branch, or a short entry in the paper `lessons`.
 - After the merge, the step `save_lessons` adds the changes of that paper to `.codeumbrella/lessons.md`. Git does not see that file.
 - The learner removes no entry. It marks a done entry with a strikethrough and the run id of the repair.
-- Then the step `tidy_lessons` removes each done entry whose PR is merged. If `gh` gives an error, it removes nothing.
+- Then the step `tidy_lessons` removes a done entry only if its PR is merged. If `gh` gives an error, it removes nothing.
 - Then the step `clean_up` removes the two copies `work` and `clean`. The notebook, the log and the papers stay.
 - A run that stops before the merge keeps its copies, because `resume` uses them.
 - For a faster run, remove four parts together. They are the step `learn`, `lessons` in `check_safety`, `lessons` in `check_review`, and `next: save_lessons` of `merge`. Then the run ends after `merge`, and the copies stay.

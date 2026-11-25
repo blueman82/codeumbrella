@@ -473,11 +473,13 @@ steps:
   # `lessons` to `.codeumbrella/lessons.md` in your project. Git does not see
   # that file. The learner of the next run reads it. A bad merge stops the run
   # before this step.
+  #
   # Two runs can work at the same time. So `git merge-file --union` merges the
   # file of today, `lessons.before.md` of the run and the paper. It keeps the
   # lines of the two sides. Only one line `Runs read to:` stays: the first
   # line, with the newest run id. A line that starts with `- ` stays one time.
   # A done entry removes the line of the same entry with no mark.
+  #
   # With no paper, the result is bad and the file stays.
   save_lessons:
     type: command
