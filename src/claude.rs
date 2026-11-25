@@ -107,13 +107,12 @@ impl Claude {
                 Err(other) => other,
             }
         });
-        // An error that claude reported comes before the exit status.
-        if result
-            .as_ref()
-            .map_or_else(|e| e.to_string() == NO_FORMAT, |_| true)
-        {
-            ensure!(status.success(), "claude ended with an error: {status}");
-        }
+        // No reply, and an error that claude reported, come before the exit status.
+        let first = matches!(&result, Err(e) if e.to_string() != NO_FORMAT);
+        ensure!(
+            first || status.success(),
+            "claude ended with an error: {status}"
+        );
         result
     }
 }
