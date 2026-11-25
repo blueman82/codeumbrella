@@ -1,6 +1,7 @@
 //! Tests: the steps `mark` and `work_was_done`, the new lines of the rules
-//! pages and the documents, and the repair that changes no file. The worker
-//! is simulated. The two new steps run `git` in a test project.
+//! pages and the documents, and the repair that changes no file. Also the
+//! build with no commit after a no. The worker is simulated. The two new
+//! steps run `git` in a test project.
 
 use anyhow::Result;
 use codeumbrella::engine::{Job, Outcome, Run, Status, Worker};
@@ -97,9 +98,10 @@ fn start(dir: &Path, graph: &Graph) -> Run {
 
 /// A simulated worker. It writes its papers and gives a good result. It
 /// makes one commit in the work copy for each step name in `commits`, in
-/// that order.
+/// that order. It gives one bad result for each step name in `bad`.
 struct Sim {
     commits: Mutex<Vec<&'static str>>,
+    bad: Mutex<Vec<&'static str>>,
     made: Mutex<Vec<String>>,
     got: Mutex<Vec<(String, String)>>,
 }
@@ -108,6 +110,7 @@ impl Sim {
     fn new(commits: &[&'static str]) -> Self {
         Self {
             commits: Mutex::new(commits.to_vec()),
+            bad: Mutex::default(),
             made: Mutex::default(),
             got: Mutex::default(),
         }
@@ -118,6 +121,13 @@ impl Sim {
         let got = self.got.lock().unwrap();
         let mine = got.iter().filter(|(s, _)| s == step);
         mine.map(|(_, before)| before.clone()).collect()
+    }
+
+    /// True one time for each name of the step in `bad`.
+    fn is_bad(&self, step: &str) -> bool {
+        let mut bad = self.bad.lock().unwrap();
+        let at = bad.iter().position(|s| *s == step);
+        at.map(|at| bad.remove(at)).is_some()
     }
 }
 
@@ -141,7 +151,7 @@ impl Worker for Sim {
             self.made.lock().unwrap().push(head);
         }
         Ok(Outcome {
-            ok: true,
+            ok: !self.is_bad(job.step),
             summary: format!("{} ran", job.step),
         })
     }
@@ -172,13 +182,46 @@ fn pairs(list: &[(&str, bool)]) -> Vec<(String, bool)> {
     list.iter().map(|(s, ok)| ((*s).to_owned(), *ok)).collect()
 }
 
+/// Answers the open question and goes on.
+fn answer(run: &mut Run, graph: &Graph, worker: &Sim, ok: bool) {
+    let roles = root().join("roles");
+    let words = if ok { "" } else { "Change the heading." };
+    run.answer(ok, words).unwrap();
+    run.go(graph, &roles, worker).unwrap();
+}
+
 /// Does the run to `look_at_tests`, answers yes, and goes on.
 fn to_build(run: &mut Run, graph: &Graph, worker: &Sim) {
     let roles = root().join("roles");
     run.go(graph, &roles, worker).unwrap();
     assert_eq!(run.state.at.as_deref(), Some("look_at_tests"));
-    run.answer(true, "").unwrap();
-    run.go(graph, &roles, worker).unwrap();
+    answer(run, graph, worker, true);
+}
+
+/// A no at the PR question, then the run waits at `look_at_tests`.
+fn no_at_approval(run: &mut Run, graph: &Graph, worker: &Sim) {
+    assert_eq!(run.state.at.as_deref(), Some("approval"));
+    answer(run, graph, worker, false);
+    assert_eq!(run.state.at.as_deref(), Some("look_at_tests"));
+}
+
+/// The path after a yes, for a build that goes to the PR question.
+fn good_path() -> Vec<(String, bool)> {
+    pairs(&[
+        ("mark", true),
+        ("copy_tests", true),
+        ("build", true),
+        ("simplify", true),
+        ("work_was_done", true),
+        ("take_master", true),
+        ("learn", true),
+        ("set_version", true),
+        ("write_pr", true),
+        ("check", true),
+        ("no_locked_files", true),
+        ("push", true),
+        ("find_pr", true),
+    ])
 }
 
 #[test]
@@ -250,22 +293,7 @@ fn with_a_new_commit_work_was_done_is_good_and_changes_no_file() {
     let first = git(&work, &["rev-parse", "HEAD"]);
     let worker = Sim::new(&["build"]);
     to_build(&mut run, &graph, &worker);
-    let path = pairs(&[
-        ("mark", true),
-        ("copy_tests", true),
-        ("build", true),
-        ("simplify", true),
-        ("work_was_done", true),
-        ("take_master", true),
-        ("learn", true),
-        ("set_version", true),
-        ("write_pr", true),
-        ("check", true),
-        ("no_locked_files", true),
-        ("push", true),
-        ("find_pr", true),
-    ]);
-    assert_eq!(after_yes(&run), path);
+    assert_eq!(after_yes(&run), good_path());
     assert_eq!(run.state.at.as_deref(), Some("approval"));
     // `mark` wrote the commit of the yes into the git name.
     let mark = git(&work, &["rev-parse", "refs/codeumbrella/before"]);
@@ -280,44 +308,146 @@ fn with_a_new_commit_work_was_done_is_good_and_changes_no_file() {
 }
 
 #[test]
-fn after_a_no_at_the_approval_a_commit_from_before_does_not_count() {
+fn after_a_no_a_build_with_no_commit_goes_to_the_checks() {
     let dir = project();
     let graph = sheet(&dir);
-    let roles = root().join("roles");
     let mut run = start(&dir, &graph);
     let work = run.dir.join("work");
     let worker = Sim::new(&["build"]);
     to_build(&mut run, &graph, &worker);
-    assert_eq!(run.state.at.as_deref(), Some("approval"));
     let made = worker.made.lock().unwrap().clone();
 
-    run.answer(false, "Change the heading.").unwrap();
-    run.go(&graph, &roles, &worker).unwrap();
-    assert_eq!(run.state.at.as_deref(), Some("look_at_tests"));
-    run.answer(true, "").unwrap();
-    run.go(&graph, &roles, &worker).unwrap();
+    no_at_approval(&mut run, &graph, &worker);
+    answer(&mut run, &graph, &worker, true);
 
-    // `mark` ran again after the second yes.
-    let all = steps(&run);
-    let marks = all.iter().filter(|(s, _)| s == "mark").count();
-    assert_eq!(marks, 2, "{all:?}");
+    // `mark` ran again, and the builder made no commit after it.
     let mark = git(&work, &["rev-parse", "refs/codeumbrella/before"]);
     assert_eq!(mark, made[0]);
-    // The builder made no commit after that yes, so the run stops.
+    assert_eq!(git(&work, &["rev-parse", "HEAD"]), made[0]);
+    assert_eq!(after_yes(&run), good_path(), "{}", run.state.note);
+    assert_eq!(run.state.status, Status::Waiting);
+    assert_eq!(run.state.at.as_deref(), Some("approval"));
+    assert!(worker.got("do_work").is_empty(), "do_work ran");
+    // The first plan and the no. The build used no try.
+    assert_eq!(run.state.tries.get("plan"), Some(&2));
+}
+
+#[test]
+fn after_a_second_no_a_build_with_no_commit_goes_to_the_checks_too() {
+    let dir = project();
+    let graph = sheet(&dir);
+    let mut run = start(&dir, &graph);
+    let worker = Sim::new(&["build"]);
+    to_build(&mut run, &graph, &worker);
+    for _ in 0..2 {
+        no_at_approval(&mut run, &graph, &worker);
+        answer(&mut run, &graph, &worker, true);
+        assert_eq!(after_yes(&run), good_path(), "{}", run.state.note);
+    }
+    assert_eq!(run.state.at.as_deref(), Some("approval"));
+    assert_eq!(run.state.tries.get("plan"), Some(&3));
+}
+
+#[test]
+fn a_no_for_the_tests_before_the_first_build_gives_no_free_check() {
+    let dir = project();
+    let graph = sheet(&dir);
+    let roles = root().join("roles");
+    let mut run = start(&dir, &graph);
+    let worker = Sim::new(&[]);
+    run.go(&graph, &roles, &worker).unwrap();
+    answer(&mut run, &graph, &worker, false);
+    assert_eq!(run.state.at.as_deref(), Some("look_at_tests"));
+    answer(&mut run, &graph, &worker, true);
     let after = after_yes(&run);
-    let names: Vec<&str> = after.iter().map(|(s, _)| s.as_str()).collect();
-    let head = [
-        "mark",
-        "copy_tests",
-        "build",
-        "simplify",
-        "work_was_done",
-        "do_work",
-    ];
-    assert_eq!(names.get(..6), Some(&head[..]), "{after:?}");
-    assert!(!after[4].1, "{after:?}");
-    assert!(!names.contains(&"take_master"), "{names:?}");
+    let bad = ("work_was_done".to_owned(), false);
+    let good = ("work_was_done".to_owned(), true);
+    assert!(after.contains(&bad), "{after:?}");
+    assert!(!after.contains(&good), "{after:?}");
     assert_eq!(run.state.status, Status::Stopped);
+}
+
+#[test]
+fn after_a_no_a_bad_result_of_the_builder_goes_to_the_plan() {
+    let dir = project();
+    let graph = sheet(&dir);
+    let mut run = start(&dir, &graph);
+    let worker = Sim::new(&["build"]);
+    to_build(&mut run, &graph, &worker);
+    no_at_approval(&mut run, &graph, &worker);
+    worker.bad.lock().unwrap().push("build");
+    answer(&mut run, &graph, &worker, true);
+    let head = pairs(&[
+        ("mark", true),
+        ("copy_tests", true),
+        ("build", false),
+        ("plan", true),
+    ]);
+    let after = after_yes(&run);
+    assert_eq!(after.get(..4), Some(&head[..]), "{after:?}");
+    assert_eq!(run.state.tries.get("plan"), Some(&3));
+}
+
+#[test]
+fn after_a_build_with_no_commit_a_bad_review_goes_to_repair() {
+    let dir = project();
+    let graph = sheet(&dir);
+    let mut run = start(&dir, &graph);
+    let worker = Sim::new(&["build"]);
+    to_build(&mut run, &graph, &worker);
+    no_at_approval(&mut run, &graph, &worker);
+    worker.bad.lock().unwrap().push("check_review");
+    answer(&mut run, &graph, &worker, true);
+    let path = pairs(&[
+        ("mark", true),
+        ("copy_tests", true),
+        ("build", true),
+        ("simplify", true),
+        ("work_was_done", true),
+        ("take_master", true),
+        ("learn", true),
+        ("set_version", true),
+        ("write_pr", true),
+        ("check", false),
+        ("repair", true),
+        ("write_pr", true),
+        ("check", true),
+        ("no_locked_files", true),
+        ("push", true),
+        ("find_pr", true),
+    ]);
+    assert_eq!(after_yes(&run), path, "{}", run.state.note);
+    let got = worker.got("repair");
+    assert!(got[0].contains("check_review (bad)"), "{got:?}");
+}
+
+/// Does only the step `work_was_done`. Gives the status of the run.
+fn check_alone(run: &mut Run, dir: &Path) -> Status {
+    let mut graph = sheet(dir);
+    let step = graph.steps.get_mut("work_was_done").unwrap();
+    step.next = None;
+    step.on_bad = None;
+    run.state.at = Some("work_was_done".to_owned());
+    let roles = root().join("roles");
+    run.go(&graph, &roles, &Sim::new(&[])).unwrap();
+    run.state.status
+}
+
+#[test]
+fn after_an_earlier_good_check_an_error_of_git_is_still_a_bad_result() {
+    let dir = project();
+    let graph = sheet(&dir);
+    let mut run = start(&dir, &graph);
+    let work = run.dir.join("work");
+    let worker = Sim::new(&["build"]);
+    to_build(&mut run, &graph, &worker);
+    git(&work, &["update-ref", "refs/codeumbrella/before", "HEAD"]);
+    let status = check_alone(&mut run, &dir);
+    assert_eq!(status, Status::Done, "{}", run.state.note);
+    // With no git name of `mark`, git cannot count the commits.
+    git(&work, &["update-ref", "-d", "refs/codeumbrella/before"]);
+    let status = check_alone(&mut run, &dir);
+    assert_eq!(status, Status::Stopped, "{}", run.state.note);
 }
 
 #[test]
@@ -330,7 +460,23 @@ fn the_default_sheet_has_mark_before_build_and_work_was_done_after_simplify() {
     let ends = ["refs/codeumbrella/before", "HEAD"];
     let all = hooks.iter().chain(&words).chain(&ends);
     let all: Vec<&str> = all.copied().collect();
-    assert_eq!(mark.run, [all]);
+    // The first command keeps the work of a builder. The last command
+    // writes the git name, as before.
+    assert_eq!(mark.run.len(), 2, "{:?}", mark.run);
+    assert_eq!(mark.run[1], all);
+    let keep = mark.run[0].join(" ");
+    let wanted = [
+        "refs/codeumbrella/before..HEAD",
+        "new-work.bundle",
+        "files.txt",
+        "core.fsmonitor=false",
+        "core.hooksPath=/dev/null",
+        "--no-ext-diff",
+        "--no-textconv",
+    ];
+    for word in wanted {
+        assert!(keep.contains(word), "{word}: {keep}");
+    }
     assert_eq!(mark.next.as_deref(), Some("copy_tests"));
     let tests = graph.step("look_at_tests").unwrap();
     assert_eq!(tests.next.as_deref(), Some("mark"));
@@ -338,18 +484,21 @@ fn the_default_sheet_has_mark_before_build_and_work_was_done_after_simplify() {
 
     let done = graph.step("work_was_done").unwrap();
     assert_eq!(done.kind, Kind::Command);
-    let bundle = [
-        "git",
-        "-C",
-        WORK,
+    let first = done.run[0].join(" ");
+    let wanted = [
         "bundle",
-        "create",
         "../new-work.bundle",
         "refs/codeumbrella/before..HEAD",
+        "core.fsmonitor=false",
+        "core.hooksPath=/dev/null",
     ];
-    assert_eq!(done.run[0], bundle);
+    for word in wanted {
+        assert!(first.contains(word), "{word}: {first}");
+    }
     assert_eq!(done.on_bad.as_deref(), Some("do_work"));
     assert_eq!(done.next.as_deref(), Some("take_master"));
+    let build = graph.step("build").unwrap();
+    assert_eq!(build.on_bad.as_deref(), Some("plan"));
     let check = graph.step("check").unwrap();
     assert_eq!(check.next.as_deref(), Some("no_locked_files"));
     assert_eq!(check.on_bad.as_deref(), Some("repair"));
@@ -385,6 +534,7 @@ fn comment_above(name: &str) -> String {
         }
         found.push(*line);
     }
+    found.reverse();
     found.join("\n").to_lowercase()
 }
 
@@ -395,6 +545,28 @@ fn the_comments_of_the_sheet_tell_what_the_two_steps_do() {
     let done = comment_above("work_was_done");
     assert!(done.contains("commit"), "{done}");
     assert!(done.contains("not a wall"), "{done}");
+}
+
+#[test]
+fn the_comment_of_work_was_done_tells_the_path_after_a_no() {
+    let done = comment_above("work_was_done").replace("\n  #", "");
+    for word in ["after a no", "new-work.bundle", "files.txt"] {
+        assert!(done.contains(word), "{word}: {done}");
+    }
+}
+
+#[test]
+fn the_comment_and_the_documents_tell_what_mark_keeps() {
+    let mark = comment_above("mark").replace("\n  #", "");
+    assert!(mark.contains("new-work.bundle"), "{mark}");
+    let before = "from before a no does not count";
+    assert!(!mark.contains(before), "{mark}");
+    let agents = section("AGENTS.md", "The sheet");
+    let path = section("ARCHITECTURE.md", "The path of a task");
+    for (name, doc) in [("AGENTS.md", agents), ("ARCHITECTURE.md", path)] {
+        let found = line_with(&doc, "`mark`", "new-work.bundle");
+        assert!(found, "{name}: no line for what mark keeps");
+    }
 }
 
 /// The lines of the rule with this number, with its sub-points.
@@ -445,6 +617,7 @@ fn the_first_rule_of_the_reviewer_looks_for_each_point() {
         "`kept`",
         "`not kept`",
         "ok: false",
+        "full change of the run branch",
     ];
     for word in words {
         assert!(first.contains(word), "{word}: {first}");
@@ -455,6 +628,17 @@ fn the_first_rule_of_the_reviewer_looks_for_each_point() {
 fn rule_10_of_the_builder_lists_each_point_of_the_no() {
     let ten = rule("roles/builder.md", 10);
     for word in ["Points of the no", "ok: false", "`work_was_done`"] {
+        assert!(ten.contains(word), "{word}: {ten}");
+    }
+}
+
+#[test]
+fn rule_10_of_the_builder_wants_a_proof_for_a_no_with_no_changed_file() {
+    let ten = rule("roles/builder.md", 10);
+    let before = "changed no file at all after a no, it gives `ok: false`";
+    assert!(!ten.contains(before), "{ten}");
+    let words = ["`ok: true`", "proof", "line", "paper", "`ok: false`"];
+    for word in words {
         assert!(ten.contains(word), "{word}: {ten}");
     }
 }
@@ -546,6 +730,28 @@ fn the_documents_name_the_two_new_steps() {
             assert!(has_word(&doc, step), "{name}: {step}");
         }
     }
+}
+
+/// True if one line of the text has both words. Capital letters count as
+/// small letters.
+fn line_with(text: &str, first: &str, second: &str) -> bool {
+    text.lines().any(|line| {
+        let low = line.to_lowercase();
+        low.contains(first) && low.contains(second)
+    })
+}
+
+#[test]
+fn the_documents_tell_the_path_of_a_build_with_no_commit_after_a_no() {
+    let agents = section("AGENTS.md", "The sheet");
+    let path = section("ARCHITECTURE.md", "The path of a task");
+    for (name, doc) in [("AGENTS.md", agents), ("ARCHITECTURE.md", path)] {
+        let found = line_with(&doc, "work_was_done", "after a no");
+        assert!(found, "{name}: no line for the path after a no");
+    }
+    let rules = section("AGENTS.md", "Safety rules");
+    let found = line_with(&rules, "work_was_done", "new-work.bundle");
+    assert!(found, "no safety rule for the bundle");
 }
 
 #[test]
