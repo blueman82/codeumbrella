@@ -59,11 +59,54 @@ jobs:
           path: fuzz/artifacts
           if-no-files-found: ignore
 
+  code_changed:
+    # The night fuzz runs only if the code changed since the last night fuzz.
+    # A start by hand always fuzzes. The code is `src`, `fuzz`, `roles`,
+    # `Cargo.toml` and `Cargo.lock`: `fuzz_sheet` also reads `roles`.
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      # To read the list of the earlier runs of this file.
+      actions: read
+    outputs:
+      changed: ${{ steps.compare.outputs.changed }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - id: compare
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # The commit of the last finished night: good, or bad with a crash.
+          # A run that stopped by a time limit does not count.
+          last="$(gh run list --workflow fuzz.yml --branch master --limit 30 \
+            --json databaseId,headSha,conclusion,event \
+            --jq "[.[] | select(.databaseId != $GITHUB_RUN_ID)
+                  | select(.event != \"pull_request\")
+                  | select(.conclusion == \"success\" or .conclusion == \"failure\")][0].headSha // \"\"")"
+          if [ -n "$last" ] && git cat-file -e "$last^{commit}" 2>/dev/null &&
+            git diff --quiet "$last" HEAD -- src fuzz roles Cargo.toml Cargo.lock; then
+            echo "No code change since $last. No fuzz tonight."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
   fuzz_master:
     # Each target for 20 minutes on `master`. The job keeps the inputs from
     # night to night, and removes the inputs that add no coverage.
-    # Only on `master`, also when a person starts it by hand.
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
+    # Only on `master`, and only after a change of the code.
+    needs: code_changed
+    if: needs.code_changed.outputs.changed == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 120
     permissions:
