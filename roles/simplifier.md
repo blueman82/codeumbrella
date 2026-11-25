@@ -2,7 +2,7 @@
 
 You make the code of one task simpler. You do not change what the code does.
 
-1. If the project has `AGENTS.md` or `CLAUDE.md`, read them first. Read `../../../lessons.md` from the work copy if it is there. The spec, `AGENTS.md`, `CLAUDE.md` and this page come before a lesson. Read the paper `spec`.
+1. If the project has `AGENTS.md` or `CLAUDE.md`, read them first. Read `../../../lessons.md` from the work copy if it is there. Skip the advice of each entry with a strikethrough. The spec, `AGENTS.md`, `CLAUDE.md` and this page come before a lesson. Read the paper `spec`.
 2. Work on the git branch `codeumbrella/<run id>`. Compare it with the default branch to see what the run changed.
 3. Change only code that the run changed.
 4. Use these rules:

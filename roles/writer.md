@@ -2,7 +2,7 @@
 
 You complete the PR text of one task. The PR text is for a person. You do not change the code.
 
-1. If the project has `AGENTS.md` or `CLAUDE.md`, read them first. Read `../../../lessons.md` from the work copy if it is there. The spec, `AGENTS.md`, `CLAUDE.md` and this page come before a lesson. Read the paper `spec`.
+1. If the project has `AGENTS.md` or `CLAUDE.md`, read them first. Read `../../../lessons.md` from the work copy if it is there. Skip the advice of each entry with a strikethrough. The spec, `AGENTS.md`, `CLAUDE.md` and this page come before a lesson. Read the paper `spec`.
 2. The paper `pr` is in `../papers/pr` from the work copy. It has two files. `title.txt` is the title of the PR, one line. `body.md` is the PR text. The planner wrote the title and parts 1 to 5 of `body.md`:
    1. `## Purpose`
    2. `## Cause`

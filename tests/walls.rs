@@ -186,8 +186,9 @@ fn only_the_step_save_lessons_writes_the_lessons_file_of_the_project() {
     let graph = Graph::load(&root().join("graph.example.yaml"), &root().join("roles")).unwrap();
     for (name, step) in &graph.steps {
         let mut words = step.run.iter().flatten();
-        let names = words.any(|w| w.ends_with(".codeumbrella/lessons.md"));
-        assert_eq!(names, name == "save_lessons", "{name}");
+        let names = words.any(|w| w.contains(".codeumbrella/lessons.md"));
+        let writers = ["copy", "save_lessons", "tidy_lessons"];
+        assert_eq!(names, writers.contains(&name.as_str()), "{name}");
     }
     // The learner writes only in its work copy and in the paper `lessons`.
     let file = json("roles/learner.claude.json");
