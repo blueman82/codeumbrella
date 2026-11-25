@@ -405,7 +405,7 @@ fn it_refuses_a_paper_folder_that_is_a_link() {
     assert_eq!(head(&w.work), first);
 }
 
-/// A script that makes the file `ran` in `dir`. Gives both paths.
+/// A script that makes the file `ran` in `dir`. Gives the two paths.
 fn marker(dir: &Path) -> (PathBuf, PathBuf) {
     let ran = dir.join("ran");
     let script = dir.join("marker.sh");
