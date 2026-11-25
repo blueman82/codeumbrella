@@ -59,10 +59,54 @@ jobs:
           path: fuzz/artifacts
           if-no-files-found: ignore
 
+  code_changed:
+    # The night fuzz runs only if the code changed since the last night fuzz.
+    # A start by hand always fuzzes. The code is `src`, `fuzz`, `roles`,
+    # `Cargo.toml` and `Cargo.lock`: `fuzz_sheet` also reads `roles`.
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      # To read the list of the earlier runs of this file.
+      actions: read
+    outputs:
+      changed: ${{ steps.compare.outputs.changed }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - id: compare
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # The commit of the last finished night: good, or bad with a crash.
+          # A run that stopped by a time limit does not count.
+          last="$(gh run list --workflow fuzz.yml --branch master --limit 30 \
+            --json databaseId,headSha,conclusion,event \
+            --jq "[.[] | select(.databaseId != $GITHUB_RUN_ID)
+                  | select(.event != \"pull_request\")
+                  | select(.conclusion == \"success\" or .conclusion == \"failure\")][0].headSha // \"\"")"
+          if [ -n "$last" ] && git cat-file -e "$last^{commit}" 2>/dev/null &&
+            git diff --quiet "$last" HEAD -- src fuzz roles Cargo.toml Cargo.lock; then
+            echo "No code change since $last. No fuzz tonight."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
   fuzz_master:
     # Each target for 20 minutes on `master`. The job keeps the inputs from
     # night to night, and removes the inputs that add no coverage.
-    if: github.event_name != 'pull_request'
+    # Only on `master`, and only after a change of the code.
+    needs: code_changed
+    if: needs.code_changed.outputs.changed == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 120
     permissions:
@@ -81,13 +125,11 @@ jobs:
           path: fuzz/corpus
           key: fuzz-corpus-${{ github.run_id }}
           restore-keys: fuzz-corpus-
-      - name: fuzz each target, and open an issue for a crash
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
+      # This step builds and runs the code of the project. It gets no token.
+      # It writes one line `<target> <small input file>` for each crash.
+      - name: fuzz each target
         run: |
-          gh label create fuzz-crash --color B60205 \
-            --description "A crash that the night fuzz found on master" 2>/dev/null || true
+          : > "$RUNNER_TEMP/crashes.txt"
           bad=0
           for t in fuzz_sheet fuzz_claude_reply fuzz_codex_trace; do
             mkdir -p "fuzz/corpus/$t"
@@ -103,6 +145,27 @@ jobs:
             fi
             cargo +nightly fuzz tmin "$t" --sanitizer none "$crash" || true
             small="$(ls -t "fuzz/artifacts/$t"/* | head -n 1)"
+            echo "$t $small" >> "$RUNNER_TEMP/crashes.txt"
+          done
+          for t in fuzz_sheet fuzz_claude_reply fuzz_codex_trace; do
+            cargo +nightly fuzz cmin "$t" --sanitizer none "fuzz/corpus/$t" || true
+          done
+          exit "$bad"
+      # Only this step gets the token. It runs no code of the project.
+      - name: open an issue for each crash
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          [ -s "$RUNNER_TEMP/crashes.txt" ] || exit 0
+          gh label create fuzz-crash --color B60205 \
+            --description "A crash that the night fuzz found on master" 2>/dev/null || true
+          while read -r t small; do
+            case "$t" in
+              fuzz_sheet|fuzz_claude_reply|fuzz_codex_trace) ;;
+              *) continue ;;
+            esac
             # One open issue for each target at the maximum.
             open="$(gh issue list --label fuzz-crash --state open \
               --search "in:title \"fuzz-crash: $t\"" --json number --jq length)"
@@ -120,11 +183,7 @@ jobs:
             } > "$RUNNER_TEMP/issue.md"
             gh issue create --title "fuzz-crash: $t" --label fuzz-crash \
               --body-file "$RUNNER_TEMP/issue.md"
-          done
-          for t in fuzz_sheet fuzz_claude_reply fuzz_codex_trace; do
-            cargo +nightly fuzz cmin "$t" --sanitizer none "fuzz/corpus/$t" || true
-          done
-          exit "$bad"
+          done < "$RUNNER_TEMP/crashes.txt"
       # actions/cache/save v6.1.0, by its commit. It keeps the inputs also
       # after a crash.
       - if: always()
