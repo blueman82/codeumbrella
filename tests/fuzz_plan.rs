@@ -244,7 +244,7 @@ fn agents_md_names_the_supervisor_limit_of_2000_lines() {
     assert!(text.contains("Each tool part: 200 lines of code."));
 }
 
-// A simulated `claude` and `codex` for a run with the real command.
+// A simulated `claude` and `codex` for a run of the built command.
 
 fn folder(name: &str) -> PathBuf {
     let n = COUNT.fetch_add(1, Ordering::SeqCst);

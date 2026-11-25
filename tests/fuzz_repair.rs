@@ -1,5 +1,5 @@
 //! Tests of `scripts/fuzz-repair` and its launchd pattern. The script runs
-//! with a simulated `gh` and `codeumbrella`. No network, no real run.
+//! with a simulated `gh` and `codeumbrella`. No network, no factory run.
 
 use serde_json::{Value, json};
 use std::os::unix::fs::PermissionsExt;
@@ -37,7 +37,7 @@ mv "DIR/calls/tmp.$$" "DIR/calls/call.$$"
 
 const CARGO: &str = "#!/bin/sh\ntouch \"DIR/cargo.ran\"\n";
 
-/// A simulated `nohup`. The real one fails in the sandbox of a worker.
+/// A simulated `nohup`. The sandbox of a worker blocks the one of macOS.
 const NOHUP: &str = r#"#!/bin/sh
 trap '' HUP
 printf '%s\n' "$@" >> "DIR/nohup.args"
