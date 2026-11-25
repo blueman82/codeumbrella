@@ -504,8 +504,8 @@ steps:
                 if ($0 ~ /^- ~~([^~]|~[^~])*~~ \([^()]*\) Done: run-[0-9]+(-[0-9]+)?$/) {
                   sub(/ Done: [^ ]*$/, "")
                   sub(/^- ~~/, "- ")
-                  match($0, /.*~~ \(/)
-                  marked[substr($0, 1, RLENGTH - 4) substr($0, RLENGTH - 1)] = 1
+                  sub(/~~ \(/, " (")
+                  marked[$0] = 1
                 }
                 next
               }
@@ -533,15 +533,15 @@ steps:
           export LC_ALL=C
           f=.codeumbrella/lessons.md
           [ -f "$f" ] || exit 0
-          done="^- ~~([^~]|~[^~])*~~ \([^()]*\) Done: "
+          entry="^- ~~([^~]|~[^~])*~~ \([^()]*\) Done: "
           merged=
-          for id in $(grep -aE "${done}run-[0-9]+(-[0-9]+)?\$" "$f" | sed "s/.* Done: //" | sort -u); do
+          for id in $(grep -aE "${entry}run-[0-9]+(-[0-9]+)?\$" "$f" | sed "s/.* Done: //" | sort -u); do
             pr=$(gh pr list --head "codeumbrella/$id" --state merged --json number --jq ".[].number") || exit 0
             [ -z "$pr" ] || merged="$merged${merged:+|}$id"
           done
           [ -n "$merged" ] || exit 0
           t=.codeumbrella/runs/{run}/lessons.tidy
-          grep -avE "$done($merged)\$" "$f" > "$t"
+          grep -avE "$entry($merged)\$" "$f" > "$t"
           # grep gives 1 if no line stays.
           [ $? -le 1 ] && cp "$t" "$f"
     next: clean_up
