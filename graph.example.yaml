@@ -145,8 +145,8 @@ steps:
   # commit after it. After each yes for the tests, the two steps run
   # again.
   #
-  # Before it moves the name, the first command keeps the work of a builder
-  # that no check saw, for example after a bad build. It writes
+  # A bad build, for example, leaves work that no check saw. The first
+  # command keeps that work before the step moves the name. It writes
   # `new-work.bundle` and `files.txt` in the run folder only if three things
   # are correct. The git name is there, the run folder has no
   # `new-work.bundle`, and a commit is after the name. Thus the files of a
@@ -242,7 +242,9 @@ steps:
   # A bad result goes to the planner, as a no of yours does. This is for a
   # paper test that is bad in its own setup. The planner corrects only that
   # test. The attacker looks, you see the tests again, and the builder works
-  # again. A bad build uses one of the 3 tries of `plan`. After the third try
+  # again.
+  #
+  # A bad build uses one of the 3 tries of `plan`. After the third try
   # the run stops.
   # After a no, a builder with no changed file gives a good result only with
   # a proof for each point of the no.
@@ -273,18 +275,20 @@ steps:
   # It writes the new commits into `new-work.bundle` in the run folder.
   # With no new commit and no such file, git gives an error, so the result
   # is bad. A bad result goes to `do_work`, then back to this step.
+  #
   # After a no, a build can have no new commit. The file `new-work.bundle`
   # shows that a builder of this run committed work before, also with a bad
   # result. Then the result is good, and the step changes neither that file
   # nor `files.txt`. A worker cannot write in the run folder.
+  #
   # A good second check goes to `take_master`, so the run gets the newest
   # master and a new version before `write_pr`.
   #
   # The second command writes the names of the changed files into `files.txt`
   # in the run folder. A task after this one can read it. It lists only the
-  # files of the new commits of the builder and the simplifier, because the
-  # merge of master comes after it. The two options `--no-ext-diff` and `--no-textconv` keep a
-  # command of the work copy from running.
+  # files of the new commits of the builder and the simplifier. The merge of
+  # master comes after this step. The two options `--no-ext-diff` and
+  # `--no-textconv` keep a command of the work copy from running.
   #
   # A worker can write in `.git` of its work copy. So this step is not a wall
   # against a worker that cheats. It is a check for a worker that did nothing
@@ -321,11 +325,12 @@ steps:
 
   # A builder does the work that the step `work_was_done` did not find. The
   # builder gets the error text of that step. The run then goes back to
-  # `work_was_done`, as a second check. The run comes here only while no
-  # builder committed work. A builder that makes no commit gives
-  # a bad check again. After the third try the run stops. A bad result goes
-  # to the planner. So a PR with no work and no new version does not get to
-  # the PR question.
+  # `work_was_done`, as a second check.
+  #
+  # The run comes here only while no builder committed work. A builder that
+  # makes no commit gives a bad check again. After the third try the run
+  # stops. A bad result goes to the planner. So a PR with no work and no new
+  # version does not get to the PR question.
   do_work:
     role: builder
     reads: [spec]

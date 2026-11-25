@@ -149,7 +149,8 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - A worker step that runs a second time gets one line for each paper that changed since its last run. The notebook keeps the data in `seen`.
 - The steps of the planner write the papers `spec`, `tests` and `pr`.
 - The worker step `write_pr` comes after `set_version` and after `repair`, before `check`. The writer completes the PR text in the paper `pr`.
-- `work_was_done` comes right after `simplify`. It makes `new-work.bundle` in the run folder from the commits after `copy_tests`. Only the commits of `build` and `simplify` count. With no new commit and no `new-work.bundle`, git gives an error. The run then goes to the builder step `do_work`. Then it checks again. After the third try of `do_work` the run stops.
+- `work_was_done` comes right after `simplify`. It makes `new-work.bundle` in the run folder from the commits after `copy_tests`. Only the commits of `build` and `simplify` count.
+- With no new commit and no `new-work.bundle`, git gives an error. The run then goes to the builder step `do_work`. Then it checks again. After the third try of `do_work` the run stops.
 - After a no, `work_was_done` is good with no new commit if the run folder has `new-work.bundle`. The run then goes on to the checks.
 - `take_master` comes after `work_was_done` and before `learn`. It merges the newest master into the branch. It has `max_tries: 3`. A bad merge goes to the builder step `fix_merge`, then back to `take_master`.
 - `same_master` comes after `approval` and before `merge`. A branch with no newest master goes to `take_master`. The person then gets the PR question again.
