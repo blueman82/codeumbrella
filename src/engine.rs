@@ -410,7 +410,7 @@ impl Run {
         })
     }
 
-    /// The files of each paper that has a fingerprint, as they are now.
+    /// The files of each paper that has a fingerprint, as they are at this moment.
     // A paper that is not readable is not there. The next step stops for it.
     fn snapshot(&self) -> Seen {
         let papers = self.state.prints.keys();
@@ -418,8 +418,8 @@ impl Run {
         papers.filter_map(read).collect()
     }
 
-    /// One line for each paper that has a new, changed or removed file since
-    /// the last run of the step `name`. A first run gets no line.
+    /// One line for each paper with a new, changed or removed file since the
+    /// last run of the step `name`. A first run gets no line.
     fn changed(&self, name: &str) -> Vec<String> {
         let Some(old) = self.state.seen.get(name) else {
             return Vec::new();

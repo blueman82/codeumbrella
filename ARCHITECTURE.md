@@ -122,7 +122,7 @@ an error · a bad result with no path for it · a changed paper · a maximum
 - The step `set_version` comes after `learn` and before `write_pr`. It runs the script `.codeumbrella/set-version` on the work copy. The script sets the version and commits it. No task text names a version. `work_was_done` also writes `files.txt`, the names of the changed files.
 - The step `mark` writes the commit of your yes for the tests into a git name. It has no AI.
 - The step `copy_tests` copies the paper tests into the work copy and commits them. Then it moves that git name to its commit. It has no AI.
-- A worker that runs a second time in a run gets the list of the papers that changed since its last run.
+- A worker that runs again in a run gets the list of papers changed since its last run.
 - The step `work_was_done` comes right after `simplify`. With no commit of `build` or `simplify` after `copy_tests`, git gives an error. The run then goes to `do_work` and back to this check. After the third try of `do_work` the run stops.
 - A worker can write in `.git`, so `work_was_done` is not a wall against a worker that cheats. It finds a worker that did nothing by error.
 - The step `simplify` and the three new checkers are for new runs. You can remove them for a faster run.

@@ -22,7 +22,7 @@ Each PR has a set PR text, so you see what the change is for. The planner writes
 
 Each item of the checklist has `[x]`, or `[ ]` with a cause. The reviewer compares the PR text with the change. At the PR stop, the chat shows you the title and each `[ ]` line.
 
-Two steps with no AI look for work. After your yes for the tests, the step `mark` keeps the commit of that moment. After the simplifier, the step `work_was_done` looks for a new commit after `mark`. With no new commit, the builder step `do_work` must do the work. Then `work_was_done` checks again, and the run stops after the third try.
+Steps with no AI look for work. After your yes for the tests, the step `mark` keeps the commit of that moment. The step `copy_tests` then commits the paper tests and moves that mark. After the simplifier, the step `work_was_done` looks for a new commit after the mark. With no new commit, the builder step `do_work` must do the work. Then `work_was_done` checks again, and the run stops after the third try.
 
 Two runs can work at the same time. Before the PR question, the step `take_master` merges the newest master into the branch. If master changes while you look at the PR, you can get the PR question two times. The step `take_master` has 3 tries. After the third try the run stops. A bad merge goes to the builder step `fix_merge`.
 

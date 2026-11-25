@@ -154,7 +154,7 @@ steps:
 
   # No AI. This step copies each file of the paper `tests` to the same path in
   # the work copy. The `README.md` at the top of the paper stays out. So the
-  # builder, the checkers and the attacker use the tests that you said yes to.
+  # builder and the checkers use the tests that you said yes to.
   # The paper test always wins, also over a change from master.
   # It commits the copied files, and no other change, on the branch
   # `codeumbrella/<run id>`. With no change, it commits nothing. Then it moves
@@ -164,8 +164,8 @@ steps:
   # git call has the three `-c` options of `take_master`, the commit has
   # `--no-verify`, and git reads each path as plain text. A config name that
   # `take_master` refuses gives a bad result. So does a link or a file with a
-  # second hard link in the paper, a link on a target path, and a path with
-  # `.git`, `.github`, `.claude` or `.codeumbrella`. Each refusal comes before
+  # second hard link in the paper. A link on a target path is refused too. So is
+  # a path with `.git`, `.github`, `.claude` or `.codeumbrella`. Each refusal comes before
   # the first copy. A bad result stops the run.
   copy_tests:
     type: command
