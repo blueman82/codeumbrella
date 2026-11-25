@@ -1,0 +1,11 @@
+start: copy
+steps:
+  copy:
+    type: command
+    run:
+      - [git, clone, --quiet, ., work]
+    next: plan
+  plan:
+    role: planner
+    writes: [spec, tests, pr]
+    max_tries: 3

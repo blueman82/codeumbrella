@@ -1,0 +1,1 @@
+{"is_error":false,"result":"","structured_output":{"ok":true,"summary":"done"},"total_cost_usd":1.25,"num_turns":7,"modelUsage":{"claude-opus-5-5":{"inputTokens":1}},"usage":{"input_tokens":10,"cache_creation_input_tokens":200,"cache_read_input_tokens":3000,"output_tokens":40}}

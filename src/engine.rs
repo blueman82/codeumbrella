@@ -107,8 +107,8 @@ impl Total {
             self.no_cost += u64::from(n.dollars.is_none());
         }
         self.dollars += n.dollars.unwrap_or_default();
-        self.tokens_in += n.tokens_in.unwrap_or_default();
-        self.tokens_out += n.tokens_out.unwrap_or_default();
+        self.tokens_in = self.tokens_in.saturating_add(n.tokens_in.unwrap_or(0));
+        self.tokens_out = self.tokens_out.saturating_add(n.tokens_out.unwrap_or(0));
     }
 }
 
