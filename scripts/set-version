@@ -1,9 +1,10 @@
 #!/bin/sh
 # The script of this project for the step `set_version`. Copy it to
 # `.codeumbrella/set-version`. It gets the path of the work copy of the run.
-# It reads the version of `origin/master` in that copy, sets the next patch
-# version in the version files, and commits only if a file changed. A project
+# It reads the version of `origin/master` in that copy. It sets the next patch
+# version in the version files. It commits only if a file changed. A project
 # can also have the version file `fuzz/Cargo.lock`.
+#
 # It changes only the work copy. It does not fetch and it does not push.
 # A worker can write `.git/config` of the work copy, and this script runs with
 # no sandbox. So each git call has `-c core.fsmonitor=false`, and a filter in

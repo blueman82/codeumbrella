@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<!-- The launchd pattern of scripts/fuzz-repair. At the install, replace
-     {project} with the full path of the project folder, and {home} with the
-     full path of your home folder. -->
+<!-- The launchd pattern of scripts/fuzz-repair. At the install, replace two
+     words. Use the full path of the project folder for {project}. Use the full
+     path of your home folder for {home}. -->
 <plist version="1.0">
 <dict>
   <key>Label</key>
