@@ -143,13 +143,34 @@ steps:
   # `refs/codeumbrella/before` of the work copy. The step `copy_tests` moves
   # that name to its own commit. The step `work_was_done` looks for a new
   # commit after it. After each yes for the tests, the two steps run
-  # again. Thus a commit from before a no does not count.
+  # again.
+  #
+  # Before it moves the name, the first command keeps the work of a builder
+  # that no check saw, for example after a bad build. It writes
+  # `new-work.bundle` and `files.txt` in the run folder only if three things
+  # are correct. The git name is there, the run folder has no
+  # `new-work.bundle`, and a commit is after the name. Thus the files of a
+  # merge of master do not get into the list. If git cannot count or write,
+  # the result is bad.
   #
   # A worker can write the git config of the work copy, and `update-ref` can
-  # start a hook. So the call has `-c core.hooksPath=/dev/null`.
+  # start a hook. So each call has `-c core.hooksPath=/dev/null`.
   mark:
     type: command
     run:
+      - - sh
+        - -c
+        - |
+          r=.codeumbrella/runs/{run}
+          g() { git -c core.fsmonitor=false -c core.hooksPath=/dev/null -C "$r/work" "$@"; }
+          [ ! -f "$r/new-work.bundle" ] || exit 0
+          # Status 1: the git name is not there. Each other error is bad.
+          g rev-parse --quiet --verify refs/codeumbrella/before >/dev/null || { [ $? = 1 ]; exit; }
+          n=$(g rev-list --count refs/codeumbrella/before..HEAD) || exit 1
+          [ "$n" != 0 ] || exit 0
+          # The bundle comes last: with it, the list is complete.
+          g diff --name-only --no-ext-diff --no-textconv --output ../files.txt refs/codeumbrella/before HEAD &&
+          g bundle create ../new-work.bundle refs/codeumbrella/before..HEAD
       - [git, -c, core.hooksPath=/dev/null, -C, ".codeumbrella/runs/{run}/work", update-ref, refs/codeumbrella/before, HEAD]
     next: copy_tests
 
@@ -223,6 +244,8 @@ steps:
   # test. The attacker looks, you see the tests again, and the builder works
   # again. A bad build uses one of the 3 tries of `plan`. After the third try
   # the run stops.
+  # After a no, a builder with no changed file gives a good result only with
+  # a proof for each point of the no.
   build:
     role: builder
     reads: [spec]
@@ -248,15 +271,19 @@ steps:
   # count.
   #
   # It writes the new commits into `new-work.bundle` in the run folder.
-  # No step reads that file. With no new commit, git gives an error, so the
-  # result is bad. A bad result goes to `do_work`, then back to this step.
+  # With no new commit and no such file, git gives an error, so the result
+  # is bad. A bad result goes to `do_work`, then back to this step.
+  # After a no, a build can have no new commit. The file `new-work.bundle`
+  # shows that a builder of this run committed work before, also with a bad
+  # result. Then the result is good, and the step changes neither that file
+  # nor `files.txt`. A worker cannot write in the run folder.
   # A good second check goes to `take_master`, so the run gets the newest
   # master and a new version before `write_pr`.
   #
   # The second command writes the names of the changed files into `files.txt`
   # in the run folder. A task after this one can read it. It lists only the
-  # files of the builder and the simplifier, because the merge of master
-  # comes after it. The two options `--no-ext-diff` and `--no-textconv` keep a
+  # files of the new commits of the builder and the simplifier, because the
+  # merge of master comes after it. The two options `--no-ext-diff` and `--no-textconv` keep a
   # command of the work copy from running.
   #
   # A worker can write in `.git` of its work copy. So this step is not a wall
@@ -265,14 +292,37 @@ steps:
   work_was_done:
     type: command
     run:
-      - [git, -C, ".codeumbrella/runs/{run}/work", bundle, create, ../new-work.bundle, "refs/codeumbrella/before..HEAD"]
-      - [git, -C, ".codeumbrella/runs/{run}/work", diff, --name-only, --no-ext-diff, --no-textconv, --output, ../files.txt, "refs/codeumbrella/before", HEAD]
+      - - sh
+        - -c
+        - |
+          r=.codeumbrella/runs/{run}
+          g() { git -c core.fsmonitor=false -c core.hooksPath=/dev/null -C "$r/work" "$@"; }
+          n=$(g rev-list --count refs/codeumbrella/before..HEAD) || exit 1
+          [ "$n" = 0 ] && [ -f "$r/new-work.bundle" ] && exit 0
+          g bundle create ../new-work.bundle refs/codeumbrella/before..HEAD
+      # With no new commit, `files.txt` keeps its list.
+      - - sh
+        - -c
+        - 'n=$(git -c core.fsmonitor=false -c core.hooksPath=/dev/null -C .codeumbrella/runs/{run}/work rev-list --count refs/codeumbrella/before..HEAD) || exit 1; [ "$n" = 0 ] || exec "$@"'
+        - sh
+        - git
+        - -C
+        - ".codeumbrella/runs/{run}/work"
+        - diff
+        - --name-only
+        - --no-ext-diff
+        - --no-textconv
+        - --output
+        - ../files.txt
+        - "refs/codeumbrella/before"
+        - HEAD
     on_bad: do_work
     next: take_master
 
   # A builder does the work that the step `work_was_done` did not find. The
   # builder gets the error text of that step. The run then goes back to
-  # `work_was_done`, as a second check. A builder that makes no commit gives
+  # `work_was_done`, as a second check. The run comes here only while no
+  # builder committed work. A builder that makes no commit gives
   # a bad check again. After the third try the run stops. A bad result goes
   # to the planner. So a PR with no work and no new version does not get to
   # the PR question.
