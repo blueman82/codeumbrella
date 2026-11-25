@@ -43,7 +43,7 @@ download() {
   local commit file tmp
   commit="$(git rev-parse HEAD)"
   file="codeumbrella-$commit-aarch64-apple-darwin.tar.gz"
-  tmp="$(mktemp -d)"
+  tmp="$(mktemp -d "${TMPDIR:-/tmp}/codeumbrella.XXXXXX")"
   curl -fsSL -o "$tmp/$file" "$store/raw/names/$name/versions/$commit/$file" 2>/dev/null &&
     curl -fsSL -o "$tmp/$file.sha256" "$store/raw/names/$name-sha256/versions/$commit/$file.sha256" 2>/dev/null ||
     { echo "the store has no file for this commit"; return 1; }
