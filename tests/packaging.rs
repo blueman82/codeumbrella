@@ -293,6 +293,10 @@ fn no_test_file_names_the_version_of_today() {
     let dir = root().join("tests");
     for entry in std::fs::read_dir(&dir).expect("tests folder") {
         let path = entry.expect("entry").path();
+        // A folder holds no test file, and a crash input can be binary.
+        if path.is_dir() {
+            continue;
+        }
         let read = std::fs::read_to_string(&path);
         let msg = format!("read {}", path.display());
         let body = read.expect(&msg);
