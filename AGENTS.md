@@ -103,6 +103,7 @@ To install the command and the chat command on a computer, run `./install.sh`.
 | `tests/small_repairs.rs` | Tests of version 0.1.11: the lock number, `status --wait`, the work folder, run ids, the stop message. |
 | `tests/kill_repair.rs` | Tests of the repair after a kill. The last four use `ps` and `pkill`, and skip themselves in a sandbox. |
 | `tests/stop.rs` | Tests of `stop`, with a simulated `claude`. The last three use `ps` and `pkill`, and skip themselves in a sandbox. |
+| `tests/copy_tests.rs` | Tests of the step `copy_tests`, the list of changed papers, the checker page and the documents. |
 | `tests/find_each_point.rs` | Tests of `mark`, `work_was_done`, the new rules lines and the repair that changes no file. |
 | `tests/language_pages.rs` | Tests of the six language pages, `init` and the two rules pages. |
 | `tests/bad_repair.rs` | Tests of the bad repair that goes to the plan, the new rules lines, the chat page and the documents. |
@@ -133,10 +134,12 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - The command step `set_version` comes after `learn` and before `write_pr`. It runs `.codeumbrella/set-version` on the work copy. A bad result stops the run. A task text names no version: only the script sets it.
 - `work_was_done` also writes the changed files into `files.txt` in the run folder.
 - `check_review` reads `spec`, `pr` and `lessons`. It reads the paper `lessons` for plain words.
-- The default sheet has two command steps with no AI. `mark` comes after `look_at_tests` and before `build`. It writes the commit of that moment into `refs/codeumbrella/before` of the work copy.
+- The command step `mark` has no AI. It comes after `look_at_tests` and before `copy_tests`. It writes the commit of that moment into `refs/codeumbrella/before` of the work copy.
+- The command step `copy_tests` has no AI. It comes after `mark` and before `build`. It copies the paper `tests` into the work copy and commits the copied files. Then it moves `refs/codeumbrella/before` to that commit. A bad result stops the run.
+- A worker step that runs a second time gets one line for each paper that changed since its last run. The notebook keeps the data in `seen`.
 - The steps of the planner write the papers `spec`, `tests` and `pr`.
 - The worker step `write_pr` comes after `set_version` and after `repair`, before `check`. The writer completes the PR text in the paper `pr`.
-- `work_was_done` comes right after `simplify`. It makes `new-work.bundle` in the run folder from the commits after `mark`. Only the commits of `build` and `simplify` count. With no new commit, git gives an error, and the run goes to the builder step `do_work`. Then it checks again. After the third try of `do_work` the run stops.
+- `work_was_done` comes right after `simplify`. It makes `new-work.bundle` in the run folder from the commits after `copy_tests`. Only the commits of `build` and `simplify` count. With no new commit, git gives an error, and the run goes to the builder step `do_work`. Then it checks again. After the third try of `do_work` the run stops.
 - `take_master` comes after `work_was_done` and before `learn`. It merges the newest master into the branch. It has `max_tries: 3`. A bad merge goes to the builder step `fix_merge`, then back to `take_master`.
 - `same_master` comes after `approval` and before `merge`. A branch with no newest master goes to `take_master`. The person then gets the PR question again.
 - `check` goes to `no_locked_files`. Only `same_master` goes to `merge`.
@@ -218,15 +221,18 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - For Claude, the settings of the attacker are the same as those of the safety checker. For Codex, they have one more entry: write in the temp folder.
 - Each role has one rules page.
 - The chat starts `run`, `answer` and `resume` with `nohup`, so a command lives after the shell ends. It adds `--tool codex` to `run` only. The chat uses `status --wait`. That command repairs a dead run and shows Stopped. The chat runs `resume` only after the person says yes. It does not remove `lock`.
-- The checker compares each test file of the paper `tests` with the project in each try. A file that is different or not there gets the paper version, because the person approved the paper. The builder does not change such a file.
+- The checker compares each test file of the paper `tests` with the project in each try. A file that is different or not there gives `ok: false`. The checker writes no file. The builder in `repair` then copies the paper file again.
+- The step `copy_tests` copies the paper tests before each build, because the person approved the paper. The builder does not change such a file. A run of this project showed the cause. The builder worked against a test from before a correction of the planner.
+- The paper test always wins, also over a change or a removal from master. The person decided this for this project.
+- `copy_tests` runs with no sandbox in the work copy. Each git call has `-c core.fsmonitor=false`, `-c core.hooksPath=/dev/null` and `-c commit.gpgSign=false`, and the commit has `--no-verify`. It refuses a config name that `take_master` refuses. The cause: a worker of a project can write that copy and the paper.
+- `copy_tests` refuses a link in the paper or on a target path, and a paper file with a second hard link. It refuses a path with `.git`, `.github`, `.claude` or `.codeumbrella`. Each refusal comes before the first copy. The cause is the same: a worker of a project must not reach a file of the person.
 - The default check step is a fan of five checkers. `check_tests` runs the tests. `check_safety`, `check_review` and `check_security` read the change. They cannot write a file. `check_use` runs the examples of the spec as a user does. It writes only in a scratch folder in the temp folder.
 - The step `simplify` follows `build`. The simplifier changes no test file, and it commits only if the test command passes. The step `repair` does not go through it.
 - The reviewer and the `security` checker have the same settings as the safety checker. The simplifier has the same settings as the builder.
 - The stopped run prints `To continue: codeumbrella resume <run id>` and a line that says: resume only after the person says yes. An AI must not give this approval. The limit for the note does not cut them.
 - `answer` and `resume` with a `--tool` that is different from the tool of the run give an error. They give it before a step starts and before the answer is written. A notebook with no tool uses Claude, and `--tool` writes it. `status` changes the notebook only in the repair.
 - The safety checker also reads the files that use the changed lines, for example settings files. A run on 17 November 2026 showed the cause.
-- Four checkers work in the same copy. Only the tests checker writes there. `check_use` clones the run branch into its scratch folder.
-- The safety checker does not read the commit that the tests checker makes at the same time. The person sees that commit in the PR.
+- Four checkers work in the same copy. No checker writes a file of the project. `check_use` clones the run branch into its scratch folder.
 - A run on 18 November 2026 showed this. After a no of the person, the builder changed no file. All four checkers gave a good result.
 - After a no, the planner puts a part `Points of the no` at the top of `spec.md`. It is a list with numbers.
 - Each point of that part is one file, one behaviour or one sentence. A point with two demands becomes two points.
@@ -241,7 +247,7 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - `take_master` merges the newest master into the branch with a merge commit. The push stays plain. It has no rebase and no forced push. The clean copy fetches from GitHub. The work copy fetches only from the clean copy. A `filter.` entry or a merge driver in the config of the work copy gives a bad result. Cause: on 20 November 2026 two PRs of two runs could change the same file or get the same version. A worker can write that config.
 - `take_master` and the version script let through only the config names of a clean clone, and `user.name` and `user.email`. A test on 21 November 2026 showed the cause. Four other entries ran a command of the work copy with no sandbox, for example `core.sshCommand`. The step `mark` has `-c core.hooksPath=/dev/null`, because it ran a hook in that test.
 - `same_master` gives a good result only if the pushed branch has the newest master. Cause: on 20 November 2026 master could change while the person looked at the PR. Only `same_master` goes to `merge`.
-- `work_was_done` comes before `take_master` and counts only the commits of `build` and `simplify`. A bad result goes to `do_work`. Cause: on 20 November 2026 the commits of `set_version` and `take_master` hid a builder that did nothing.
+- `work_was_done` comes before `take_master` and counts only the commits of `build` and `simplify`, not the commit of `copy_tests`. A bad result goes to `do_work`. Cause: on 20 November 2026 the commits of `set_version` and `take_master` hid a builder that did nothing.
 - The end of the workers first looks at each file `worker.<number>`. Thus an error of `ps` changes no file.
 - On 18 November 2026 a person ran the built command by hand with a live worker. The person found two errors that no checker found.
 - Thus the role `user` runs the software as a user. Its step is `check_use` in the fan of `check`.

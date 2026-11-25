@@ -63,16 +63,14 @@ fn a_running_status_with_no_live_command_gets_a_resume() {
 }
 
 #[test]
-fn the_checker_copies_the_paper_tests_in_each_try() {
+fn the_checker_compares_the_paper_tests_in_each_try() {
     let c = text("roles/checker.md");
     let low = c.to_lowercase();
     assert!(low.contains("compare"));
     assert!(low.contains("each test file"));
     assert!(low.contains("each try"));
-    assert!(low.contains("different or is not there") || low.contains("different or not there"));
-    assert!(low.contains("paper wins"));
-    assert!(low.contains("approval"));
-    assert!(low.contains("commit"));
+    assert!(low.contains("differs or is not there"));
+    assert!(low.contains("ok: false"));
 }
 
 #[test]
