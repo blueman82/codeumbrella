@@ -419,7 +419,7 @@ fn save_lessons_keeps_the_headings_the_sequence_and_each_character() {
         .replace(SLASHES, SLASHES_DONE)
         .replace("run-1795000000-0001\n\n#", "run-1795000000-0002\n\n#")
         + "- Beta. (21 November 2026)\n";
-    // First no other run changes the project file. Then another run adds a
+    // First no other run changes the project file. Then a second run adds a
     // line far from the changes of the paper.
     let head = "## For the factory\n\n";
     let added = format!("{head}- Other run. (22 November 2026)\n");
