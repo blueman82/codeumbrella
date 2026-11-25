@@ -100,11 +100,16 @@ impl Codex {
     }
 }
 
+/// Reads the trace file and counts its tokens.
+fn tokens(trace: &Path, numbers: &mut Numbers) {
+    count_tokens(&fs::read_to_string(trace).unwrap_or_default(), numbers);
+}
+
 /// Adds the tokens of each `turn.completed` line of the trace into `numbers`.
 /// The cached tokens and the reasoning tokens are parts of these two numbers.
-/// A trace with no such line gives no token numbers.
-fn tokens(trace: &Path, numbers: &mut Numbers) {
-    let text = fs::read_to_string(trace).unwrap_or_default();
+/// A trace with no such line gives no token numbers. A sum that is too large
+/// stays at the maximum.
+pub fn count_tokens(text: &str, numbers: &mut Numbers) {
     for line in text.lines() {
         let Ok(event) = serde_json::from_str::<Value>(line) else {
             continue;
@@ -113,7 +118,10 @@ fn tokens(trace: &Path, numbers: &mut Numbers) {
             continue;
         }
         let count = |key: &str| event["usage"][key].as_u64().unwrap_or_default();
-        *numbers.tokens_in.get_or_insert(0) += count("input_tokens");
-        *numbers.tokens_out.get_or_insert(0) += count("output_tokens");
+        let add = |sum: &mut Option<u64>, key| {
+            *sum = Some(sum.unwrap_or_default().saturating_add(count(key)));
+        };
+        add(&mut numbers.tokens_in, "input_tokens");
+        add(&mut numbers.tokens_out, "output_tokens");
     }
 }

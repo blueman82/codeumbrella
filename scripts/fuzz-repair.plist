@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- The launchd pattern of scripts/fuzz-repair. At the install, replace
+     {project} with the full path of the project folder, and {home} with the
+     full path of your home folder. -->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>codeumbrella.fuzz-repair</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>{project}/scripts/fuzz-repair</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>{project}</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>{home}/.cargo/bin:{home}/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+  </dict>
+  <key>StartInterval</key>
+  <integer>3600</integer>
+  <!-- The run continues after the script ends. -->
+  <key>AbandonProcessGroup</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>{home}/Library/Logs/fuzz-repair.log</string>
+  <key>StandardErrorPath</key>
+  <string>{home}/Library/Logs/fuzz-repair.log</string>
+</dict>
+</plist>

@@ -1,0 +1,39 @@
+[package]
+name = "codeumbrella-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2024"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4.13"
+yaml_serde = "0.10.7"
+
+[dependencies.codeumbrella]
+path = ".."
+
+# Its own workspace: the build of the root does not see this folder.
+[workspace]
+
+[[bin]]
+name = "fuzz_sheet"
+path = "fuzz_targets/fuzz_sheet.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_claude_reply"
+path = "fuzz_targets/fuzz_claude_reply.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_codex_trace"
+path = "fuzz_targets/fuzz_codex_trace.rs"
+test = false
+doc = false
+bench = false

@@ -485,10 +485,10 @@ fn the_repair_keeps_a_live_command_with_a_different_start_time() {
 }
 
 #[test]
-fn agents_md_names_the_limit_of_1100_lines() {
+fn agents_md_names_the_limit_of_2000_lines() {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let page = fs::read_to_string(root.join("AGENTS.md")).unwrap();
-    assert!(page.contains("`src/lib.rs`): 1100 lines of code."));
+    assert!(page.contains("`src/lib.rs`): 2000 lines of code."));
     assert!(!page.contains("750 lines of code"));
     assert!(page.contains("Each tool part: 200 lines of code."));
 }

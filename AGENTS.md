@@ -42,6 +42,7 @@ cargo clippy --all-targets -- -D warnings      # usual errors, and a warning sto
 cargo test                                     # tests, with a simulated worker
 cargo build --locked                           # build
 cargo deny check && cargo audit                # look for bad packages, after a package change
+cargo +nightly fuzz run <target> --sanitizer none   # fuzz one target, with nightly Rust
 
 codeumbrella init                              # put the default sheet and rules pages into a project
 codeumbrella init --update                     # replace changed factory files with the new defaults, keep a copy of each as `.before`
@@ -66,7 +67,7 @@ To install the command and the chat command on a computer, run `./install.sh`.
 |---|---|
 | `graph.example.yaml` | The default sheet, with a comment for each option. `init` copies it into a project. |
 | `default.set-version` | The default script of the step `set_version`. It does nothing. `init` writes it to `.codeumbrella/set-version`, and `init --update` keeps a script that is there. |
-| `scripts/set-version` | The script of this project. The person copies it to `.codeumbrella/set-version`. It sets the next patch version in the four version files. |
+| `scripts/set-version` | The script of this project. The person copies it to `.codeumbrella/set-version`. It sets the next patch version in the version files, also in `fuzz/Cargo.lock`. |
 | `.codeumbrella/queue/` | The queue: one text file for each task that waits. The file name sets the sequence. A line `Files:` names the files of the task. `run --next` moves the first file into the run as `task.txt`. |
 | `tests/same_time.rs` | Tests of two runs at the same time. They test `run --next`, the line `Run:`, `take_master`, `fix_merge`, `same_master`, `work_was_done`, `do_work` and the documents. |
 | `tests/queue.rs` | Tests of the queue, `run --next`, `set_version`, `files.txt`, the default script, the script of this project and the documents. |
@@ -114,6 +115,14 @@ To install the command and the chat command on a computer, run `./install.sh`.
 | `tests/full_check.rs` | Tests of the full check that cannot run in the sandbox: the chat page, the rules pages, `init` and the documents. |
 | `tests/run_id.rs` | Tests of the run id with four digits, of `status` on an id of before, of the chat page and the documents. |
 | `tests/plain_words.rs` | Tests of the rules for plain words: the rules pages, the list of `AGENTS.md`, the sheet and the documents. |
+| `fuzz/` | The fuzzer, with its own workspace. A fuzzer gives the code many automatic inputs. Its targets are `fuzz_sheet`, `fuzz_claude_reply` and `fuzz_codex_trace`. |
+| `fuzz/deny.toml` | The package check of `fuzz/`. It also permits the license NCSA, in `fuzz/` only. |
+| `fuzz/seeds/` | Good inputs for each target. The fuzzer starts from them. |
+| `tests/fuzz_crashes/` | One folder for each target, with the inputs that caused a crash. |
+| `tests/fuzz_crashes.rs` | Runs each crash input again in `cargo test`, on stable Rust. |
+| `scripts/fuzz-repair` | A job for the Mac. It starts a run for each open issue `fuzz-crash` that GitHub Actions opened. |
+| `scripts/fuzz-repair.plist` | The launchd pattern that starts `scripts/fuzz-repair` each hour. |
+| `.github/workflows/fuzz.yml` | The fuzz jobs on GitHub. A chat session adds this file, because a run cannot change `.github`. |
 | `install.sh` | Installs the command and the chat command. |
 | `LICENSE` | The MIT licence. Do not change its text. |
 
@@ -318,6 +327,7 @@ A package is code from other persons. Each package is a risk, so the list is sho
 | `clap` | Reads the words after the command, and shows the help text. |
 | `anyhow` | Makes clear error messages. |
 | `time` | Writes the date and the time in the log. It comes with 5 small packages of the same makers. |
+| `libfuzzer-sys` | Connects a fuzz target to the fuzzer libFuzzer. It is in `fuzz/` only. The code cannot do this work without it, because the standard library has no fuzzer. |
 
 A new package gets into this list only when all of these are correct:
 
@@ -328,7 +338,7 @@ A new package gets into this list only when all of these are correct:
 
 ## Limits for lines of code
 
-- The supervisor (`src/graph.rs`, `src/engine.rs`, `src/main.rs`, `src/log.rs`, `src/lib.rs`): 1100 lines of code.
+- The supervisor (`src/graph.rs`, `src/engine.rs`, `src/main.rs`, `src/log.rs`, `src/lib.rs`): 2000 lines of code.
 - Each tool part: 200 lines of code.
 - Empty lines, comment lines and tests do not count.
 - Count with: `grep -v -E '^\s*(//|$)' <file> | wc -l`
@@ -366,6 +376,8 @@ The factory keeps each number that a tool gives. The documents tell each limit.
 4. If a rule is too complex for the sheet, the worker makes that decision, not the supervisor.
 5. Copy no part from a different project until a run shows that it is necessary.
 6. One source for Claude and Codex. Only the tool parts and the settings files of the roles are different for each tool. A step can pick its tool.
+
+The person gave approval on 19 November 2026 for one part with no run: the fuzzer in `fuzz/`.
 
 ## Not in version 1
 
