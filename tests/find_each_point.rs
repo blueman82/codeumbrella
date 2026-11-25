@@ -190,9 +190,16 @@ fn with_no_commit_work_was_done_is_bad_and_the_run_stops_after_do_work() {
     to_build(&mut run, &graph, &worker);
     let after = after_yes(&run);
     let names: Vec<&str> = after.iter().map(|(s, _)| s.as_str()).collect();
-    let head = ["mark", "build", "simplify", "work_was_done", "do_work"];
-    assert_eq!(names.get(..5), Some(&head[..]), "{after:?}");
-    assert!(!after[3].1, "{after:?}");
+    let head = [
+        "mark",
+        "copy_tests",
+        "build",
+        "simplify",
+        "work_was_done",
+        "do_work",
+    ];
+    assert_eq!(names.get(..6), Some(&head[..]), "{after:?}");
+    assert!(!after[4].1, "{after:?}");
     let tries = names.iter().filter(|s| **s == "do_work").count();
     assert_eq!(tries, 3, "{after:?}");
     // The builder in `do_work` gets the error text of git.
@@ -214,6 +221,7 @@ fn a_commit_of_do_work_passes_the_second_check_and_goes_to_take_master() {
     to_build(&mut run, &graph, &worker);
     let path = pairs(&[
         ("mark", true),
+        ("copy_tests", true),
         ("build", true),
         ("simplify", true),
         ("work_was_done", false),
@@ -244,6 +252,7 @@ fn with_a_new_commit_work_was_done_is_good_and_changes_no_file() {
     to_build(&mut run, &graph, &worker);
     let path = pairs(&[
         ("mark", true),
+        ("copy_tests", true),
         ("build", true),
         ("simplify", true),
         ("work_was_done", true),
@@ -297,9 +306,16 @@ fn after_a_no_at_the_approval_a_commit_from_before_does_not_count() {
     // The builder made no commit after that yes, so the run stops.
     let after = after_yes(&run);
     let names: Vec<&str> = after.iter().map(|(s, _)| s.as_str()).collect();
-    let head = ["mark", "build", "simplify", "work_was_done", "do_work"];
-    assert_eq!(names.get(..5), Some(&head[..]), "{after:?}");
-    assert!(!after[3].1, "{after:?}");
+    let head = [
+        "mark",
+        "copy_tests",
+        "build",
+        "simplify",
+        "work_was_done",
+        "do_work",
+    ];
+    assert_eq!(names.get(..6), Some(&head[..]), "{after:?}");
+    assert!(!after[4].1, "{after:?}");
     assert!(!names.contains(&"take_master"), "{names:?}");
     assert_eq!(run.state.status, Status::Stopped);
 }
@@ -315,7 +331,7 @@ fn the_default_sheet_has_mark_before_build_and_work_was_done_after_simplify() {
     let all = hooks.iter().chain(&words).chain(&ends);
     let all: Vec<&str> = all.copied().collect();
     assert_eq!(mark.run, [all]);
-    assert_eq!(mark.next.as_deref(), Some("build"));
+    assert_eq!(mark.next.as_deref(), Some("copy_tests"));
     let tests = graph.step("look_at_tests").unwrap();
     assert_eq!(tests.next.as_deref(), Some("mark"));
     assert_eq!(tests.on_bad.as_deref(), Some("plan"));
@@ -343,7 +359,8 @@ fn the_default_sheet_has_mark_before_build_and_work_was_done_after_simplify() {
     // Each new step has one way in.
     let ways = [
         ("mark", "look_at_tests"),
-        ("build", "mark"),
+        ("copy_tests", "mark"),
+        ("build", "copy_tests"),
         ("no_locked_files", "check"),
     ];
     for (name, step) in &graph.steps {

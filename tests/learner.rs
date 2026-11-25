@@ -672,6 +672,7 @@ fn a_run_does_learn_after_simplify_and_check_after_learn() {
     assert_eq!(run.state.at.as_deref(), Some("approval"));
     let path = pairs(&[
         ("mark", true),
+        ("copy_tests", true),
         ("build", true),
         ("simplify", true),
         ("work_was_done", true),
@@ -708,6 +709,7 @@ fn a_bad_check_goes_to_repair_and_back_to_check_with_no_learn() {
     assert_eq!(run.state.at.as_deref(), Some("approval"));
     let path = pairs(&[
         ("mark", true),
+        ("copy_tests", true),
         ("build", true),
         ("simplify", true),
         ("work_was_done", true),
@@ -741,6 +743,7 @@ fn after_a_no_at_approval_the_run_does_learn_again_before_check() {
     assert_eq!(run.state.at.as_deref(), Some("approval"));
     let path = pairs(&[
         ("mark", true),
+        ("copy_tests", true),
         ("build", true),
         ("simplify", true),
         ("work_was_done", true),

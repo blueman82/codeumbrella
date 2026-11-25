@@ -18,7 +18,7 @@ SUPERVISOR ── uses your GitHub key ──► GITHUB: push · PR · merge (me
 │ planner   writes the PAPERS: plan + tests + PR. Claude: no shell. Codex: a sandbox.      │
 │ attacker  in a sandbox · gets the plan + the tests ──►  finds weak points, scratch folder only │
 │ builder   in a sandbox · gets the plan             ──►  writes code on the run branch    │
-│ checker   in a sandbox · gets the plan + the tests ──►  copies the tests, runs them      │
+│ checker   in a sandbox · gets the plan + the tests ──►  compares the tests, runs them    │
 │ safety    in a sandbox · gets the plan             ──►  reads the change, writes no file │
 │ simplifier in a sandbox · gets the plan            ──►  makes the new code simpler       │
 │ reviewer  in a sandbox · gets the plan             ──►  reads the change for errors      │
@@ -55,11 +55,13 @@ YOU: tests? ── no ───────────────────�
   ▼ yes                                                 │
 mark: git keeps the commit of your yes (no AI)          │
   ▼                                                     │
+copy_tests: copies the paper tests, commits (no AI)     │
+  ▼                                                     │
 build: a bad result goes to plan, as a no does          │
   ▼                                                     │
 simplify: the simplifier makes the code simpler         │
   ▼                                                     │
-work_was_done: a commit after mark? no ──► do_work      │
+work_was_done: a new commit? no ──► do_work             │
   ▼ yes (or after do_work)                              │
 take_master: merge the newest master (no AI)            │
   ├── a bad merge ──► fix_merge ──► take_master         │
@@ -119,7 +121,9 @@ an error · a bad result with no path for it · a changed paper · a maximum
 - The queue is the folder `.codeumbrella/queue/`: one text file for each task that waits. `codeumbrella queue` shows it. `codeumbrella run --next` starts the first file and moves it into the run as `task.txt`. The supervisor does not start a run by itself.
 - The step `set_version` comes after `learn` and before `write_pr`. It runs the script `.codeumbrella/set-version` on the work copy. The script sets the version and commits it. No task text names a version. `work_was_done` also writes `files.txt`, the names of the changed files.
 - The step `mark` writes the commit of your yes for the tests into a git name. It has no AI.
-- The step `work_was_done` comes right after `simplify`. With no commit of `build` or `simplify` after `mark`, git gives an error. The run then goes to `do_work` and back to this check. After the third try of `do_work` the run stops.
+- The step `copy_tests` copies the paper tests into the work copy and commits them. Then it moves that git name to its commit. It has no AI.
+- A worker that runs again in a run gets the list of papers changed since its last run.
+- The step `work_was_done` comes right after `simplify`. With no commit of `build` or `simplify` after `copy_tests`, git gives an error. The run then goes to `do_work` and back to this check. After the third try of `do_work` the run stops.
 - A worker can write in `.git`, so `work_was_done` is not a wall against a worker that cheats. It finds a worker that did nothing by error.
 - The step `simplify` and the three new checkers are for new runs. You can remove them for a faster run.
 - The step `take_master` merges the newest master into the branch before `learn`. Two runs of a project can work at the same time. The step `same_master` before `merge` sends the run back to `take_master` if master changed.

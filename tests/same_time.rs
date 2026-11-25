@@ -941,6 +941,7 @@ fn a_run_with_work_goes_through_take_master_to_the_approval() {
     to_build(&mut w, &graph, &worker);
     let path = pairs(&[
         ("mark", true),
+        ("copy_tests", true),
         ("build", true),
         ("simplify", true),
         ("work_was_done", true),
@@ -1012,6 +1013,7 @@ fn a_commit_of_do_work_passes_the_second_check_and_goes_to_take_master() {
     to_build(&mut w, &graph, &worker);
     let path = pairs(&[
         ("mark", true),
+        ("copy_tests", true),
         ("build", true),
         ("simplify", true),
         ("work_was_done", false),
@@ -1054,8 +1056,9 @@ fn after_a_no_the_commits_of_the_merge_and_the_version_do_not_count() {
     // and, with no commit, the run stops before `take_master`.
     let ran = after(&w.run, "look_at_tests");
     let names: Vec<&str> = ran.iter().map(|(s, _)| s.as_str()).collect();
-    assert_eq!(&names[..4], ["mark", "build", "simplify", "work_was_done"]);
-    assert!(!ran[3].1, "{ran:?}");
+    let head = ["mark", "copy_tests", "build", "simplify", "work_was_done"];
+    assert_eq!(&names[..5], head);
+    assert!(!ran[4].1, "{ran:?}");
     assert!(names.contains(&"do_work"), "{names:?}");
     assert!(!names.contains(&"write_pr"), "{names:?}");
     assert_eq!(w.run.state.status, Status::Stopped);

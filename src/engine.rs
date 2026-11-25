@@ -4,7 +4,7 @@ use crate::graph::{Graph, Kind, Step, Tool};
 use crate::log;
 use anyhow::{Context, Result, anyhow, bail};
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::{
     fmt::Write as _, fs, path::Path, path::PathBuf, process::Command, thread, time::Instant,
@@ -12,6 +12,9 @@ use std::{
 
 /// The stop note for a worker folder that is empty or not there.
 const EMPTY: &str = "the work folder is empty or not there. The sheet is from before version 0.1.2. Run `codeumbrella init --update` and start a new run";
+
+/// For each paper, the fingerprint of each of its files.
+type Seen = BTreeMap<String, BTreeMap<String, u64>>;
 
 /// What one step gives back.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -45,6 +48,8 @@ pub struct Job<'a> {
     pub effort: Option<&'a str>,
     /// The result of the step before this one.
     pub before: Option<&'a Outcome>,
+    /// One line for each paper that changed since the last run of this step.
+    pub changed: &'a [String],
 }
 
 /// A tool that can do a worker step, such as Claude or Codex.
@@ -148,6 +153,10 @@ pub struct State {
     pub results: BTreeMap<String, Outcome>,
     /// The fingerprint of each paper when its writer ended.
     pub prints: BTreeMap<String, u64>,
+    /// For each step, the files of the papers when its worker last gave a
+    /// result. An older notebook has none.
+    #[serde(default)]
+    pub seen: BTreeMap<String, Seen>,
     /// The result of the last step that ended.
     pub last: Option<Outcome>,
     /// The start time of the step of this moment. An older notebook has none.
@@ -368,6 +377,7 @@ impl Run {
             let print = fingerprint(&self.paper(paper))?;
             self.state.prints.insert(paper.clone(), print);
         }
+        self.state.seen.insert(name.to_owned(), self.snapshot());
         Ok(Some(outcome))
     }
 
@@ -396,7 +406,36 @@ impl Run {
             model: step.model.as_deref(),
             effort: step.effort.as_deref(),
             before,
+            changed: &self.changed(name),
         })
+    }
+
+    /// The files of each paper that has a fingerprint, as they are at this moment.
+    // A paper that is not readable is not there. The next step stops for it.
+    fn snapshot(&self) -> Seen {
+        let papers = self.state.prints.keys();
+        let read = |p: &String| Some((p.clone(), file_prints(&self.paper(p)).ok()?));
+        papers.filter_map(read).collect()
+    }
+
+    /// One line for each paper with a new, changed or removed file since the
+    /// last run of the step `name`. A first run gets no line.
+    fn changed(&self, name: &str) -> Vec<String> {
+        let Some(old) = self.state.seen.get(name) else {
+            return Vec::new();
+        };
+        let mut lines = Vec::new();
+        for (paper, now) in self.snapshot() {
+            let before = old.get(&paper).cloned().unwrap_or_default();
+            let all: BTreeSet<&String> = before.keys().chain(now.keys()).collect();
+            let differ = all.into_iter().filter(|f| before.get(*f) != now.get(*f));
+            let files: Vec<String> = differ.map(|f| format!("`{f}`")).collect();
+            if !files.is_empty() {
+                let files = files.join(", ");
+                lines.push(format!("the paper `{paper}` changed: {files}"));
+            }
+        }
+        lines
     }
 
     /// Does the parts of a fan step at the same time, and waits for all of
@@ -432,6 +471,7 @@ impl Run {
             let outcome = result.with_context(|| format!("the fan part {name}"))?;
             let text = &outcome.summary;
             log::record(&self.dir, name, outcome.ok, text, start, Some(&numbers))?;
+            self.state.seen.insert(name.clone(), self.snapshot());
             ok &= outcome.ok;
             let word = if outcome.ok { "good" } else { "bad" };
             let _ = writeln!(summary, "{name} ({word}): {}", outcome.summary);
@@ -481,6 +521,28 @@ impl Run {
 // ponytail: not a cryptographic hash, and it can change with the Rust version.
 // Use the `sha2` package if a worker tries to make a false paper on purpose.
 fn fingerprint(dir: &Path) -> Result<u64> {
+    let mut hasher = DefaultHasher::new();
+    for file in files(dir)? {
+        file.strip_prefix(dir)?.hash(&mut hasher);
+        fs::read(&file)?.hash(&mut hasher);
+    }
+    Ok(hasher.finish())
+}
+
+/// Makes one number for each file in a paper folder.
+fn file_prints(dir: &Path) -> Result<BTreeMap<String, u64>> {
+    let mut prints = BTreeMap::new();
+    for file in files(dir)? {
+        let mut hasher = DefaultHasher::new();
+        fs::read(&file)?.hash(&mut hasher);
+        let name = file.strip_prefix(dir)?.to_string_lossy().into_owned();
+        prints.insert(name, hasher.finish());
+    }
+    Ok(prints)
+}
+
+/// All the files in a paper folder, at each depth, in sequence.
+fn files(dir: &Path) -> Result<Vec<PathBuf>> {
     let (mut folders, mut files) = (vec![dir.to_path_buf()], Vec::new());
     while let Some(folder) = folders.pop() {
         let entries = fs::read_dir(&folder)
@@ -495,10 +557,5 @@ fn fingerprint(dir: &Path) -> Result<u64> {
         }
     }
     files.sort();
-    let mut hasher = DefaultHasher::new();
-    for file in files {
-        file.strip_prefix(dir)?.hash(&mut hasher);
-        fs::read(&file)?.hash(&mut hasher);
-    }
-    Ok(hasher.finish())
+    Ok(files)
 }
