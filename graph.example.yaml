@@ -144,6 +144,7 @@ steps:
   # that name to its own commit. The step `work_was_done` looks for a new
   # commit after it. After each yes for the tests, the two steps run
   # again. Thus a commit from before a no does not count.
+  #
   # A worker can write the git config of the work copy, and `update-ref` can
   # start a hook. So the call has `-c core.hooksPath=/dev/null`.
   mark:
@@ -155,18 +156,21 @@ steps:
   # No AI. This step copies each file of the paper `tests` to the same path in
   # the work copy. The `README.md` at the top of the paper stays out. So the
   # builder and the checkers use the tests that you said yes to.
+  #
   # The paper test always wins, also over a change from master.
   # It commits the copied files, and no other change, on the branch
   # `codeumbrella/<run id>`. With no change, it commits nothing. Then it moves
   # `refs/codeumbrella/before` to `HEAD`, so `work_was_done` does not count
   # this commit. It removes no file.
+  #
   # The step runs with no sandbox in a copy that a worker can write. So each
   # git call has the three `-c` options of `take_master`, the commit has
   # `--no-verify`, and git reads each path as plain text. A config name that
   # `take_master` refuses gives a bad result. So does a link or a file with a
   # second hard link in the paper. A link on a target path is refused too. So is
-  # a path with `.git`, `.github`, `.claude` or `.codeumbrella`. Each refusal comes before
-  # the first copy. A bad result stops the run.
+  # a path with `.git`, `.github`, `.claude` or `.codeumbrella`.
+  #
+  # Each refusal comes before the first copy. A bad result stops the run.
   copy_tests:
     type: command
     run:
@@ -241,16 +245,20 @@ steps:
   # No AI. This step looks for a commit after the step `copy_tests`. It comes
   # right after `simplify`, so only the commits of `build` and `simplify` count.
   # The commits of `set_version` and `take_master` come after it and do not
-  # count. It writes the new commits into `new-work.bundle` in the run folder.
+  # count.
+  #
+  # It writes the new commits into `new-work.bundle` in the run folder.
   # No step reads that file. With no new commit, git gives an error, so the
   # result is bad. A bad result goes to `do_work`, then back to this step.
   # A good second check goes to `take_master`, so the run gets the newest
   # master and a new version before `write_pr`.
+  #
   # The second command writes the names of the changed files into `files.txt`
   # in the run folder. A task after this one can read it. It lists only the
   # files of the builder and the simplifier, because the merge of master
   # comes after it. The two options `--no-ext-diff` and `--no-textconv` keep a
   # command of the work copy from running.
+  #
   # A worker can write in `.git` of its work copy. So this step is not a wall
   # against a worker that cheats. It is a check for a worker that did nothing
   # by error.
@@ -391,6 +399,7 @@ steps:
   # nothing, wrong comments and broken project rules. It cannot write a file.
   # It also compares the paper `pr` with the change.
   # It also reads the paper `lessons` for plain words.
+  #
   # This is for new runs.
   # A run reads the sheet at each command, so do not change the sheet
   # while a run is active. For a faster run, remove this step
