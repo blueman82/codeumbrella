@@ -1,4 +1,4 @@
-//! Fuzzes the token count of the trace of a Codex worker.
+//! Fuzzes the token count of the `trace` of a Codex worker.
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;

@@ -10,7 +10,7 @@ fuzz_target!(|data: &[u8]| {
         return;
     };
     if let Ok(graph) = yaml_serde::from_str::<Graph>(text) {
-        // With the real rules pages, a sheet gets to each part of the check.
+        // With the repository rules pages, a sheet gets to each part of the check.
         let roles = Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../roles"));
         // An error is the correct answer to a bad sheet.
         let _ = graph.check(roles);

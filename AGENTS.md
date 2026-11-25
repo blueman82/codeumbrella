@@ -116,7 +116,7 @@ To install the command and the chat command on a computer, run `./install.sh`.
 | `tests/run_id.rs` | Tests of the run id with four digits, of `status` on an id of before, of the chat page and the documents. |
 | `tests/plain_words.rs` | Tests of the rules for plain words: the rules pages, the list of `AGENTS.md`, the sheet and the documents. |
 | `fuzz/` | The fuzzer, with its own workspace. A fuzzer gives the code many automatic inputs. Its targets are `fuzz_sheet`, `fuzz_claude_reply` and `fuzz_codex_trace`. |
-| `fuzz/deny.toml` | The package check of `fuzz/`. It also permits the license NCSA, in `fuzz/` only. |
+| `fuzz/deny.toml` | The package check of `fuzz/`. It also accepts the license NCSA, in `fuzz/` only. |
 | `fuzz/seeds/` | Good inputs for each target. The fuzzer starts from them. |
 | `tests/fuzz_crashes/` | One folder for each target, with the inputs that caused a crash. |
 | `tests/fuzz_crashes.rs` | Runs each crash input again in `cargo test`, on stable Rust. |

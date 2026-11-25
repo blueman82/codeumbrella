@@ -100,14 +100,14 @@ impl Codex {
     }
 }
 
-/// Reads the trace file and counts its tokens.
+/// Reads the `trace` file and counts its tokens.
 fn tokens(trace: &Path, numbers: &mut Numbers) {
     count_tokens(&fs::read_to_string(trace).unwrap_or_default(), numbers);
 }
 
-/// Adds the tokens of each `turn.completed` line of the trace into `numbers`.
+/// Adds the tokens of each `turn.completed` line of the `trace` into `numbers`.
 /// The cached tokens and the reasoning tokens are parts of these two numbers.
-/// A trace with no such line gives no token numbers. A sum that is too large
+/// A `trace` with no such line gives no token numbers. A sum that is too large
 /// stays at the maximum.
 pub fn count_tokens(text: &str, numbers: &mut Numbers) {
     for line in text.lines() {

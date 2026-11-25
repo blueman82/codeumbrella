@@ -1,4 +1,4 @@
-//! Gives each saved crash input to the same function as its fuzz target.
+//! Gives each stored crash input to the same function as its fuzz target.
 //! A crash input is a file in `tests/fuzz_crashes/<target>/`.
 
 use codeumbrella::engine::Numbers;
