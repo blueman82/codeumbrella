@@ -121,7 +121,7 @@ To install the command and the chat command on a computer, run `./install.sh`.
 | `fuzz/seeds/` | Good inputs for each target. The fuzzer starts from them. |
 | `tests/fuzz_crashes/` | One folder for each target, with the inputs that caused a crash. |
 | `tests/fuzz_crashes.rs` | Runs each crash input again in `cargo test`, on stable Rust. |
-| `scripts/fuzz-repair` | A script for the Mac. It starts a run for each open issue `fuzz-crash` that the GitHub machine opened. |
+| `scripts/fuzz-repair` | A script for the Mac. It starts a run for each open issue `fuzz-crash` that the GitHub machine opened. While a run for that issue is not Done, it starts no new run for it. |
 | `scripts/fuzz-repair.plist` | The launchd pattern that starts `scripts/fuzz-repair` each hour. |
 | `.github/workflows/fuzz.yml` | The fuzz steps on GitHub: `fuzz_pr` on each PR, and `fuzz_master` each night. A chat session adds this file, because a run cannot change `.github`. |
 | `install.sh` | Installs the command and the chat command. |
