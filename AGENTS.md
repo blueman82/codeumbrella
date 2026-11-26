@@ -141,14 +141,17 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - A step that an `on_bad` line goes to must have `max_tries`.
 - A line that the supervisor does not know is an error.
 - The command step `set_version` comes after `learn` and before `write_pr`. It runs `.codeumbrella/set-version` on the work copy. A bad result stops the run. A task text names no version: only the script sets it.
-- `work_was_done` also writes the changed files into `files.txt` in the run folder.
+- `work_was_done` also writes the files of the new commits into `files.txt` in the run folder. With no new commit, the list stays.
 - `check_review` reads `spec`, `pr` and `lessons`. It reads the paper `lessons` for plain words.
 - The command step `mark` has no AI. It comes after `look_at_tests` and before `copy_tests`. It writes the commit of that moment into `refs/codeumbrella/before` of the work copy.
+- Before that, `mark` writes `new-work.bundle` and `files.txt` for the commits of a builder that no check saw. It does this only while the run folder has no `new-work.bundle`.
 - The command step `copy_tests` has no AI. It comes after `mark` and before `build`. It copies the paper `tests` into the work copy and commits the copied files. Then it moves `refs/codeumbrella/before` to that commit. A bad result stops the run.
 - A worker step that runs a second time gets one line for each paper that changed since its last run. The notebook keeps the data in `seen`.
 - The steps of the planner write the papers `spec`, `tests` and `pr`.
 - The worker step `write_pr` comes after `set_version` and after `repair`, before `check`. The writer completes the PR text in the paper `pr`.
-- `work_was_done` comes right after `simplify`. It makes `new-work.bundle` in the run folder from the commits after `copy_tests`. Only the commits of `build` and `simplify` count. With no new commit, git gives an error, and the run goes to the builder step `do_work`. Then it checks again. After the third try of `do_work` the run stops.
+- `work_was_done` comes right after `simplify`. It makes `new-work.bundle` in the run folder from the commits after `copy_tests`. Only the commits of `build` and `simplify` count.
+- With no new commit and no `new-work.bundle`, git gives an error. The run then goes to the builder step `do_work`. Then it checks again. After the third try of `do_work` the run stops.
+- After a no, `work_was_done` is good with no new commit if the run folder has `new-work.bundle`. The run then goes on to the checks.
 - `take_master` comes after `work_was_done` and before `learn`. It merges the newest master into the branch. It has `max_tries: 3`. A bad merge goes to the builder step `fix_merge`, then back to `take_master`.
 - `same_master` comes after `approval` and before `merge`. A branch with no newest master goes to `take_master`. The person then gets the PR question again.
 - `check` goes to `no_locked_files`. Only `same_master` goes to `merge`.
@@ -250,13 +253,17 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - One `not found` gives `ok: false`. A commit or a word of the builder is not a proof.
 - The reviewer looks in the full change of the run branch. A point that a change cannot show gets `kept` or `not kept`.
 - The attacker names each new paper test that is good before the code is written. Such a test shows nothing.
-- The step `mark` keeps the commit of the yes for the tests. The step `work_was_done` gives a bad result with no commit after it.
+- The step `mark` keeps the commit of the yes for the tests. The step `work_was_done` gives a bad result with no commit after it and no `new-work.bundle`.
+- `work_was_done` is good with no new commit if `new-work.bundle` is in the run folder. A worker cannot write that file.
+- A run of this project showed the cause. A build with complete code stopped a run after a no.
+- The check cannot see why the run came back. A bad repair or `fix_merge` that goes to the plan gets the same path.
+- `mark` and `work_was_done` run git in the work copy with no sandbox. The git calls in their shell text have `-c core.fsmonitor=false`. The diff of `work_was_done` does not have it.
 - A worker can write in `.git` of its work copy. So `work_was_done` is not a wall against a worker that cheats. It finds a worker that did nothing by error.
 - `run --next` starts while a different run is active. The move of the queue file to the run folder gives the task to one command only. A command that gets no task ends with an error and removes its run folder. Cause: on 20 November 2026 four tasks waited in a queue, one at a time.
 - `take_master` merges the newest master into the branch with a merge commit. The push stays plain. It has no rebase and no forced push. The clean copy fetches from GitHub. The work copy fetches only from the clean copy. A `filter.` entry or a merge driver in the config of the work copy gives a bad result. Cause: on 20 November 2026 two PRs of two runs could change the same file or get the same version. A worker can write that config.
 - `take_master` and the version script let through only the config names of a clean clone, and `user.name` and `user.email`. A test on 21 November 2026 showed the cause. Four other entries ran a command of the work copy with no sandbox, for example `core.sshCommand`. The step `mark` has `-c core.hooksPath=/dev/null`, because it ran a hook in that test.
 - `same_master` gives a good result only if the pushed branch has the newest master. Cause: on 20 November 2026 master could change while the person looked at the PR. Only `same_master` goes to `merge`.
-- `work_was_done` comes before `take_master` and counts only the commits of `build` and `simplify`, not the commit of `copy_tests`. A bad result goes to `do_work`. Cause: on 20 November 2026 the commits of `set_version` and `take_master` hid a builder that did nothing.
+- `work_was_done` comes before `take_master` and counts only the commits of `build` and `simplify`, not the commit of `copy_tests`. With `new-work.bundle` from before, no new commit is good. A bad result goes to `do_work`. Cause: on 20 November 2026 the commits of `set_version` and `take_master` hid a builder that did nothing.
 - The end of the workers first looks at each file `worker.<number>`. Thus an error of `ps` changes no file.
 - On 18 November 2026 a person ran the built command by hand with a live worker. The person found two errors that no checker found.
 - Thus the role `user` runs the software as a user. Its step is `check_use` in the fan of `check`.

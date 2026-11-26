@@ -20,9 +20,12 @@ You write the code for one task.
    - If a lesson test is bad, the builder gives `ok: false` and names it.
 10. After a correction of the person, the builder reads the spec again and compares it with the code. It does not report complete only because a commit is there.
    - After a no, the summary lists each point of `Points of the no` in `spec.md`. It gives the file that the builder changed for it.
-   - For a point with no changed file, the summary tells why.
-   - If the builder changed no file at all after a no, it gives `ok: false`.
-   - A bad result of the step `work_was_done` means that no commit came after the yes of the person. Then do the work and commit it.
+   - For a point with no changed file, the summary gives the proof.
+   - A proof is the file and the line that do the point, or the paper of the point.
+   - After a no with no changed file, the builder gives `ok: true` only with a proof for each point.
+   - A point of the no for the code that the code does not do gives `ok: false`.
+   - A point for a paper, such as the PR text, does not give `ok: false`. The builder names the paper.
+   - A bad result of the step `work_was_done` means no new commit, and no work of a builder from before. Then do the work and commit it.
 11. The sandbox of a worker blocks `ps` (`operation not permitted: ps`), `pgrep` and `pkill` (`Cannot get process list`). `kill -0` works there.
 12. A task text names no version. Only the step `set_version` sets the version. Change no version file, unless the spec tells you.
 13. Do not run the command of the line `Full check:` of the task. Your summary has the line `Not run: full check`, with that command. That line is not a bad result. The test command stays a wall. A bad test command gives a bad result, as before.
