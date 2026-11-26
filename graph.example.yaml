@@ -96,6 +96,14 @@ steps:
   # cannot go in a circle.
   # Remove these six steps for a faster run, and set `next` of `plan` to
   # `look_at_tests`.
+  #
+  # One check of the attacker uses the code from before the build. It looks for
+  # a paper test that is good before the code is written. For this check, the
+  # attacker uses the commit in the file `first-yes.txt` of the run folder.
+  # With no file, it uses the commit of the start of the run.
+  #
+  # After an attack, the planner can find no paper to correct. Then it gives a
+  # bad result only with a cause that a person can act on.
   attack_plan:
     role: attacker
     reads: [spec, tests]
@@ -145,6 +153,10 @@ steps:
   # commit after it. After each yes for the tests, the two steps run
   # again.
   #
+  # In its first time, the step also writes the commit of `HEAD` into
+  # `first-yes.txt` in the run folder. It does this only if that file and the
+  # git name are not there. A worker cannot write that file.
+  #
   # After a bad build, for example, no check saw the work. The first
   # command keeps that work before the step moves the name. It writes
   # `new-work.bundle` and `files.txt` in the run folder only if three things
@@ -163,9 +175,14 @@ steps:
         - |
           r=.codeumbrella/runs/{run}
           g() { git -c core.fsmonitor=false -c core.hooksPath=/dev/null -C "$r/work" "$@"; }
-          [ ! -f "$r/new-work.bundle" ] || exit 0
+          s=0
+          g rev-parse --quiet --verify refs/codeumbrella/before >/dev/null || s=$?
           # Status 1: the git name is not there. Each other error is bad.
-          g rev-parse --quiet --verify refs/codeumbrella/before >/dev/null || { [ $? = 1 ]; exit; }
+          if [ "$s" = 1 ] && [ ! -f "$r/first-yes.txt" ]; then
+            c=$(g rev-parse --verify HEAD) && echo "$c" > "$r/first-yes.txt" || exit 1
+          fi
+          [ ! -f "$r/new-work.bundle" ] || exit 0
+          [ "$s" = 0 ] || { [ "$s" = 1 ]; exit; }
           n=$(g rev-list --count refs/codeumbrella/before..HEAD) || exit 1
           [ "$n" != 0 ] || exit 0
           # The bundle comes last: with it, the list is complete.
