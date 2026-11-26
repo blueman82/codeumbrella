@@ -42,6 +42,9 @@ pub struct Step {
     /// The commands of a command step. Each command is a list of words.
     #[serde(default)]
     pub run: Vec<Vec<String>>,
+    /// The commands of a person step. If all are good, no question comes.
+    #[serde(default)]
+    pub skip_if: Vec<Vec<String>>,
     /// The steps of a fan step. They run at the same time.
     #[serde(default)]
     pub fan: Vec<String>,
@@ -97,7 +100,8 @@ impl Graph {
     /// rules page, a command step with no commands, a way back with no maximum,
     /// a maximum of 0, a name that is a path, a fan part that is not a plain
     /// worker step, a bad `model` or `effort`, `tool`, `model` or `effort`
-    /// on a step that is not a worker step, or `next` lines with no end.
+    /// on a step that is not a worker step, a bad `skip_if` line, or `next`
+    /// lines with no end.
     pub fn check(&self, roles: &Path) -> Result<()> {
         self.step(&self.start).context("the start line")?;
         for (name, step) in &self.steps {
@@ -135,6 +139,11 @@ impl Graph {
             ensure!(
                 (step.kind == Kind::Fan) != step.fan.is_empty(),
                 "step {name}: a fan step, and only a fan step, has a fan line"
+            );
+            ensure!(
+                (step.kind == Kind::Person || step.skip_if.is_empty())
+                    && !step.skip_if.iter().any(Vec::is_empty),
+                "step {name}: only a person step has skip_if, and each command must have words"
             );
             // A part of a fan only gives a result. The fan step has the paths.
             for part in &step.fan {

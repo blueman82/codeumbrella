@@ -16,7 +16,7 @@ The learner turns each problem of a run into a lesson. A lesson that a test can 
 
 Git does not see the file `.codeumbrella/lessons.md`. The workers of the next run read it.
 
-If the builder finds a bad paper test, the planner corrects only that test, and you see the tests again.
+The builder can find a bad paper test. Then the planner corrects only that test. The tests question does not come again if the spec stays and the attacker finds no problem. The chat tells you that change at the PR question. Each other change of the papers brings the tests question.
 
 Each PR has a set PR text, so you see what the change is for. The planner writes the title and the purpose, the cause, an example and the fix. After the build, the role `writer` adds the version line, the files of each area of the change, and a checklist. Its step is `write_pr`. It runs again after each repair, so the text agrees with the change.
 
@@ -36,6 +36,7 @@ Two runs can work at the same time. Before the PR question, the step `take_maste
 - `claude` (Claude Code) or `codex` (Codex). These start the workers. Check: `claude --version` or `codex --version`
 - A GitHub project for your code, with the name `origin`. Check: `git remote get-url origin`
 - `gh` signed in. Check: `gh auth status`
+- `jq`, which the default sheet uses to read the log of a run. Without it, the tests question always comes. Check: `jq --version`
 - macOS. There is no test on Linux or Windows.
 
 ## Install
@@ -60,7 +61,13 @@ The plugin brings only the chat command `/codeumbrella`. The `codeumbrella` comm
 
 ## The queue
 
-The folder `.codeumbrella/queue/` holds one text file for each task that waits. The file name sets the sequence, for example `01-clean-up.txt` before `02-pr-text.txt`. A line `Files: a.rs, b.rs` in a file names the files of the task. `codeumbrella queue` shows the tasks. `codeumbrella run --next` starts the first one and moves its file into the run. It gives an error if the queue is empty or a run is active.
+The folder `.codeumbrella/queue/` holds one text file for each task that waits. The file name sets the sequence, for example `01-clean-up.txt` before `02-pr-text.txt`. A line `Files: a.rs, b.rs` in a file names the files of the task. `codeumbrella queue` shows each file name with its `Files:` line, and its `Purpose:` line below. `codeumbrella run --next` starts the first one and moves its file into the run. It gives an error if the queue is empty.
+
+In a chat, these rules apply:
+
+- After a run is `Done`, the chat starts the next task. It starts 3 tasks by itself at the maximum. Then it shows you each task that waits.
+- A run can stop at a plan step with no paper to correct, after new commits. The chat then starts that task again, one time only. It writes the cause as a new task at the end of the queue.
+- Each other stop comes to you.
 
 The step `set_version` sets the version of the project before the PR text. It runs the script `.codeumbrella/set-version`. `init` writes a script that does nothing. Put your own version commands in it. A task text names no version.
 

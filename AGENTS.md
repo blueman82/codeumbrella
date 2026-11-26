@@ -48,7 +48,7 @@ codeumbrella init                              # put the default sheet and rules
 codeumbrella init --update                     # replace changed factory files with the new defaults, keep a copy of each as `.before`
 codeumbrella run "<task>"                      # start a run with Claude workers
 codeumbrella run --next                        # start the first task of the queue `.codeumbrella/queue/`. An error if the queue is empty. It starts also while a different run is `Running` or `Waiting`
-codeumbrella queue                             # show the tasks that wait: the file name and its `Files:` line
+codeumbrella queue                             # show the tasks that wait: the file name, its `Files:` line and its `Purpose:` line
 codeumbrella --tool codex run "<task>"         # start a run with Codex workers. The run keeps this tool
 codeumbrella status [run-id]                   # show where a run is: the step of this moment and the total of the workers. After a kill, it repairs the run first (see Safety rules)
 codeumbrella status --wait <run-id>            # wait until the run is not `Running`, then show it
@@ -70,6 +70,7 @@ To install the command and the chat command on a computer, run `./install.sh`.
 | `scripts/set-version` | The script of this project. The person copies it to `.codeumbrella/set-version`. It sets the next patch version in the version files, also in `fuzz/Cargo.lock`. |
 | `.codeumbrella/queue/` | The queue: one text file for each task that waits. The file name sets the sequence. A line `Files:` names the files of the task. `run --next` moves the first file into the run as `task.txt`. |
 | `tests/same_time.rs` | Tests of two runs at the same time. They test `run --next`, the line `Run:`, `take_master`, `fix_merge`, `same_master`, `work_was_done`, `do_work` and the documents. |
+| `tests/queue_rules.rs` | Tests of the `Purpose:` line of `queue`, of `skip_if`, of the tests question, of the chat page and of the documents. |
 | `tests/queue.rs` | Tests of the queue, `run --next`, `set_version`, `files.txt`, the default script, the script of this project and the documents. |
 | `default.gitignore` | The default ignore file. `init` gives it to a project that has no `.gitignore`. |
 | `roles/<role>.md` | The default rules page of each role, written by hand. |
@@ -129,9 +130,13 @@ To install the command and the chat command on a computer, run `./install.sh`.
 
 ## The sheet
 
-The file `graph.example.yaml` tells what each line does. A step can have only these lines: `role`, `type`, `run`, `reads`, `writes`, `next`, `on_bad` and `max_tries`. It can also have `fan`, `tool`, `model` and `effort`. The sheet also has one `start` line.
+The file `graph.example.yaml` tells what each line does. A step can have only these lines: `role`, `type`, `run`, `reads`, `writes`, `next`, `on_bad` and `max_tries`. It can also have `fan`, `tool`, `model`, `effort` and `skip_if`. The sheet also has one `start` line.
 
 - A step with `type: person` stops the run until the person answers yes or no.
+- A person step can have a `skip_if` line: a list of commands, as `run`. If all are good, the run goes to `next` with no question. If one is bad, the run waits.
+- A `skip_if` line on a different type of step is an error. So is a command with no words.
+- The chat starts 3 tasks of the queue by itself at the maximum, one after the other. Then it waits for the person and tells each task that waits.
+- A run can stop at a plan step with no paper to correct, with commits after `mark`. Then the chat puts its `task.txt` back into the queue and starts it again, one time only. It writes the cause as a new task at the end of the queue.
 - A step with `type: fan` has a `fan` line: a list of worker steps. The supervisor does them at the same time and waits for all of them. The result is good only if all of them are good.
 - A step in a `fan` line has only `role`, `reads`, `tool`, `model` and `effort`. It writes no paper.
 - Only a worker step can have `tool`, `model` and `effort`. `tool` is `claude` or `codex`. With no line, the step uses the tool of the run.
@@ -162,6 +167,8 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 ## Safety rules
 
 - The supervisor opens the PR. Then the run always stops for the approval of the person. The merge comes only after a yes. A no with a text sends the work back to the planner. The person then sees the tests again.
+- After a bad build or a bad repair, the tests question stays away only with these three facts. The planner changed only paper tests that the bad result names. The spec did not change, and the first attack was good and complete. The person sees that change at the PR question.
+- The commands of `skip_if` compare the papers with the copy that `mark` keeps in the run folder. No worker can write that copy. Each doubt or error brings the question.
 - No worker can push, open a PR or merge. Only the command steps `push`, `find_pr`, `open_pr` and `merge` can, with the set commands in the sheet.
 - The script `.codeumbrella/set-version` of the step `set_version` runs with no sandbox, as each command step does. Only the person writes it, because workers cannot write in `.codeumbrella`. The step `work_was_done` and the commit of the script run git in the work copy, where a worker can write. So the diff has `--no-ext-diff` and `--no-textconv`, and the commit has `-c core.hooksPath=/dev/null` and `--no-verify`. Each git call of the script also has `-c core.fsmonitor=false`. The script stops if the config of the work copy has a name that a clean clone does not have. `set_version` does not push.
 - The config check of that script reads only the settings of the work copy and each file that they include. A CI run on 21 November 2026 showed the cause. A computer with Git LFS has a filter in the settings of the computer, and the script stopped there.

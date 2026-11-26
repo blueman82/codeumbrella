@@ -341,6 +341,13 @@ impl Run {
         if step.kind == Kind::Person {
             let answer = self.state.answer.take();
             if answer.is_none() {
+                // All commands of `skip_if` are good: no question.
+                if !step.skip_if.is_empty() {
+                    let skip = self.commands(&step.skip_if)?;
+                    if skip.ok {
+                        return Ok(Some(skip));
+                    }
+                }
                 let last = before.map_or_else(String::new, |o| o.summary);
                 let papers = self.paper("").display().to_string();
                 let note = format!(

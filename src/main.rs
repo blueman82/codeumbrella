@@ -524,7 +524,8 @@ fn task_text(path: &Path) -> Result<String> {
     fs::read_to_string(path).with_context(|| format!("cannot read {}", path.display()))
 }
 
-/// Prints one line for each task that waits: the file name and its `Files:` line.
+/// Prints for each task that waits: the file name and its `Files:` line. A task
+/// with a `Purpose:` line gets that line below.
 fn queue() -> Result<()> {
     let files = queued()?;
     if files.is_empty() {
@@ -535,6 +536,9 @@ fn queue() -> Result<()> {
         let given = text.lines().find(|l| l.starts_with("Files:"));
         let name = path.file_name().unwrap_or_default().to_string_lossy();
         println!("{name}  {}", given.unwrap_or("Files: not given").trim());
+        if let Some(purpose) = text.lines().find(|l| l.starts_with("Purpose:")) {
+            println!("  {}", purpose.trim());
+        }
     }
     Ok(())
 }
