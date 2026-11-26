@@ -605,7 +605,10 @@ steps:
   # line, with the newest run id. A line that starts with `- ` stays one time.
   # A done entry removes the line of the same entry with no mark.
   #
-  # With no paper, the result is bad and the file stays.
+  # With no paper, the result is bad and the file stays. The step also refuses
+  # a paper that is a symbolic link or has a second hard link. It refuses a
+  # folder `papers/lessons` that is a symbolic link. So no file outside the
+  # paper goes into the lessons file.
   save_lessons:
     type: command
     run:
@@ -617,6 +620,7 @@ steps:
           r=.codeumbrella/runs/{run}
           n=$r/papers/lessons/lessons.md
           [ -f "$n" ] || { echo "no paper: $n" >&2; exit 1; }
+          [ ! -L "${n%/*}" ] && [ ! -L "$n" ] && [ -n "$(find "$n" -prune -links 1)" ] || { echo "refused, a link: $n" >&2; exit 1; }
           p=$f; [ -f "$p" ] || p=/dev/null
           b=$r/lessons.before.md; [ -f "$b" ] || b=/dev/null
           h=$(awk 1 "$p" "$b" "$n" | grep -a "^Runs read to:" | sort -t- -k2,2n -k3,3n | tail -n 1)

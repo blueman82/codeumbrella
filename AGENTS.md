@@ -288,6 +288,7 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - Only the steps `save_lessons` and `tidy_lessons` write `.codeumbrella/lessons.md`. The person made this decision on 19 November 2026.
 - `save_lessons` adds the changes of the paper `lessons` with `git merge-file --union`. `tidy_lessons` removes an entry only with a strikethrough and a merged PR. The date is 25 November 2026.
 - The cause: a limit removed useful entries, and a copy could remove the entries of a second run.
+- `save_lessons` refuses a paper with a symbolic link or a second hard link. Thus only a file of the paper goes into the lessons file.
 - The builder does not change a lesson test. The file `tests.txt` of the paper `lessons` names each lesson test.
 - After the merge, the step `clean_up` removes `work` and `clean` of the run. On 19 November 2026 the run folders held 6.8 GB.
 - `open_pr` opens the PR with the title of `title.txt` and the text of `body.md` of the paper `pr`. It does not use `--fill`.
