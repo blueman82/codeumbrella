@@ -3,7 +3,7 @@
 //! no network.
 
 use codeumbrella::graph::{Graph, Kind};
-use std::os::unix::fs::PermissionsExt;
+use std::os::unix::fs::{PermissionsExt, symlink};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 use std::sync::atomic::{AtomicU32, Ordering};
@@ -466,6 +466,71 @@ fn save_lessons_with_no_paper_is_bad_and_changes_nothing() {
     assert_eq!(get(&dir, TODAY), today);
 }
 
+/// Each file and link below `dir`, with its content or its target.
+fn snapshot(dir: &Path) -> Vec<(PathBuf, String)> {
+    let mut found = Vec::new();
+    for entry in fs::read_dir(dir).unwrap() {
+        let path = entry.unwrap().path();
+        let kind = fs::symlink_metadata(&path).unwrap().file_type();
+        if kind.is_dir() {
+            found.extend(snapshot(&path));
+        } else if kind.is_symlink() {
+            let target = fs::read_link(&path).unwrap();
+            found.push((path, format!("link to {}", target.display())));
+        } else {
+            let content = fs::read_to_string(&path).unwrap();
+            found.push((path, content));
+        }
+    }
+    found.sort();
+    found
+}
+
+/// A folder with a project file and a file of before. The file
+/// `outside.md` is not a part of the paper.
+fn place_with_outside_file() -> PathBuf {
+    let dir = place();
+    let today = file("run-1795000000-0001", &[FIRST_ENTRY]);
+    put(&dir, BEFORE, &today);
+    put(&dir, TODAY, &today);
+    let outside = file("run-1795000000-0002", &[SECOND_ENTRY]);
+    put(&dir, "outside.md", &outside);
+    dir
+}
+
+/// `save_lessons` gives a bad result and changes no file.
+fn assert_refused(dir: &Path) {
+    let before = snapshot(dir);
+    assert!(!step(dir, "save_lessons"), "the paper must be refused");
+    assert_eq!(snapshot(dir), before);
+}
+
+#[test]
+fn save_lessons_refuses_a_paper_that_is_a_symbolic_link() {
+    let dir = place_with_outside_file();
+    symlink(dir.join("outside.md"), dir.join(PAPER)).unwrap();
+    assert_refused(&dir);
+}
+
+#[test]
+fn save_lessons_refuses_a_paper_with_a_second_hard_link() {
+    let dir = place_with_outside_file();
+    fs::hard_link(dir.join("outside.md"), dir.join(PAPER)).unwrap();
+    assert_refused(&dir);
+}
+
+#[test]
+fn save_lessons_refuses_a_paper_folder_that_is_a_symbolic_link() {
+    let dir = place_with_outside_file();
+    let paper = dir.join(PAPER);
+    let paper_dir = paper.parent().unwrap();
+    let other = dir.join("other");
+    fs::rename(paper_dir, &other).unwrap();
+    fs::copy(dir.join("outside.md"), other.join("lessons.md")).unwrap();
+    symlink(&other, paper_dir).unwrap();
+    assert_refused(&dir);
+}
+
 // ---------------------------------------------------------------------
 // The step `tidy_lessons`
 // ---------------------------------------------------------------------
@@ -742,6 +807,18 @@ fn agents_md_tells_who_writes_the_file_and_when_an_entry_goes() {
     assert!(line.contains("tidy_lessons"), "{line}");
     let structure = section("AGENTS.md", "Structure");
     assert!(structure.contains("`tests/lessons_keep.rs`"));
+}
+
+#[test]
+fn the_rules_and_the_sheet_tell_about_the_refused_paper() {
+    let rules = section("AGENTS.md", "Safety rules");
+    let told = rules.lines().any(|l| {
+        let step = l.contains("save_lessons");
+        step && l.contains("hard link")
+    });
+    assert!(told, "no line for save_lessons and its links");
+    let save = comment_above("save_lessons");
+    assert!(save.contains("link"), "{save}");
 }
 
 #[test]
