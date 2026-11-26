@@ -95,7 +95,7 @@ To install the command and the chat command on a computer, run `./install.sh`.
 | `.claude-plugin/` | The Claude Code plugin files: `plugin.json` and `marketplace.json`. |
 | `.codex-plugin/` | The Codex plugin file: `plugin.json`. |
 | `.agents/plugins/` | The Codex marketplace file `marketplace.json`. |
-| `tests/packaging.rs` | Tests of the plugin files and the README. |
+| `tests/packaging.rs` | Tests of the plugin files, the README and `install.sh`. |
 | `tests/walls.rs` | Tests of the safety settings and the safety checks. Each one becomes bad if a wall goes. |
 | `tests/step_tools.rs` | Tests of `tool`, `model` and `effort`, with a simulated `claude` and `codex`. |
 | `tests/attacker.rs` | Tests of the plan attacker: its step, its files, its settings and its rules page. |
