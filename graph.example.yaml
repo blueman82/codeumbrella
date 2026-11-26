@@ -164,13 +164,14 @@ steps:
           [ -d "$a/spec" ] && [ -d "$a/tests" ]
           # The last three lines: a bad builder, a good plan, a good attack.
           last=$(tail -n 3 "$r/log.jsonl")
-          step() { printf '%s\n' "$last" | sed -n "$1p" | jq -r "select(.ok == $2) | .step"; }
+          line() { printf '%s\n' "$last" | sed -n "$1p"; }
+          step() { line "$1" | jq -r "select(.ok == $2) | .step"; }
           case $(step 1 false) in build|repair) ;; *) exit 1 ;; esac
           [ "$(step 2 true)" = plan ]
           [ "$(step 3 true)" = attack_plan ]
-          attack=$(printf '%s\n' "$last" | sed -n 3p | jq -r .summary)
+          attack=$(line 3 | jq -r .summary)
           case $attack in *"Not complete:"*) exit 1 ;; esac
-          named=$(printf '%s\n' "$last" | sed -n 1p | jq -r .summary)
+          named=$(line 1 | jq -r .summary)
           links=$(find "$a" "$p/spec" "$p/tests" -type l)
           [ -z "$links" ]
           diff -r "$a/spec" "$p/spec" >/dev/null
