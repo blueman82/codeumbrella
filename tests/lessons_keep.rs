@@ -745,6 +745,16 @@ fn agents_md_tells_who_writes_the_file_and_when_an_entry_goes() {
 }
 
 #[test]
+fn agents_md_tells_when_fuzz_repair_starts_no_new_run() {
+    let structure = section("AGENTS.md", "Structure");
+    let row = "| `scripts/fuzz-repair` |";
+    let line = structure.lines().find(|l| l.starts_with(row));
+    let line = line.expect("the row of scripts/fuzz-repair");
+    assert!(line.contains("not Done"), "{line}");
+    assert!(line.contains("no new run"), "{line}");
+}
+
+#[test]
 fn the_architecture_and_the_readme_show_tidy_lessons() {
     let path = section("ARCHITECTURE.md", "The path of a task");
     let lines: Vec<&str> = path.lines().collect();
