@@ -12,7 +12,9 @@ An attacker looks for weak points in the plan before you see the tests. A simpli
 
 A `security` checker reads it for weak points that a person can use to do damage. A user checker builds the work in a scratch folder. It runs the examples of the spec as a user does.
 
-The learner turns each problem of a run into a lesson. A lesson that a test can show becomes a lesson test on the branch. Each other lesson becomes a short entry. After the merge, the step `save_lessons` copies the entries to `.codeumbrella/lessons.md`. Then the step `clean_up` removes the two copies of the run.
+The learner turns each problem of a run into a lesson. A lesson that a test can show becomes a lesson test on the branch. Each other lesson becomes a short entry.
+
+After the merge, the step `save_lessons` adds the entries to `.codeumbrella/lessons.md`. A run that repairs a problem marks its entry with a strikethrough. The step `tidy_lessons` removes such an entry after its PR is merged. Then the step `clean_up` removes the two copies of the run.
 
 Git does not see the file `.codeumbrella/lessons.md`. The workers of the next run read it.
 
@@ -107,7 +109,7 @@ Run `codeumbrella init --update` in your project. It replaces each factory file 
 | Stop | Yes | No, with your text |
 |---|---|---|
 | The tests | The builder starts. | The planner writes the tests again. |
-| The PR | The supervisor merges. Then it copies the lessons to `.codeumbrella/lessons.md`. Then `clean_up` removes the two copies of the run. | The planner corrects the spec and the tests. You see the tests again. The same PR gets the new code, a new title and a new text. |
+| The PR | The supervisor merges. Then it adds the lessons to `.codeumbrella/lessons.md`, and removes done entries with a merged PR. Then `clean_up` removes the two copies of the run. | The planner corrects the spec and the tests. You see the tests again. The same PR gets the new code, a new title and a new text. |
 
 A point of your task can have two meanings. Then the planner makes a decision and lists it at the top of the spec. At the tests stop, the chat tells you each such decision. In a terminal, read the top of `.codeumbrella/runs/<run-id>/papers/spec/spec.md`.
 

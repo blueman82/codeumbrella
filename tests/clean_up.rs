@@ -170,7 +170,9 @@ fn save_lessons_goes_to_clean_up_and_the_run_ends_after_it() {
     let merge = graph.step("merge").unwrap();
     assert_eq!(merge.next.as_deref(), Some("save_lessons"));
     let save = graph.step("save_lessons").unwrap();
-    assert_eq!(save.next.as_deref(), Some("clean_up"));
+    assert_eq!(save.next.as_deref(), Some("tidy_lessons"));
+    let tidy = graph.step("tidy_lessons").unwrap();
+    assert_eq!(tidy.next.as_deref(), Some("clean_up"));
     assert!(save.on_bad.is_none(), "{:?}", save.on_bad);
     let clean = graph.step("clean_up").unwrap();
     assert_eq!(clean.kind, Kind::Command);
@@ -181,10 +183,10 @@ fn save_lessons_goes_to_clean_up_and_the_run_ends_after_it() {
     assert!(clean.reads.is_empty() && clean.writes.is_empty());
     assert!(clean.role.is_none() && clean.fan.is_empty());
     assert_ne!(graph.start, "clean_up");
-    // Only `save_lessons` goes to `clean_up`.
+    // Only `tidy_lessons` goes to `clean_up`.
     for name in graph.steps.keys() {
         let goes = goes_to(&graph, name, "clean_up");
-        assert_eq!(goes, name == "save_lessons", "{name}");
+        assert_eq!(goes, name == "tidy_lessons", "{name}");
     }
 }
 
@@ -286,8 +288,8 @@ fn a_run_of_the_quiet_default_sheet_ends_after_clean_up() {
         let value: Value = serde_json::from_str(line).unwrap();
         steps.push(value["step"].as_str().unwrap().to_owned());
     }
-    let last = &steps[steps.len() - 3..];
-    let want = ["merge", "save_lessons", "clean_up"];
+    let last = &steps[steps.len() - 4..];
+    let want = ["merge", "save_lessons", "tidy_lessons", "clean_up"];
     assert_eq!(last, want, "{steps:?}");
 }
 
