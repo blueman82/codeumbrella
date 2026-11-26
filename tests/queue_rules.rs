@@ -511,7 +511,7 @@ fn mark_renews_its_copy_with_a_bundle_in_the_run_folder() {
     let bad = [("build", NAMED), ("build", "tests/b.rs is bad.")];
     let worker = Planner::new(Change::TwoTimes).bad(&bad);
     let (mut run, graph) = at_first_question(&worker);
-    // With this file, the first command of `mark` ends early.
+    // With this file, the first command of `mark` does nothing.
     fs::write(run.dir.join("new-work.bundle"), "x").unwrap();
     say_yes(&mut run, &graph, &worker);
     let at = run.state.at.as_deref();
