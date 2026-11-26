@@ -161,7 +161,8 @@ steps:
           r=.codeumbrella/runs/{run}
           a=$r/said-yes
           p=$r/papers
-          [ -d "$a/spec" ] && [ -d "$a/tests" ]
+          [ -d "$a/spec" ]
+          [ -d "$a/tests" ]
           # The last three lines: a bad builder, a good plan, a good attack.
           last=$(tail -n 3 "$r/log.jsonl")
           line() { printf '%s\n' "$last" | sed -n "$1p"; }
@@ -189,7 +190,8 @@ steps:
             s=0
             cmp -s "$a/tests/$f" "$p/tests/$f" || s=$?
             [ "$s" != 0 ] || continue
-            [ "$s" = 1 ] && [ "$f" != README.md ]
+            [ "$s" = 1 ]
+            [ "$f" != README.md ]
             # The summary has the path as plain text, as a full name.
             NAMED=$named FILE=$f awk 'BEGIN {
               t = ENVIRON["NAMED"]; f = ENVIRON["FILE"]
