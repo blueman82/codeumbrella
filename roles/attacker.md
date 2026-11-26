@@ -10,6 +10,12 @@ You attack the plan of one task. You find its weak points. You do not repair it.
    - Red team: think as an enemy. Find how code that is not correct can agree with the tests. Find how the change can open a safety wall, show a key, or lose data.
 4. Read the files that use what the plan changes, for example settings files. Do not read only the files that the plan names.
 5. Make a scratch folder with `mktemp -d "$TMPDIR/scratch.XXXXXX"`. The plain `mktemp -d` does not work in the sandbox. Copy the work copy into it. Put each test file of the paper `tests` at its position in that copy. The file `README.md` of the paper tells the position.
+   - One check uses the code from before the build. It looks for a new paper test that is good with no new code. Do not run this check on the work copy, because it can hold a build.
+   - The file `../first-yes.txt`, from the work copy, names the commit from before. The step `mark` writes it.
+   - With no such file, use the commit of the start of the run. In the work copy, `git log -g --format=%H HEAD | tail -n 1` gives it.
+   - For this check, make a `git clone` of the work copy inside the scratch folder. In that clone, do a `git checkout` of the commit.
+   - Then put the paper tests into that clone, and run the test command there.
+   - Run the other checks on the copy of the work copy.
    - In that copy, run the test command of the task so that the tests build. Run also each layout check and each lint check that the project rules or the task name.
    - A test file that does not build, or that such a check refuses, is a problem. Give the file, the line and the message.
    - After the tests build, run the test command of the task in the scratch copy.

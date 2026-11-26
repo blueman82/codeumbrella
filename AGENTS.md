@@ -144,6 +144,9 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - `work_was_done` also writes the files of the new commits into `files.txt` in the run folder. With no new commit, the list stays.
 - `check_review` reads `spec`, `pr` and `lessons`. It reads the paper `lessons` for plain words.
 - The command step `mark` has no AI. It comes after `look_at_tests` and before `copy_tests`. It writes the commit of that moment into `refs/codeumbrella/before` of the work copy.
+- In its first time, `mark` also writes that commit into `first-yes.txt` in the run folder. It does this only if that file and the git name are not there.
+- The attacker runs the check "good before the code is written" on the commit in `first-yes.txt`. With no file, it uses the commit of the start of the run.
+- After an attack, a planner can have no paper to correct. It gives `ok: false` only with a cause that a person can act on. It names that cause in the first line of its summary.
 - Before that, `mark` writes `new-work.bundle` and `files.txt` for the commits of a builder that no check saw. It does this only while the run folder has no `new-work.bundle`.
 - The command step `copy_tests` has no AI. It comes after `mark` and before `build`. It copies the paper `tests` into the work copy and commits the copied files. Then it moves `refs/codeumbrella/before` to that commit. A bad result stops the run.
 - A worker step that runs a second time gets one line for each paper that changed since its last run. The notebook keeps the data in `seen`.
