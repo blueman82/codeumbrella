@@ -185,8 +185,11 @@ fn install_script_still_installs_the_command() {
 /// Runs a copy of `install.sh` in a new git folder. The tools `gh` and
 /// `claude` are simulated, `cargo` is not there, and the store is a folder.
 /// `store` is `good`, `bad` (a checksum that does not agree) or `none`.
+/// `before` is a shell line that runs in the test folder, after the commit
+/// and the store, and before the script. That folder has `repo`, `home`
+/// and `bin`, the folder of the simulated tools.
 /// It gives the output, the result and the home folder.
-fn run_install(label: &str, store: &str) -> (String, bool, PathBuf) {
+fn run_install(label: &str, store: &str, before: &str) -> (String, bool, PathBuf) {
     use std::os::unix::fs::PermissionsExt;
     use std::process::Command;
     let dir = std::env::temp_dir().join(format!("cu-install-{label}-{}", std::process::id()));
@@ -245,6 +248,8 @@ fn run_install(label: &str, store: &str) -> (String, bool, PathBuf) {
             assert!(ok, "bad checksum: {text}");
         }
     }
+    let (text, ok) = sh(&dir, before);
+    assert!(ok, "before: {text}");
     let (text, ok) = sh(&repo, "./install.sh");
     (text, ok, home)
 }
@@ -252,7 +257,7 @@ fn run_install(label: &str, store: &str) -> (String, bool, PathBuf) {
 #[test]
 #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 fn install_script_downloads_the_built_command_with_no_cargo() {
-    let (text, ok, home) = run_install("good", "good");
+    let (text, ok, home) = run_install("good", "good", "");
     assert!(ok, "{text}");
     assert!(text.contains("Checksum: OK"), "{text}");
     assert!(home.join(".cargo/bin/codeumbrella").is_file(), "{text}");
@@ -261,7 +266,7 @@ fn install_script_downloads_the_built_command_with_no_cargo() {
 
 #[test]
 fn install_script_tells_how_to_get_cargo_when_the_store_has_no_file() {
-    let (text, ok, home) = run_install("none", "none");
+    let (text, ok, home) = run_install("none", "none", "");
     assert!(!ok, "{text}");
     for part in ["Not found: cargo", "sh.rustup.rs", "Nothing was installed."] {
         assert!(text.contains(part), "the output lacks `{part}`: {text}");
@@ -273,10 +278,239 @@ fn install_script_tells_how_to_get_cargo_when_the_store_has_no_file() {
 #[test]
 #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 fn install_script_refuses_a_file_with_a_bad_checksum() {
-    let (text, ok, home) = run_install("bad", "bad");
+    let (text, ok, home) = run_install("bad", "bad", "");
     assert!(!ok, "{text}");
     assert!(text.contains("checksum of the downloaded file"), "{text}");
     assert!(!home.join(".cargo").exists(), "{text}");
+}
+
+/// The value of the first line that starts with `key`, with no quote marks.
+fn value_of<'a>(body: &'a str, key: &str) -> &'a str {
+    body.lines()
+        .find_map(|row| row.trim_start().strip_prefix(key))
+        .unwrap_or_else(|| panic!("no line starts with {key}"))
+        .trim_matches('"')
+}
+
+#[test]
+fn install_script_and_release_have_the_same_file_names() {
+    let script = text("install.sh");
+    let release = text(".github/workflows/release.yml");
+    let package = "codeumbrella-aarch64-apple-darwin";
+    let sums = format!("{package}-sha256");
+    assert_eq!(value_of(&script, "name="), package);
+    let mut uploads: Vec<&str> = release
+        .split("--name ")
+        .skip(1)
+        .filter_map(|part| part.split_whitespace().next())
+        .collect();
+    uploads.sort_unstable();
+    assert_eq!(uploads, [package, sums.as_str()]);
+    for part in [
+        "raw/names/$name/versions/$commit/$file",
+        "raw/names/$name-sha256/versions/$commit/$file.sha256",
+    ] {
+        assert!(script.contains(part), "install.sh lacks `{part}`");
+    }
+    let in_release = value_of(&release, "file=");
+    let in_script = value_of(&script, "file=");
+    let uploaded = in_release.replace("$GITHUB_SHA", "<commit>");
+    let wanted = in_script.replace("$commit", "<commit>");
+    assert_eq!(uploaded, wanted);
+    assert_eq!(wanted, "codeumbrella-<commit>-aarch64-apple-darwin.tar.gz");
+}
+
+#[test]
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+fn install_script_does_not_download_for_a_folder_with_changes() {
+    let before = "echo more >> repo/skills/codeumbrella/SKILL.md";
+    let (text, ok, home) = run_install("changes", "good", before);
+    assert!(!ok, "{text}");
+    assert!(text.contains("changes of its own"), "{text}");
+    assert!(!text.contains("Checksum: OK"), "{text}");
+    assert!(!home.join(".cargo").exists(), "{text}");
+}
+
+#[test]
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+fn install_script_downloads_with_a_file_that_git_does_not_have() {
+    let before = "mkdir repo/notes && echo more > repo/notes/page.txt";
+    let (text, ok, home) = run_install("untracked", "good", before);
+    assert!(ok, "{text}");
+    assert!(text.contains("Checksum: OK"), "{text}");
+    assert!(home.join(".cargo/bin/codeumbrella").is_file(), "{text}");
+}
+
+#[test]
+fn install_script_stops_when_a_tool_is_not_there() {
+    let (text, ok, home) = run_install("no-gh", "none", "rm bin/gh");
+    assert!(!ok, "{text}");
+    assert!(text.contains("Not found: gh"), "{text}");
+    assert!(text.contains("Nothing was installed."), "{text}");
+    assert!(!home.join(".cargo").exists(), "{text}");
+}
+
+/// The names of the files in `.cargo/bin` of a home folder.
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+fn installed(home: &Path) -> Vec<String> {
+    let Ok(list) = std::fs::read_dir(home.join(".cargo/bin")) else {
+        return Vec::new();
+    };
+    let mut names: Vec<String> = list
+        .flatten()
+        .map(|entry| entry.file_name().to_string_lossy().into_owned())
+        .collect();
+    names.sort();
+    names
+}
+
+/// The cause that the script prints for no download. It is one line.
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+fn cause_of(output: &str) -> &str {
+    let mut rows = output.lines();
+    let first = rows
+        .find_map(|row| row.strip_prefix("No download of the built command: "))
+        .unwrap_or_else(|| panic!("no cause line: {output}"));
+    assert_eq!(
+        rows.next(),
+        Some("The script builds the command on this computer."),
+        "the cause is not one line: {output}"
+    );
+    first
+        .strip_suffix('.')
+        .expect("the cause ends with a point")
+}
+
+/// A shell line that puts a simulated tool into `bin`. In `body`, `$last`
+/// is the last word that the tool got.
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+fn fake_tool(name: &str, body: &str) -> String {
+    let lines = "'#!/bin/sh' 'for last; do :; done'";
+    let make = format!("printf '%s\\n' {lines} '{body}' > bin/{name}");
+    format!("{make} && chmod +x bin/{name}")
+}
+
+#[test]
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+fn install_script_names_the_folder_that_it_cannot_write_to() {
+    use std::os::unix::fs::PermissionsExt;
+    let before = "mkdir -p home/.cargo/bin && chmod 555 home/.cargo/bin";
+    let (text, ok, home) = run_install("locked", "good", before);
+    let folder = home.join(".cargo/bin");
+    let found = installed(&home);
+    let mode = std::fs::Permissions::from_mode(0o755);
+    std::fs::set_permissions(&folder, mode).expect("set the mode");
+    assert!(!ok, "{text}");
+    assert!(!text.contains("Checksum: OK"), "{text}");
+    let named = folder.display().to_string();
+    assert!(cause_of(&text).contains(&named), "{text}");
+    assert_eq!(found, Vec::<String>::new(), "{text}");
+}
+
+#[test]
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+fn install_script_moves_a_side_file_to_the_command_name() {
+    use std::process::Command;
+    let first = "mkdir -p home/.cargo/bin && echo before > home/.cargo/bin/codeumbrella";
+    let body = r#"printf "%s\n" "$@" >> "$0.log"; /bin/mv "$@""#;
+    let before = format!("{first} && {}", fake_tool("mv", body));
+    let (text, ok, home) = run_install("side", "good", &before);
+    assert!(ok, "{text}");
+    let moved = std::fs::read_to_string(home.with_file_name("bin").join("mv.log"));
+    let moved = moved.expect("the script uses mv");
+    let words: Vec<&str> = moved.lines().collect();
+    let [.., from, to] = words[..] else {
+        panic!("mv did not get two files: {moved}")
+    };
+    let folder = home.join(".cargo/bin");
+    assert_eq!(Path::new(to), folder.join("codeumbrella"), "{moved}");
+    let parent = Path::new(from).parent();
+    assert_eq!(parent, Some(folder.as_path()), "{moved}");
+    let name = Path::new(from).file_name().expect("a name");
+    let dot = name.to_string_lossy().starts_with('.');
+    assert!(dot, "the side name does not start with a dot: {moved}");
+    assert_eq!(installed(&home), ["codeumbrella"], "{text}");
+    let command = folder.join("codeumbrella");
+    let out = Command::new(&command).arg("--version").output();
+    let out = out.expect("the installed command starts");
+    assert!(out.status.success(), "{text}");
+}
+
+/// A bad `tool` in `.cargo/bin`: the command from before stays as it is.
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+fn keeps_the_command_from_before(label: &str, tool: &str, body: &str) {
+    let first = "mkdir -p home/.cargo/bin && echo before > home/.cargo/bin/codeumbrella";
+    let before = format!("{first} && {}", fake_tool(tool, body));
+    let (text, ok, home) = run_install(label, "good", &before);
+    assert!(!ok, "{text}");
+    assert!(!text.contains("Checksum: OK"), "{text}");
+    let folder = home.join(".cargo/bin").display().to_string();
+    assert!(cause_of(&text).contains(&folder), "{text}");
+    assert_eq!(installed(&home), ["codeumbrella"], "{text}");
+    let kept = std::fs::read_to_string(home.join(".cargo/bin/codeumbrella"));
+    assert_eq!(kept.expect("read the command"), "before\n", "{text}");
+}
+
+#[test]
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+fn install_script_keeps_no_half_copy() {
+    let body = r#"case $last in */.cargo/*) echo half > "$last"; exit 1;; esac; /bin/cp "$@""#;
+    keeps_the_command_from_before("half", "cp", body);
+}
+
+#[test]
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+fn install_script_keeps_no_side_file_after_a_bad_move() {
+    let body = r#"case $last in */bin/codeumbrella) exit 1;; esac; /bin/mv "$@""#;
+    keeps_the_command_from_before("move", "mv", body);
+}
+
+#[test]
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+fn install_script_names_the_folder_that_it_cannot_make() {
+    let body = r#"case "$*" in *.cargo*) exit 1;; esac; /bin/mkdir "$@""#;
+    let (text, ok, home) = run_install("mkdir", "good", &fake_tool("mkdir", body));
+    assert!(!ok, "{text}");
+    assert!(!text.contains("Checksum: OK"), "{text}");
+    let folder = home.join(".cargo/bin").display().to_string();
+    assert!(cause_of(&text).contains(&folder), "{text}");
+    assert!(!home.join(".cargo").exists(), "{text}");
+}
+
+/// A bad `tool` before the download gives a cause of its own.
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+fn gives_a_cause_for_a_bad_tool(label: &str, tool: &str, body: &str) {
+    let (text, ok, home) = run_install(label, "good", &fake_tool(tool, body));
+    assert!(!ok, "{text}");
+    assert!(!text.contains("Checksum: OK"), "{text}");
+    let cause = cause_of(&text);
+    assert!(!cause.is_empty(), "{text}");
+    assert!(!cause.contains("the store has no file"), "{text}");
+    assert!(!home.join(".cargo").exists(), "{text}");
+}
+
+#[test]
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+fn install_script_gives_a_cause_for_a_bad_rev_parse() {
+    // The simulated `git` prints the commit and gives an error code.
+    let body = r#"g=/usr/bin/git; case $1 in rev-parse) $g "$@"; exit 1;; esac; $g "$@""#;
+    gives_a_cause_for_a_bad_tool("rev-parse", "git", body);
+}
+
+#[test]
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+fn install_script_gives_a_cause_for_a_bad_mktemp() {
+    gives_a_cause_for_a_bad_tool("mktemp", "mktemp", "exit 1");
+}
+
+#[test]
+fn agents_row_of_the_packaging_tests_names_the_install_script() {
+    let a = text("AGENTS.md");
+    let row = a
+        .lines()
+        .find(|l| l.starts_with("| `tests/packaging.rs` |"));
+    let row = row.expect("a row for tests/packaging.rs");
+    assert!(row.contains("`install.sh`"), "{row}");
 }
 
 #[test]
