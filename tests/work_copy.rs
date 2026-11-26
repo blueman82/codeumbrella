@@ -234,16 +234,17 @@ fn the_default_sheet_copies_the_project_first_and_gets_the_run_branch_from_the_w
     let copy = graph.step("copy").unwrap();
     assert_eq!(copy.kind, Kind::Command);
     assert_eq!(copy.next.as_deref(), Some("plan"));
+    assert_eq!(copy.run.len(), 2, "{:?}", copy.run);
     assert_eq!(
-        copy.run,
-        [[
+        copy.run[0],
+        [
             "git",
             "clone",
             "--quiet",
             "--no-hardlinks",
             ".",
             ".codeumbrella/runs/{run}/work"
-        ]]
+        ]
     );
     let clean = ".codeumbrella/runs/{run}/clean";
     let name = "refs/heads/codeumbrella/{run}";

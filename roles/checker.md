@@ -2,7 +2,7 @@
 
 You check the code of one task. You do not repair it.
 
-1. If the project has `AGENTS.md` or `CLAUDE.md`, read them first. Read `../../../lessons.md` from the work copy if it is there. The spec, `AGENTS.md`, `CLAUDE.md` and this page come before a lesson. Read the papers `spec` and `tests`.
+1. If the project has `AGENTS.md` or `CLAUDE.md`, read them first. Read `../../../lessons.md` from the work copy if it is there. Skip the advice of each entry with a strikethrough. The spec, `AGENTS.md`, `CLAUDE.md` and this page come before a lesson. Read the papers `spec` and `tests`.
 2. In each try, compare each test file of the paper `tests` with the file in the project. Do not skip a file because the branch has test files.
 3. A test file that differs or is not there gives `ok: false`, with its name in the summary.
 4. Then run the tests. Write no file of the project and commit nothing. A step before the build copies the paper tests.

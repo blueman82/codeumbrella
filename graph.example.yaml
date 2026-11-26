@@ -75,10 +75,14 @@ steps:
   # not change your project folder or its branch. After status Done, get the
   # code with `git pull`. A tool in your project folder, for example in `.venv`,
   # needs its full path in the test command.
+  # The second command keeps the lessons file of this moment as
+  # `lessons.before.md` in the run folder, or an empty file. The step
+  # `save_lessons` uses it.
   copy:
     type: command
     run:
       - [git, clone, --quiet, --no-hardlinks, ., ".codeumbrella/runs/{run}/work"]
+      - [sh, -c, 'f=.codeumbrella/lessons.md; [ -f "$f" ] || f=/dev/null; cp "$f" .codeumbrella/runs/{run}/lessons.before.md']
     next: plan
 
   # A planner writes the description of the work and the tests. It also
@@ -678,21 +682,94 @@ steps:
       - [env, "GIT_DIR=.codeumbrella/runs/{run}/clean/.git", gh, pr, merge, "codeumbrella/{run}", --squash]
     next: save_lessons
 
-  # No AI. After the merge, this step copies the paper `lessons` of the run
-  # to `.codeumbrella/lessons.md` in your project. Git does not see that file.
-  # The learner of the next run reads it. A bad merge stops the run before
-  # this step.
+  # No AI. After the merge, this step adds the changes of the paper
+  # `lessons` to `.codeumbrella/lessons.md` in your project. Git does not see
+  # that file. The learner of the next run reads it. A bad merge stops the run
+  # before this step.
+  #
+  # Two runs can work at the same time. So `git merge-file --union` merges the
+  # file of today, `lessons.before.md` of the run and the paper. It keeps the
+  # lines of the two sides. Only one line `Runs read to:` stays: the first
+  # line, with the newest run id. A line that starts with `- ` stays one time.
+  # A done entry removes the line of the same entry with no mark.
+  #
+  # With no paper, the result is bad and the file stays. The step also refuses
+  # a paper that is a symbolic link or has a second hard link. It refuses a
+  # folder `papers/lessons` that is a symbolic link. So no file outside the
+  # paper goes into the lessons file.
   save_lessons:
     type: command
     run:
-      - [cp, ".codeumbrella/runs/{run}/papers/lessons/lessons.md", .codeumbrella/lessons.md]
+      - - sh
+        - -c
+        - |
+          export LC_ALL=C
+          f=.codeumbrella/lessons.md
+          r=.codeumbrella/runs/{run}
+          n=$r/papers/lessons/lessons.md
+          [ -f "$n" ] || { echo "no paper: $n" >&2; exit 1; }
+          [ ! -L "${n%/*}" ] && [ ! -L "$n" ] && [ -n "$(find "$n" -prune -links 1)" ] || { echo "refused, a link: $n" >&2; exit 1; }
+          p=$f; [ -f "$p" ] || p=/dev/null
+          b=$r/lessons.before.md; [ -f "$b" ] || b=/dev/null
+          h=$(awk 1 "$p" "$b" "$n" | grep -a "^Runs read to:" | sort -t- -k2,2n -k3,3n | tail -n 1)
+          awk '!/^Runs read to:/' "$p" > "$r/lessons.today" &&
+          awk '!/^Runs read to:/' "$b" > "$r/lessons.base" &&
+          awk '!/^Runs read to:/' "$n" > "$r/lessons.paper" &&
+          git merge-file --union -p "$r/lessons.today" "$r/lessons.base" "$r/lessons.paper" > "$r/lessons.merged" || exit 1
+          {
+            [ -z "$h" ] || printf '%s\n' "$h"
+            awk '
+              NR == FNR {
+                if ($0 ~ /^- ~~([^~]|~[^~])*~~ \([^()]*\) Done: run-[0-9]+(-[0-9]+)?$/) {
+                  sub(/ Done: [^ ]*$/, "")
+                  sub(/^- ~~/, "- ")
+                  sub(/~~ \(/, " (")
+                  marked[$0] = 1
+                }
+                next
+              }
+              /^- / && (($0 in marked) || seen[$0]++) { next }
+              { print }
+            ' "$r/lessons.merged" "$r/lessons.merged"
+          } > "$r/lessons.new" || exit 1
+          # Keep a paper with no line end as it is.
+          if awk 1 "$n" | cmp -s - "$r/lessons.new"; then cp "$n" "$f"; else cp "$r/lessons.new" "$f"; fi
+    next: tidy_lessons
+
+  # No AI. This step removes an entry of `.codeumbrella/lessons.md` only if
+  # two conditions are correct. The entry has a strikethrough and
+  # `Done: <run id>`, and the PR of the branch of that run is merged. `gh`
+  # tells this. Only a run id goes to `gh`. If `gh` gives an error, the step
+  # removes nothing, and the run continues.
+  tidy_lessons:
+    type: command
+    run:
+      - - env
+        - "GIT_DIR=.codeumbrella/runs/{run}/clean/.git"
+        - sh
+        - -c
+        - |
+          export LC_ALL=C
+          f=.codeumbrella/lessons.md
+          [ -f "$f" ] || exit 0
+          entry="^- ~~([^~]|~[^~])*~~ \([^()]*\) Done: "
+          merged=
+          for id in $(grep -aE "${entry}run-[0-9]+(-[0-9]+)?\$" "$f" | sed "s/.* Done: //" | sort -u); do
+            pr=$(gh pr list --head "codeumbrella/$id" --state merged --json number --jq ".[].number") || exit 0
+            [ -z "$pr" ] || merged="$merged${merged:+|}$id"
+          done
+          [ -n "$merged" ] || exit 0
+          t=.codeumbrella/runs/{run}/lessons.tidy
+          grep -avE "$entry($merged)\$" "$f" > "$t"
+          # grep gives 1 if no line stays.
+          [ $? -le 1 ] && cp "$t" "$f"
     next: clean_up
 
   # No AI. After the merge, this step removes the two copies of the run:
   # `work` and `clean`. The code is in `master` at that time.
   # The record of the run stays: the notebook, the log, the papers and the
   # bundle. To keep the copies, remove this step. Also remove
-  # `next: clean_up` of `save_lessons`.
+  # `next: clean_up` of `tidy_lessons`.
   # `rm` gives an error if a folder is not there. Then the run stops with
   # status Stopped, after a good merge. You can remove the folder by hand.
   clean_up:

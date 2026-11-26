@@ -29,7 +29,7 @@ The supervisor knows nothing about software work. All knowledge of the steps is 
 | Paper | A folder in `.codeumbrella/runs/<run-id>/papers/` that one step writes and other steps read. |
 | Paper `pr` | The paper with the PR text. `title.txt` is the title, in one line. `body.md` is the text. The planner writes the title and parts 1 to 5. The writer adds parts 6 to 8. |
 | Lesson | A problem of a run that can come again in a different task. The learner makes it a lesson test, or a short entry. |
-| `.codeumbrella/lessons.md` | The entries of the lessons of a project. The step `save_lessons` writes it after the merge. Git does not see it. |
+| `.codeumbrella/lessons.md` | The entries of the lessons of a project. The step `save_lessons` adds to it after the merge. The step `tidy_lessons` removes done entries. Git does not see it. |
 | Role | The type of a worker. Its rules page is `.codeumbrella/roles/<role>.md` in a project. The folder `roles` holds the defaults. |
 | Writer | The role `writer`. It reads the change with git. It adds the version line, the areas of the change and the checklist to `body.md` of the paper `pr`. |
 | Queue | The folder `.codeumbrella/queue/`: one text file for each task that waits. The file name sets the sequence. `run --next` starts the first one. |
@@ -111,6 +111,7 @@ To install the command and the chat command on a computer, run `./install.sh`.
 | `tests/bad_repair.rs` | Tests of the bad repair that goes to the plan, the new rules lines, the chat page and the documents. |
 | `tests/user_checker.rs` | Tests of the fifth checker `check_use`: its step, the files of the role `user`, its rules page and the documents. |
 | `tests/learner.rs` | Tests of the role `learner`: the steps `learn` and `save_lessons`, its files, its rules page and the documents. |
+| `tests/lessons_keep.rs` | Tests of the lessons that stay: the steps `copy`, `save_lessons` and `tidy_lessons`, the rules pages and the documents. |
 | `tests/clean_up.rs` | Tests of the step `clean_up`: the default sheet, runs with the built command and the documents. |
 | `tests/pr_text.rs` | Tests of the PR text: the paper `pr`, the role `writer` and the step `write_pr`. Also `find_pr` and `open_pr`, with a simulated `gh`. |
 | `tests/run_total.rs` | Tests of the numbers of each worker, the total in the notebook, the lines of `status` and the documents. |
@@ -122,7 +123,7 @@ To install the command and the chat command on a computer, run `./install.sh`.
 | `fuzz/seeds/` | Good inputs for each target. The fuzzer starts from them. |
 | `tests/fuzz_crashes/` | One folder for each target, with the inputs that caused a crash. |
 | `tests/fuzz_crashes.rs` | Runs each crash input again in `cargo test`, on stable Rust. |
-| `scripts/fuzz-repair` | A script for the Mac. It starts a run for each open issue `fuzz-crash` that the GitHub machine opened. |
+| `scripts/fuzz-repair` | A script for the Mac. It starts a run for each open issue `fuzz-crash` that the GitHub machine opened. While a run for that issue is not Done, it starts no new run for it. |
 | `scripts/fuzz-repair.plist` | The launchd pattern that starts `scripts/fuzz-repair` each hour. |
 | `.github/workflows/fuzz.yml` | The fuzz steps on GitHub: `fuzz_pr` on each PR, and `fuzz_master` each night. A chat session adds this file, because a run cannot change `.github`. |
 | `install.sh` | Installs the command and the chat command. |
@@ -294,7 +295,10 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - The learner keeps its copy in the temp folder and removes no file. The person cleans it up. On 19 November 2026 a removal of the attacker broke a check.
 - A lesson cannot make a rule, a check, a test or a wall weaker. The person made this decision on 19 November 2026, because a log is data from a worker.
 - The safety checker reads the paper `lessons`. An entry that makes a wall weaker gives a bad result. This came from the decisions of 19 November 2026.
-- Only the step `save_lessons` writes `.codeumbrella/lessons.md`. It copies the paper `lessons` after the merge. The person made this decision on 19 November 2026.
+- Only the steps `save_lessons` and `tidy_lessons` write `.codeumbrella/lessons.md`. The person made this decision on 19 November 2026.
+- `save_lessons` adds the changes of the paper `lessons` with `git merge-file --union`. `tidy_lessons` removes an entry only with a strikethrough and a merged PR. The date is 25 November 2026.
+- The cause: a limit removed useful entries, and a copy could remove the entries of a second run.
+- `save_lessons` refuses a paper with a symbolic link or a second hard link. Thus only a file of the paper goes into the lessons file.
 - The builder does not change a lesson test. The file `tests.txt` of the paper `lessons` names each lesson test.
 - After the merge, the step `clean_up` removes `work` and `clean` of the run. On 19 November 2026 the run folders held 6.8 GB.
 - `open_pr` opens the PR with the title of `title.txt` and the text of `body.md` of the paper `pr`. It does not use `--fill`.
