@@ -852,9 +852,10 @@ fn same_master_is_good_only_if_the_pushed_branch_has_the_newest_master() {
 
 /// A simulated worker. It writes its papers and gives a good result. It
 /// makes one commit in the work copy for each step name in `commits`, in
-/// that sequence.
+/// that sequence. It gives one bad result for each step name in `bad`.
 struct Sim {
     commits: Mutex<Vec<&'static str>>,
+    bad: Mutex<Vec<&'static str>>,
     got: Mutex<Vec<(String, String)>>,
 }
 
@@ -862,6 +863,7 @@ impl Sim {
     fn new(commits: &[&'static str]) -> Self {
         Self {
             commits: Mutex::new(commits.to_vec()),
+            bad: Mutex::default(),
             got: Mutex::default(),
         }
     }
@@ -891,8 +893,11 @@ impl Worker for Sim {
             git(&work, &["add", "-A"]);
             git(&work, &["commit", "--quiet", "-m", job.step]);
         }
+        let mut bad = self.bad.lock().unwrap();
+        let at = bad.iter().position(|s| *s == job.step);
+        let failed = at.map(|at| bad.remove(at)).is_some();
         Ok(Outcome {
-            ok: true,
+            ok: !failed,
             summary: format!("{} ran", job.step),
         })
     }
@@ -932,6 +937,13 @@ fn to_build(w: &mut World, graph: &Graph, worker: &Sim) {
     w.run.go(graph, &roles, worker).unwrap();
 }
 
+/// The names in `files.txt` of the run.
+fn listed(w: &World) -> Vec<String> {
+    let listed = fs::read_to_string(w.run.dir.join("files.txt"));
+    let listed = listed.expect("no files.txt in the run folder");
+    listed.lines().map(str::to_owned).collect()
+}
+
 #[test]
 fn a_run_with_work_goes_through_take_master_to_the_approval() {
     let mut w = world();
@@ -941,6 +953,7 @@ fn a_run_with_work_goes_through_take_master_to_the_approval() {
     to_build(&mut w, &graph, &worker);
     let path = pairs(&[
         ("mark", true),
+        ("copy_tests", true),
         ("build", true),
         ("simplify", true),
         ("work_was_done", true),
@@ -971,12 +984,10 @@ fn files_txt_does_not_name_a_file_that_only_the_merge_changed() {
     to_build(&mut w, &graph, &worker);
     assert_eq!(w.run.state.at.as_deref(), Some("approval"));
     assert!(w.work.join(NEW_FILE).is_file(), "no merge");
-    let listed = fs::read_to_string(w.run.dir.join("files.txt"));
-    let listed = listed.expect("no files.txt in the run folder");
-    let names: Vec<&str> = listed.lines().collect();
+    let names = listed(&w);
     // The simulated builder commits one file with the name `build`.
-    assert!(names.contains(&"build"), "{names:?}");
-    assert!(!names.contains(&NEW_FILE), "{names:?}");
+    assert!(names.contains(&"build".to_owned()), "{names:?}");
+    assert!(!names.contains(&NEW_FILE.to_owned()), "{names:?}");
 }
 
 #[test]
@@ -1012,6 +1023,7 @@ fn a_commit_of_do_work_passes_the_second_check_and_goes_to_take_master() {
     to_build(&mut w, &graph, &worker);
     let path = pairs(&[
         ("mark", true),
+        ("copy_tests", true),
         ("build", true),
         ("simplify", true),
         ("work_was_done", false),
@@ -1035,7 +1047,7 @@ fn a_commit_of_do_work_passes_the_second_check_and_goes_to_take_master() {
 }
 
 #[test]
-fn after_a_no_the_commits_of_the_merge_and_the_version_do_not_count() {
+fn after_a_no_with_no_commit_files_txt_names_no_file_of_the_merge() {
     let mut w = world();
     let graph = sheet(&w.project);
     let roles = root().join("roles");
@@ -1043,22 +1055,148 @@ fn after_a_no_the_commits_of_the_merge_and_the_version_do_not_count() {
     let worker = Sim::new(&["build"]);
     to_build(&mut w, &graph, &worker);
     assert_eq!(w.run.state.at.as_deref(), Some("approval"));
-    push_to(&w.base, &w.server, "second.txt", "s");
+    let tip = push_to(&w.base, &w.server, "second.txt", "s");
     w.run.answer(false, "Change the heading.").unwrap();
     w.run.go(&graph, &roles, &worker).unwrap();
     assert_eq!(w.run.state.at.as_deref(), Some("look_at_tests"));
     w.run.answer(true, "").unwrap();
     w.run.go(&graph, &roles, &worker).unwrap();
-    // The builder made no commit after the second yes. The commits
-    // of the merge and the version do not count, so `do_work` runs
-    // and, with no commit, the run stops before `take_master`.
+    // The builder made no commit after the second yes. The run goes on
+    // to the merge, the version and the checks.
+    let path = pairs(&[
+        ("mark", true),
+        ("copy_tests", true),
+        ("build", true),
+        ("simplify", true),
+        ("work_was_done", true),
+        ("take_master", true),
+        ("learn", true),
+        ("set_version", true),
+        ("write_pr", true),
+        ("check", true),
+        ("no_locked_files", true),
+        ("push", true),
+        ("find_pr", true),
+    ]);
+    let ran = after(&w.run, "look_at_tests");
+    assert_eq!(ran, path, "{}", w.run.state.note);
+    assert_eq!(w.run.state.at.as_deref(), Some("approval"));
+    assert!(has(&w.work, &tip, "HEAD"), "master is not in the branch");
+    // The list keeps the work of the builder from before the no.
+    let names = listed(&w);
+    assert!(names.contains(&"build".to_owned()), "{names:?}");
+    for merged in [NEW_FILE, "second.txt", "version.txt"] {
+        assert!(!names.contains(&merged.to_owned()), "{names:?}");
+    }
+}
+
+#[test]
+fn after_a_no_with_a_new_commit_files_txt_and_the_bundle_are_new() {
+    let mut w = world();
+    let graph = sheet(&w.project);
+    let roles = root().join("roles");
+    let worker = Sim::new(&["build"]);
+    to_build(&mut w, &graph, &worker);
+    assert_eq!(listed(&w), ["build"]);
+    w.run.answer(false, "Change the heading.").unwrap();
+    w.run.go(&graph, &roles, &worker).unwrap();
+    assert_eq!(w.run.state.at.as_deref(), Some("look_at_tests"));
+    // After the no, the simplifier makes one new commit.
+    *worker.commits.lock().unwrap() = vec!["simplify"];
+    w.run.answer(true, "").unwrap();
+    w.run.go(&graph, &roles, &worker).unwrap();
+    let at = w.run.state.at.as_deref();
+    assert_eq!(at, Some("approval"), "{}", w.run.state.note);
+    // The list names the files of the new commit, not the list from before.
+    assert_eq!(listed(&w), ["simplify"]);
+    // The bundle ends at the new commit, which is before the new version.
+    let new = git(&w.work, &["log", "-1", "--format=%H", "--", "simplify"]);
+    let heads = ["bundle", "list-heads", "../new-work.bundle"];
+    let heads = git(&w.work, &heads);
+    assert!(heads.starts_with(&new), "{new}: {heads}");
+}
+
+/// As `sheet`, and `copy_tests` runs its command too.
+fn with_copy_tests(project: &Path) -> Graph {
+    let mut graph = sheet(project);
+    let full = format!("{}/{RUNS}/{{run}}", project.display());
+    let from = default_sheet();
+    let mut run = from.step("copy_tests").unwrap().run.clone();
+    for word in run.iter_mut().flatten() {
+        *word = word.replace(".codeumbrella/runs/{run}", &full);
+    }
+    graph.steps.get_mut("copy_tests").unwrap().run = run;
+    graph
+}
+
+/// The first build is bad, and the run goes to the plan. The planner
+/// corrects one paper test. Then the person says yes to the tests.
+fn bad_build_then_corrected_test(w: &mut World, graph: &Graph, worker: &Sim) {
+    worker.bad.lock().unwrap().push("build");
+    to_build(w, graph, worker);
+    let at = w.run.state.at.as_deref();
+    assert_eq!(at, Some("look_at_tests"), "{}", w.run.state.note);
+    let paper = w.run.dir.join("papers/tests/file.md");
+    fs::write(paper, "corrected").unwrap();
+    let roles = root().join("roles");
+    w.run.answer(true, "").unwrap();
+    w.run.go(graph, &roles, worker).unwrap();
+}
+
+#[test]
+fn after_a_bad_build_with_a_commit_a_build_with_no_commit_goes_on() {
+    let mut w = world();
+    let graph = with_copy_tests(&w.project);
+    push_to(&w.base, &w.server, NEW_FILE, "m");
+    let worker = Sim::new(&["build"]);
+    bad_build_then_corrected_test(&mut w, &graph, &worker);
+    let path = pairs(&[
+        ("mark", true),
+        ("copy_tests", true),
+        ("build", true),
+        ("simplify", true),
+        ("work_was_done", true),
+        ("take_master", true),
+        ("learn", true),
+        ("set_version", true),
+        ("write_pr", true),
+        ("check", true),
+        ("no_locked_files", true),
+        ("push", true),
+        ("find_pr", true),
+    ]);
+    let ran = after(&w.run, "look_at_tests");
+    assert_eq!(ran, path, "{}", w.run.state.note);
+    assert_eq!(w.run.state.at.as_deref(), Some("approval"));
+    assert!(worker.got("do_work").is_empty(), "do_work ran");
+    // `copy_tests` committed the corrected test after the bad build.
+    let test = fs::read_to_string(w.work.join("file.md")).unwrap();
+    assert_eq!(test, "corrected");
+    // The list and the bundle have the work of the bad build only. The
+    // paper test and the merge are not in them.
+    assert_eq!(listed(&w), ["build"]);
+    let made = git(&w.work, &["log", "-1", "--format=%H", "--", "build"]);
+    let heads = ["bundle", "list-heads", "../new-work.bundle"];
+    let heads = git(&w.work, &heads);
+    assert!(heads.starts_with(&made), "{made}: {heads}");
+}
+
+#[test]
+fn after_a_bad_build_with_no_commit_the_run_still_goes_to_do_work() {
+    let mut w = world();
+    let graph = with_copy_tests(&w.project);
+    let worker = Sim::new(&[]);
+    bad_build_then_corrected_test(&mut w, &graph, &worker);
+    // The commits of `copy_tests` are not work of a builder.
     let ran = after(&w.run, "look_at_tests");
     let names: Vec<&str> = ran.iter().map(|(s, _)| s.as_str()).collect();
-    assert_eq!(&names[..4], ["mark", "build", "simplify", "work_was_done"]);
-    assert!(!ran[3].1, "{ran:?}");
+    let head = ["mark", "copy_tests", "build", "simplify", "work_was_done"];
+    assert_eq!(names.get(..5), Some(&head[..]), "{ran:?}");
+    assert!(!ran[4].1, "{ran:?}");
     assert!(names.contains(&"do_work"), "{names:?}");
-    assert!(!names.contains(&"write_pr"), "{names:?}");
+    assert!(!names.contains(&"take_master"), "{names:?}");
     assert_eq!(w.run.state.status, Status::Stopped);
+    assert!(!w.run.dir.join("new-work.bundle").exists());
 }
 
 #[test]

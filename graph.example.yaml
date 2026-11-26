@@ -144,23 +144,114 @@ steps:
     next: mark
 
   # No AI. This step writes the commit of this moment into the git name
-  # `refs/codeumbrella/before` of the work copy. The step `work_was_done`
-  # looks for a new commit after it. After each yes for the tests, it runs
-  # again. Thus a commit from before a no does not count.
+  # `refs/codeumbrella/before` of the work copy. The step `copy_tests` moves
+  # that name to its own commit. The step `work_was_done` looks for a new
+  # commit after it. After each yes for the tests, the two steps run
+  # again.
+  #
+  # After a bad build, for example, no check saw the work. The first
+  # command keeps that work before the step moves the name. It writes
+  # `new-work.bundle` and `files.txt` in the run folder only if three things
+  # are correct. The git name is there, the run folder has no
+  # `new-work.bundle`, and a commit is after the name. Thus the files of a
+  # merge of master do not get into the list. If git cannot count or write,
+  # the result is bad.
+  #
   # A worker can write the git config of the work copy, and `update-ref` can
-  # start a hook. So the call has `-c core.hooksPath=/dev/null`.
+  # start a hook. So each call has `-c core.hooksPath=/dev/null`.
   mark:
     type: command
     run:
+      - - sh
+        - -c
+        - |
+          r=.codeumbrella/runs/{run}
+          g() { git -c core.fsmonitor=false -c core.hooksPath=/dev/null -C "$r/work" "$@"; }
+          [ ! -f "$r/new-work.bundle" ] || exit 0
+          # Status 1: the git name is not there. Each other error is bad.
+          g rev-parse --quiet --verify refs/codeumbrella/before >/dev/null || { [ $? = 1 ]; exit; }
+          n=$(g rev-list --count refs/codeumbrella/before..HEAD) || exit 1
+          [ "$n" != 0 ] || exit 0
+          # The bundle comes last: with it, the list is complete.
+          g diff --name-only --no-ext-diff --no-textconv --output ../files.txt refs/codeumbrella/before HEAD &&
+          g bundle create ../new-work.bundle refs/codeumbrella/before..HEAD
       - [git, -c, core.hooksPath=/dev/null, -C, ".codeumbrella/runs/{run}/work", update-ref, refs/codeumbrella/before, HEAD]
+    next: copy_tests
+
+  # No AI. This step copies each file of the paper `tests` to the same path in
+  # the work copy. The `README.md` at the top of the paper stays out. So the
+  # builder and the checkers use the tests that you said yes to.
+  #
+  # The paper test always wins, also over a change from master.
+  # It commits the copied files, and no other change, on the branch
+  # `codeumbrella/<run id>`. With no change, it commits nothing. Then it moves
+  # `refs/codeumbrella/before` to `HEAD`, so `work_was_done` does not count
+  # this commit. It removes no file.
+  #
+  # The step runs with no sandbox in a copy that a worker can write. So each
+  # git call has the three `-c` options of `take_master`, the commit has
+  # `--no-verify`, and git reads each path as plain text. A config name that
+  # `take_master` refuses gives a bad result. So does a link or a file with a
+  # second hard link in the paper. A link on a target path is refused too. So is
+  # a path with `.git`, `.github`, `.claude` or `.codeumbrella`.
+  #
+  # Each refusal comes before the first copy. A bad result stops the run.
+  copy_tests:
+    type: command
+    run:
+      - - sh
+        - -c
+        - |
+          set -e
+          w=.codeumbrella/runs/{run}/work
+          p=.codeumbrella/runs/{run}/papers/tests
+          b=codeumbrella/{run}
+          g() { git -c core.fsmonitor=false -c core.hooksPath=/dev/null -c commit.gpgSign=false --literal-pathspecs -C "$w" "$@"; }
+          no() { echo "refused, $1" >&2; exit 1; }
+          n=$(g config --local --includes --list --name-only) || no "git cannot read the config of the work copy"
+          n=$(printf "%s\n" "$n" | grep -Evx "core\.(repositoryformatversion|filemode|bare|logallrefupdates|ignorecase|precomposeunicode|symlinks)|remote\.origin\.(url|fetch)|branch\..*\.(remote|merge)|user\.(name|email)") || true
+          [ -z "$n" ] || no "the config of the work copy has: $n"
+          [ -d "$p" ] && [ ! -L "$p" ] || no "the paper tests is not a folder: $p"
+          nl=$(printf "\nx"); nl=${nl%x}
+          bad=$(cd "$p" && find . \( ! -type d ! -type f -o -type f ! -links 1 -o -iname .git -o -iname .github -o -iname .claude -o -iname .codeumbrella -o -name "*$nl*" \) -print)
+          [ -z "$bad" ] || no "the paper tests has: $bad"
+          list=$(cd "$p" && find . -type f ! -path ./README.md)
+          if g rev-parse --quiet --verify "refs/heads/$b" >/dev/null; then g checkout --quiet "$b" --; else g checkout --quiet -b "$b"; fi
+          IFS=$nl; set -f; set -- $list; unset IFS
+          for f; do
+            d=$(dirname "$f")
+            while [ "$d" != . ]; do
+              [ ! -L "$w/$d" ] && { [ -d "$w/$d" ] || [ ! -e "$w/$d" ]; } || no "not a folder in the work copy: $d"
+              d=$(dirname "$d")
+            done
+            [ ! -L "$w/$f" ] && { [ -f "$w/$f" ] || [ ! -e "$w/$f" ]; } || no "not a plain file in the work copy: $f"
+          done
+          for f; do
+            t=$w/$f
+            mkdir -p "$(dirname "$t")"
+            # A second hard link: make a new file with the same mode first.
+            if [ -f "$t" ] && [ -z "$(find "$t" -prune -links 1)" ]; then
+              o=$(mktemp "${TMPDIR:-/tmp}/cu.XXXXXX"); cp -p "$t" "$o"; rm -f "$t"; mv "$o" "$t"
+            fi
+            cp "$p/$f" "$t"
+          done
+          if [ $# -gt 0 ]; then
+            g add --force -- "$@"
+            g diff --cached --quiet --no-ext-diff --no-textconv -- "$@" || g commit --quiet --no-verify -m "Copy the approved tests" -- "$@"
+          fi
+          g update-ref refs/codeumbrella/before HEAD
     next: build
 
   # A builder writes the code and commits it.
   # A bad result goes to the planner, as a no of yours does. This is for a
   # paper test that is bad in its own setup. The planner corrects only that
   # test. The attacker looks, you see the tests again, and the builder works
-  # again. A bad build uses one of the 3 tries of `plan`. After the third try
+  # again.
+  #
+  # A bad build uses one of the 3 tries of `plan`. After the third try
   # the run stops.
+  # After a no, a builder with no changed file gives a good result only with
+  # a proof for each point of the no.
   build:
     role: builder
     reads: [spec]
@@ -180,36 +271,70 @@ steps:
     reads: [spec]
     next: work_was_done
 
-  # No AI. This step looks for a commit after the step `mark`. It comes right
-  # after `simplify`, so only the commits of `build` and `simplify` count.
+  # No AI. This step looks for a commit after the step `copy_tests`. It comes
+  # right after `simplify`, so only the commits of `build` and `simplify` count.
   # The commits of `set_version` and `take_master` come after it and do not
-  # count. It writes the new commits into `new-work.bundle` in the run folder.
-  # No step reads that file. With no new commit, git gives an error, so the
-  # result is bad. A bad result goes to `do_work`, then back to this step.
+  # count.
+  #
+  # It writes the new commits into `new-work.bundle` in the run folder.
+  # With no new commit and no such file, git gives an error, so the result
+  # is bad. A bad result goes to `do_work`, then back to this step.
+  #
+  # After a no, a build can have no new commit. The file `new-work.bundle`
+  # shows that a builder of this run committed work before, also with a bad
+  # result. Then the result is good, and the step changes neither that file
+  # nor `files.txt`. A worker cannot write in the run folder.
+  #
   # A good second check goes to `take_master`, so the run gets the newest
   # master and a new version before `write_pr`.
+  #
   # The second command writes the names of the changed files into `files.txt`
   # in the run folder. A task after this one can read it. It lists only the
-  # files of the builder and the simplifier, because the merge of master
-  # comes after it. The two options `--no-ext-diff` and `--no-textconv` keep a
-  # command of the work copy from running.
+  # files of the new commits of the builder and the simplifier. The merge of
+  # master comes after this step. The two options `--no-ext-diff` and
+  # `--no-textconv` keep a command of the work copy from running.
+  #
   # A worker can write in `.git` of its work copy. So this step is not a wall
   # against a worker that cheats. It is a check for a worker that did nothing
   # by error.
   work_was_done:
     type: command
     run:
-      - [git, -C, ".codeumbrella/runs/{run}/work", bundle, create, ../new-work.bundle, "refs/codeumbrella/before..HEAD"]
-      - [git, -C, ".codeumbrella/runs/{run}/work", diff, --name-only, --no-ext-diff, --no-textconv, --output, ../files.txt, "refs/codeumbrella/before", HEAD]
+      - - sh
+        - -c
+        - |
+          r=.codeumbrella/runs/{run}
+          g() { git -c core.fsmonitor=false -c core.hooksPath=/dev/null -C "$r/work" "$@"; }
+          n=$(g rev-list --count refs/codeumbrella/before..HEAD) || exit 1
+          [ "$n" = 0 ] && [ -f "$r/new-work.bundle" ] && exit 0
+          g bundle create ../new-work.bundle refs/codeumbrella/before..HEAD
+      # With no new commit, `files.txt` keeps its list.
+      - - sh
+        - -c
+        - 'n=$(git -c core.fsmonitor=false -c core.hooksPath=/dev/null -C .codeumbrella/runs/{run}/work rev-list --count refs/codeumbrella/before..HEAD) || exit 1; [ "$n" = 0 ] || exec "$@"'
+        - sh
+        - git
+        - -C
+        - ".codeumbrella/runs/{run}/work"
+        - diff
+        - --name-only
+        - --no-ext-diff
+        - --no-textconv
+        - --output
+        - ../files.txt
+        - "refs/codeumbrella/before"
+        - HEAD
     on_bad: do_work
     next: take_master
 
   # A builder does the work that the step `work_was_done` did not find. The
   # builder gets the error text of that step. The run then goes back to
-  # `work_was_done`, as a second check. A builder that makes no commit gives
-  # a bad check again. After the third try the run stops. A bad result goes
-  # to the planner. So a PR with no work and no new version does not get to
-  # the PR question.
+  # `work_was_done`, as a second check.
+  #
+  # The run comes here only while no builder committed work. A builder that
+  # makes no commit gives a bad check again. After the third try the run
+  # stops. A bad result goes to the planner. So a PR with no work and no new
+  # version does not get to the PR question.
   do_work:
     role: builder
     reads: [spec]
@@ -324,7 +449,6 @@ steps:
 
   # This checker reads the change. It looks for keys, weaker tests and
   # changes that the task does not want. It cannot write a file.
-  # It does not read the commit that the tests checker makes at the same time.
   # It also reads the paper `lessons` for an entry that makes a wall weaker.
   check_safety:
     role: safety
@@ -334,6 +458,7 @@ steps:
   # nothing, wrong comments and broken project rules. It cannot write a file.
   # It also compares the paper `pr` with the change.
   # It also reads the paper `lessons` for plain words.
+  #
   # This is for new runs.
   # A run reads the sheet at each command, so do not change the sheet
   # while a run is active. For a faster run, remove this step

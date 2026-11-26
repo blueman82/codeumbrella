@@ -168,6 +168,7 @@ fn the_sheet_has_one_new_step_and_no_other_step_goes_or_comes() {
         "correct_plan_3",
         "look_at_tests",
         "mark",
+        "copy_tests",
         "build",
         "simplify",
         "take_master",
@@ -695,6 +696,7 @@ fn a_bad_check_use_alone_goes_to_repair_with_its_report() {
     assert_eq!(run.state.at.as_deref(), Some("approval"));
     let path = pairs(&[
         ("mark", true),
+        ("copy_tests", true),
         ("build", true),
         ("simplify", true),
         ("work_was_done", true),
@@ -732,6 +734,7 @@ fn with_good_workers_the_run_goes_from_check_to_the_locked_files() {
     assert_eq!(run.state.at.as_deref(), Some("approval"));
     let path = pairs(&[
         ("mark", true),
+        ("copy_tests", true),
         ("build", true),
         ("simplify", true),
         ("work_was_done", true),

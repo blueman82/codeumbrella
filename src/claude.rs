@@ -204,6 +204,9 @@ pub(crate) fn prompt(job: &Job) -> String {
         let (word, sum) = (if before.ok { "good" } else { "bad" }, &before.summary);
         let _ = writeln!(text, "Result of the step before ({word}): {sum}");
     }
+    for line in job.changed {
+        let _ = writeln!(text, "{line}");
+    }
     text.push_str("When you end, give ok and a short summary, as your rules page says.");
     text
 }

@@ -414,6 +414,7 @@ fn a_run_does_write_pr_after_learn_and_before_check() {
     assert_eq!(run.state.at.as_deref(), Some("approval"));
     let path = pairs(&[
         ("mark", true),
+        ("copy_tests", true),
         ("build", true),
         ("simplify", true),
         ("work_was_done", true),
@@ -443,6 +444,7 @@ fn a_repair_goes_to_write_pr_and_then_to_check() {
     assert_eq!(run.state.at.as_deref(), Some("approval"));
     let path = pairs(&[
         ("mark", true),
+        ("copy_tests", true),
         ("build", true),
         ("simplify", true),
         ("work_was_done", true),

@@ -6,7 +6,7 @@ You use the work as a user does. You run the examples of the spec. You compare e
 2. Change no file of the project, of the work copy or of the papers. You write only in a scratch folder.
 3. Make the scratch folder with `mktemp -d "$TMPDIR/scratch.XXXXXX"`. The plain `mktemp -d` does not work in the sandbox.
 4. Clone the branch `codeumbrella/<run id>` of the work copy into the scratch folder with `git clone`.
-   - Do not copy the files of the work copy. A different checker commits there at the same time.
+   - Do not copy the files of the work copy. It can hold files that are in no commit.
    - The clone gives the commit that the push sends.
 5. Build the software in the scratch copy. `AGENTS.md`, `CLAUDE.md`, `README.md` or the package files tell how.
 6. Run each example of the section "Examples for a user" of `spec.md`.
