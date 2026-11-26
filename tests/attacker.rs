@@ -1,5 +1,6 @@
 //! Tests of the plan attacker: its step in the sheet, its role files, its
-//! settings and its rules page. The worker is simulated. No Claude, no Codex.
+//! settings and its rules page. Also the commit from before the build, that
+//! the attacker uses. The worker is simulated. No Claude, no Codex.
 
 use anyhow::Result;
 use codeumbrella::engine::{Job, Outcome, Run, Status, Worker};
@@ -354,5 +355,286 @@ fn the_code_obeys_the_limits_for_lines() {
     for part in ["claude", "codex"] {
         let lines = code_lines(&format!("src/{part}.rs"));
         assert!(lines <= 200, "{part} has {lines} lines");
+    }
+}
+
+// ---------------------------------------------------------------------
+// The commit from before the build
+// ---------------------------------------------------------------------
+
+/// Runs `git` in a folder, with a name and an email. Gives the output text.
+fn git(dir: &Path, args: &[&str]) -> String {
+    let mut command = Command::new("git");
+    command.arg("-C").arg(dir);
+    command.args(["-c", "user.name=t", "-c", "user.email=t@t"]);
+    command.args(["-c", "commit.gpgsign=false"]);
+    let out = command.args(args).output().expect("start git");
+    let error = String::from_utf8_lossy(&out.stderr);
+    assert!(out.status.success(), "git {args:?}: {error}");
+    String::from_utf8_lossy(&out.stdout).trim().to_owned()
+}
+
+/// Writes a file `name` in the folder and commits it.
+fn commit(dir: &Path, name: &str) {
+    fs::write(dir.join(name), name).unwrap();
+    git(dir, &["add", name]);
+    git(dir, &["commit", "--quiet", "-m", name]);
+}
+
+/// A new project with one commit. The path is the full one.
+fn project() -> PathBuf {
+    let dir = folder();
+    let _ = fs::remove_dir_all(&dir);
+    fs::create_dir_all(&dir).unwrap();
+    let dir = fs::canonicalize(&dir).unwrap();
+    git(&dir, &["init", "--quiet"]);
+    commit(&dir, "file");
+    dir
+}
+
+/// The default sheet for a run in the project `dir`. The steps `copy` and
+/// `mark` run their commands there. Each other command step does nothing.
+fn git_sheet(dir: &Path) -> Graph {
+    let mut graph = default_graph();
+    let top = dir.display().to_string();
+    let full = format!("{top}/.codeumbrella/runs/{{run}}");
+    for (name, step) in &mut graph.steps {
+        if ["copy", "mark"].contains(&name.as_str()) {
+            for word in step.run.iter_mut().flatten() {
+                if word == "." {
+                    word.clone_from(&top);
+                }
+                *word = word.replace(".codeumbrella/runs/{run}", &full);
+            }
+        } else if !step.run.is_empty() {
+            step.run = vec![vec!["true".to_owned()]];
+        }
+    }
+    graph
+}
+
+/// A simulated worker. The builder commits a file `build` and gives a bad
+/// result. The attacker looks for that file in the commit from before.
+#[derive(Default)]
+struct BadBuild {
+    calls: Mutex<Vec<String>>,
+    looked: Mutex<Vec<String>>,
+}
+
+impl Worker for BadBuild {
+    fn run(&self, job: &Job) -> Result<Outcome> {
+        self.calls.lock().unwrap().push(job.step.to_owned());
+        for paper in job.writes {
+            let path = job.dir.join("papers").join(paper);
+            fs::write(path.join("file.md"), job.step)?;
+        }
+        let work = job.dir.join("work");
+        let mut ok = true;
+        if job.step == "build" {
+            commit(&work, "build");
+            ok = false;
+        }
+        if job.step.starts_with("attack") {
+            let noted = fs::read_to_string(job.dir.join("first-yes.txt"));
+            // With no file, the commit of the start of the run.
+            let before = noted.unwrap_or_else(|_| {
+                let all = git(&work, &["log", "-g", "--format=%H", "HEAD"]);
+                all.lines().last().unwrap_or_default().to_owned()
+            });
+            let before = before.trim().to_owned();
+            let files = git(&work, &["ls-tree", "--name-only", &before]);
+            ok = !files.lines().any(|l| l == "build");
+            self.looked.lock().unwrap().push(before);
+        }
+        Ok(Outcome {
+            ok,
+            summary: format!("{} ran", job.step),
+        })
+    }
+}
+
+/// A run in the project `dir` that waits at `look_at_tests`.
+fn to_the_tests(dir: &Path, graph: &Graph, worker: &BadBuild) -> Run {
+    let place = dir.join(".codeumbrella/runs/run-1");
+    let mut run = Run::start(place, "a task", graph).unwrap();
+    run.go(graph, &root().join("roles"), worker).unwrap();
+    let note = run.state.note.clone();
+    assert_eq!(run.state.at.as_deref(), Some("look_at_tests"), "{note}");
+    run
+}
+
+#[test]
+fn after_a_bad_build_with_a_commit_the_attack_sees_the_code_from_before() {
+    let dir = project();
+    let first = git(&dir, &["rev-parse", "HEAD"]);
+    let graph = git_sheet(&dir);
+    let worker = BadBuild::default();
+    let mut run = to_the_tests(&dir, &graph, &worker);
+    run.answer(true, "").unwrap();
+    run.go(&graph, &root().join("roles"), &worker).unwrap();
+
+    let note = run.state.note.clone();
+    assert_eq!(run.state.status, Status::Waiting, "{note}");
+    assert_eq!(run.state.at.as_deref(), Some("look_at_tests"), "{note}");
+    let calls = worker.calls.lock().unwrap().clone();
+    let want = ["plan", "attack_plan", "build", "plan", "attack_plan"];
+    assert_eq!(calls, want);
+    // The work copy holds the commit of the bad build.
+    let work = run.dir.join("work");
+    assert_ne!(git(&work, &["rev-parse", "HEAD"]), first);
+    let wrote = fs::read_to_string(run.dir.join("first-yes.txt"));
+    let wrote = wrote.expect("no file first-yes.txt");
+    assert_eq!(wrote.trim(), first);
+    let looked = worker.looked.lock().unwrap().clone();
+    assert_eq!(looked, [first.clone(), first]);
+}
+
+/// Does only the step `mark`.
+fn mark_alone(run: &mut Run, dir: &Path) {
+    let mut graph = git_sheet(dir);
+    let step = graph.steps.get_mut("mark").unwrap();
+    step.next = None;
+    run.state.at = Some("mark".to_owned());
+    let worker = BadBuild::default();
+    run.go(&graph, &root().join("roles"), &worker).unwrap();
+    assert_eq!(run.state.status, Status::Done, "{}", run.state.note);
+}
+
+#[test]
+fn mark_writes_the_file_only_in_its_first_time() {
+    let dir = project();
+    let first = git(&dir, &["rev-parse", "HEAD"]);
+    let graph = git_sheet(&dir);
+    let mut run = to_the_tests(&dir, &graph, &BadBuild::default());
+    let work = run.dir.join("work");
+    let file = run.dir.join("first-yes.txt");
+
+    mark_alone(&mut run, &dir);
+    let wrote = fs::read_to_string(&file).expect("no first-yes.txt");
+    assert_eq!(wrote.trim(), first);
+
+    // With the file there, `mark` keeps it, also with no git name.
+    commit(&work, "build");
+    git(&work, &["update-ref", "-d", "refs/codeumbrella/before"]);
+    mark_alone(&mut run, &dir);
+    let kept = fs::read_to_string(&file).expect("no first-yes.txt");
+    assert_eq!(kept.trim(), first);
+
+    // With the git name there, this is not the first time of `mark`.
+    fs::remove_file(&file).unwrap();
+    mark_alone(&mut run, &dir);
+    assert!(!file.exists(), "mark wrote the file in a second time");
+}
+
+/// The lines of the rule of a page that has the words `words`.
+fn rule_with(rel: &str, words: &str) -> String {
+    let page = text(rel);
+    let mut rules: Vec<String> = Vec::new();
+    for line in page.lines() {
+        let head = line.split_once(". ").map(|(n, _)| n);
+        if head.is_some_and(|n| n.parse::<u32>().is_ok()) {
+            rules.push(line.to_owned());
+        } else if let Some(rule) = rules.last_mut() {
+            rule.push('\n');
+            rule.push_str(line);
+        }
+    }
+    let found = rules.into_iter().find(|r| r.contains(words));
+    found.unwrap_or_else(|| panic!("{rel}: no rule with {words}"))
+}
+
+#[test]
+fn the_attacker_page_runs_one_check_on_the_code_from_before() {
+    let rule = rule_with("roles/attacker.md", "mktemp");
+    let words = [
+        "good before the code is written",
+        "`../first-yes.txt`",
+        "`mark`",
+        "git clone",
+        "git checkout",
+        "other checks",
+        "work copy",
+    ];
+    for word in words {
+        assert!(rule.contains(word), "{word}: {rule}");
+    }
+}
+
+#[test]
+fn the_command_of_the_page_gives_the_commit_of_the_start_of_the_run() {
+    let rule = rule_with("roles/attacker.md", "mktemp");
+    let mut marked = rule.split('`').skip(1).step_by(2);
+    let found = marked.find(|c| c.starts_with("git log -g"));
+    let found = found.unwrap_or_else(|| panic!("no git log -g: {rule}"));
+
+    let dir = project();
+    let first = git(&dir, &["rev-parse", "HEAD"]);
+    let copy = folder();
+    let _ = fs::remove_dir_all(&copy);
+    let target = copy.display().to_string();
+    git(&dir, &["clone", "--quiet", ".", &target]);
+    commit(&copy, "build");
+    commit(&copy, "repair");
+    let mut shell = Command::new("sh");
+    shell.args(["-c", found]).current_dir(&copy);
+    let out = shell.output().expect("start sh");
+    let got = String::from_utf8_lossy(&out.stdout);
+    assert_eq!(got.trim(), first, "{found}");
+}
+
+#[test]
+fn the_planner_page_tells_when_no_paper_to_correct_is_a_bad_result() {
+    let rule = rule_with("roles/planner.md", "no paper to correct");
+    let words = [
+        "attack",
+        "`ok: false`",
+        "person can act on",
+        "first line",
+        "summary",
+        "`ok: true`",
+    ];
+    for word in words {
+        assert!(rule.contains(word), "{word}: {rule}");
+    }
+}
+
+/// The comment lines right above the step `name`, as one text.
+fn comment_above(name: &str) -> String {
+    let page = text("graph.example.yaml");
+    let lines: Vec<&str> = page.lines().collect();
+    let head = format!("  {name}:");
+    let at = lines.iter().position(|l| *l == head).expect(&head);
+    let above = lines[..at].iter().rev();
+    let comments = above.take_while(|l| l.trim_start().starts_with('#'));
+    let mut found: Vec<&str> = comments
+        .map(|l| l.trim_start().trim_start_matches('#').trim())
+        .collect();
+    found.reverse();
+    found.join(" ").to_lowercase()
+}
+
+#[test]
+fn the_comments_of_the_sheet_tell_the_new_rule() {
+    let mark = comment_above("mark");
+    assert!(mark.contains("first-yes.txt"), "{mark}");
+    let attack = comment_above("attack_plan");
+    for word in ["first-yes.txt", "person can act on"] {
+        assert!(attack.contains(word), "{word}: {attack}");
+    }
+}
+
+#[test]
+fn agents_md_tells_the_new_rule() {
+    let page = text("AGENTS.md");
+    let (_, after) = page.split_once("\n## The sheet\n").expect("part");
+    let (part, _) = after.split_once("\n## ").expect("a next part");
+    let wanted = [
+        ("`mark`", "first-yes.txt"),
+        ("attacker", "first-yes.txt"),
+        ("planner", "person can act on"),
+    ];
+    for (one, two) in wanted {
+        let has = |l: &str| l.contains(one) && l.contains(two);
+        assert!(part.lines().any(has), "no line with {one} and {two}");
     }
 }
