@@ -109,7 +109,7 @@ an error · a bad result with no path for it · a changed paper · a maximum
 - A fan is a step that starts two or more worker steps at the same time. It waits for all of them.
 - `resume` tries a stopped step again. The person must say yes first. After a changed paper, a person must put the paper back first.
 - The plan step has 3 tries for one run, and the first plan uses one. A no, a bad build or a bad repair uses one more. After the third try the run stops.
-- A bad build goes to `plan`. The planner corrects only the bad paper test. The attacker looks, you see the tests again, and `build` runs again.
+- A bad build goes to `plan`. The planner corrects only the bad paper test. The attacker looks, and `build` runs again. You see the tests again only if the `skip_if` line of `look_at_tests` is bad.
 - A bad repair also goes to `plan`, on the same path. After the third try of `repair`, the run stops.
 - A bad result of the attacker goes to a step `correct_plan`. The planner corrects the plan, and the attacker looks again.
 - There are 3 attacks at the maximum for each plan. After the third correction, the person sees the tests.
@@ -118,7 +118,7 @@ an error · a bad result with no path for it · a changed paper · a maximum
 - The picture shows the default sheet, `graph.example.yaml`. A project can change its own sheet.
 - The run keeps the tool of the run in its notebook. `answer` and `resume` use it.
 - The notebook also keeps the total of the numbers of the workers. `status` shows it.
-- The queue is the folder `.codeumbrella/queue/`: one text file for each task that waits. `codeumbrella queue` shows it. `codeumbrella run --next` starts the first file and moves it into the run as `task.txt`. The supervisor does not start a run by itself.
+- The queue is the folder `.codeumbrella/queue/`: one text file for each task that waits. `codeumbrella queue` shows each file name with its `Files:` and `Purpose:` lines. `codeumbrella run --next` starts the first file and moves it into the run as `task.txt`. The supervisor does not start a run by itself.
 - The step `set_version` comes after `learn` and before `write_pr`. It runs the script `.codeumbrella/set-version` on the work copy. The script sets the version and commits it. No task text names a version. `work_was_done` also writes `files.txt`, the names of the files of the new commits.
 - The step `mark` writes the commit of your yes for the tests into a git name. It has no AI.
 - Before that, `mark` writes `new-work.bundle` and `files.txt` for builder commits that no check saw, also after a bad build. It does this only while the run folder has no `new-work.bundle`.

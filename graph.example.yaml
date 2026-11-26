@@ -19,6 +19,8 @@
 #   run        Only for a command step. A list of commands. Each command is a
 #              list of words. In a word, {run} is the id of the run.
 #              If a command gives an error, the result of the step is bad.
+#   skip_if    Only for a person step. A list of commands, as `run`. If all
+#              are good, the run goes to `next` with no question.
 #   fan        Only for a fan step. A list of worker steps. They run at the
 #              same time. The fan step waits for all of them. Its result is
 #              good only if all of them are good. A step in this list has
@@ -142,8 +144,66 @@ steps:
 
   # You look at the tests. A no sends the work back to the planner.
   # When you trust the planner, remove this step and change `next` of `plan`.
+  #
+  # With the line `skip_if`, the question can stay away. A bad build or a
+  # bad repair named a paper test, and the planner corrected only that test.
+  # The first attack of the correction was good and complete. The spec did not
+  # change. The commands compare the papers with the copy that `mark` made.
+  # On each doubt or error, the question comes.
   look_at_tests:
     type: person
+    skip_if:
+      - - sh
+        - -c
+        - |
+          set -euf
+          export LC_ALL=C
+          r=.codeumbrella/runs/{run}
+          a=$r/said-yes
+          p=$r/papers
+          [ -d "$a/spec" ] && [ -d "$a/tests" ]
+          # The last three lines: a bad builder, a good plan, a good attack.
+          last=$(tail -n 3 "$r/log.jsonl")
+          step() { printf '%s\n' "$last" | sed -n "$1p" | jq -r "select(.ok == $2) | .step"; }
+          case $(step 1 false) in build|repair) ;; *) exit 1 ;; esac
+          [ "$(step 2 true)" = plan ]
+          [ "$(step 3 true)" = attack_plan ]
+          attack=$(printf '%s\n' "$last" | sed -n 3p | jq -r .summary)
+          case $attack in *"Not complete:"*) exit 1 ;; esac
+          named=$(printf '%s\n' "$last" | sed -n 1p | jq -r .summary)
+          links=$(find "$a" "$p/spec" "$p/tests" -type l)
+          [ -z "$links" ]
+          diff -r "$a/spec" "$p/spec" >/dev/null
+          # The same files in the two folders of tests.
+          old=$(cd "$a/tests" && find . ! -type d | sort)
+          new=$(cd "$p/tests" && find . ! -type d | sort)
+          [ "$old" = "$new" ]
+          nl=$(printf '\nx'); nl=${nl%x}
+          odd=$(find "$p/tests" -name "*$nl*")
+          [ -z "$odd" ]
+          changed=
+          IFS=$nl
+          for f in $new; do
+            f=${f#./}
+            s=0
+            cmp -s "$a/tests/$f" "$p/tests/$f" || s=$?
+            [ "$s" != 0 ] || continue
+            [ "$s" = 1 ] && [ "$f" != README.md ]
+            # The summary has the path as plain text, as a full name.
+            NAMED=$named FILE=$f awk 'BEGIN {
+              t = ENVIRON["NAMED"]; f = ENVIRON["FILE"]
+              while ((i = index(t, f)) > 0) {
+                b = i > 1 ? substr(t, i - 1, 1) : ""
+                c = substr(t, i + length(f), 1)
+                if (b !~ /[A-Za-z0-9_-]/ && c !~ /[A-Za-z0-9_-]/) exit 0
+                t = substr(t, i + 1)
+              }
+              exit 1
+            }'
+            changed="$changed $f"
+          done
+          [ -n "$changed" ]
+          printf 'No tests question. Changed paper tests:%s\n' "$changed"
     on_bad: plan
     next: mark
 
@@ -156,6 +216,10 @@ steps:
   # In its first time, the step also writes the commit of `HEAD` into
   # `first-yes.txt` in the run folder. It does this only if that file and the
   # git name are not there. A worker cannot write that file.
+  #
+  # The first command also copies the papers `spec` and `tests` into
+  # `said-yes` in the run folder. The line `skip_if` of `look_at_tests` reads
+  # that copy. With no paper folder, it keeps no copy.
   #
   # After a bad build, for example, no check saw the work. The first
   # command keeps that work before the step moves the name. It writes
@@ -175,6 +239,10 @@ steps:
         - |
           r=.codeumbrella/runs/{run}
           g() { git -c core.fsmonitor=false -c core.hooksPath=/dev/null -C "$r/work" "$@"; }
+          rm -rf "$r/said-yes" || exit 1
+          if [ -d "$r/papers/spec" ] && [ -d "$r/papers/tests" ]; then
+            mkdir "$r/said-yes" && cp -R "$r/papers/spec" "$r/papers/tests" "$r/said-yes/" || exit 1
+          fi
           s=0
           g rev-parse --quiet --verify refs/codeumbrella/before >/dev/null || s=$?
           # Status 1: the git name is not there. Each other error is bad.
@@ -258,8 +326,8 @@ steps:
   # A builder writes the code and commits it.
   # A bad result goes to the planner, as a no of yours does. This is for a
   # paper test that is bad in its own setup. The planner corrects only that
-  # test. The attacker looks, you see the tests again, and the builder works
-  # again.
+  # test. The attacker looks, and the builder works again. You see the tests
+  # again only if the line `skip_if` of `look_at_tests` is bad.
   #
   # A bad build uses one of the 3 tries of `plan`. After the third try
   # the run stops.
