@@ -501,7 +501,9 @@ impl Run {
                 .with_context(|| format!("cannot start the command {first}"))?;
             if !out.status.success() {
                 let error = String::from_utf8_lossy(&out.stderr);
-                let summary = format!("The command `{}` gave an error: {error}", words.join(" "));
+                // The error comes first: `status` shows only the start of a note.
+                let (error, words) = (error.trim(), words.join(" "));
+                let summary = format!("Error: {error}\nThe command `{words}` gave it.");
                 return Ok(Outcome { ok: false, summary });
             }
             String::from_utf8_lossy(&out.stdout)

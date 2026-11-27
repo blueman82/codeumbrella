@@ -106,6 +106,7 @@ To install the command and the chat command on a computer, run `./install.sh`.
 | `tests/kill_repair.rs` | Tests of the repair after a kill. The last four use `ps` and `pkill`, and skip themselves in a sandbox. |
 | `tests/stop.rs` | Tests of `stop`, with a simulated `claude`. The last three use `ps` and `pkill`, and skip themselves in a sandbox. |
 | `tests/copy_tests.rs` | Tests of the step `copy_tests`, the list of changed papers, the checker page and the documents. |
+| `tests/copy_repairs.rs` | Tests of the run branch that keeps its commits, the merge that did not complete, the note and the lesson test rules. |
 | `tests/find_each_point.rs` | Tests of `mark`, `work_was_done`, the new rules lines and the repair that changes no file. |
 | `tests/language_pages.rs` | Tests of the seven standards pages, `init`, three rules pages and the documents. |
 | `tests/bad_repair.rs` | Tests of the bad repair that goes to the plan, the new rules lines, the chat page and the documents. |
@@ -143,7 +144,7 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - A step in a `fan` line has only `role`, `reads`, `tool`, `model` and `effort`. It writes no paper.
 - Only a worker step can have `tool`, `model` and `effort`. `tool` is `claude` or `codex`. With no line, the step uses the tool of the run.
 - The step gives `model` and `effort` to its tool. The role needs the settings file of that tool.
-- A step with `type: command` has a `run` line: a list of commands. The supervisor runs them itself, with no shell and no worker. In a word, `{run}` is the id of the run. If a command gives an error, the result is bad.
+- A step with `type: command` has a `run` line: a list of commands. The supervisor runs them itself, with no shell and no worker. In a word, `{run}` is the id of the run. If a command gives an error, the result is bad. The error text comes before the command.
 - `next` is the step after a good result. `on_bad` is the step after a bad result.
 - A step that an `on_bad` line goes to must have `max_tries`.
 - A line that the supervisor does not know is an error.
@@ -156,6 +157,7 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - After an attack, a planner can have no paper to correct. It gives `ok: false` only with a cause that a person can act on. It names that cause in the first line of its summary.
 - Before that, `mark` writes `new-work.bundle` and `files.txt` for the commits of a builder that no check saw. It does this only while the run folder has no `new-work.bundle`.
 - The command step `copy_tests` has no AI. It comes after `mark` and before `build`. It copies the paper `tests` into the work copy and commits the copied files. Then it moves `refs/codeumbrella/before` to that commit. A bad result stops the run.
+- `copy_tests` keeps the commits of the run branch. With a merge that did not complete in the work copy, it gives a bad result.
 - A worker step that runs a second time gets one line for each paper that changed since its last run. The notebook keeps the data in `seen`.
 - The steps of the planner write the papers `spec`, `tests` and `pr`.
 - The worker step `write_pr` comes after `set_version` and after `repair`, before `check`. The writer completes the PR text in the paper `pr`.
@@ -302,6 +304,7 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - The cause: a limit removed useful entries, and a copy could remove the entries of a second run.
 - `save_lessons` refuses a paper with a symbolic link or a second hard link. Thus only a file of the paper goes into the lessons file.
 - The builder does not change a lesson test. The file `tests.txt` of the paper `lessons` names each lesson test.
+- Each lesson test goes into a new file of its own. A file of the paper `tests` is not a lesson test, also if `tests.txt` names it.
 - After the merge, the step `clean_up` removes `work` and `clean` of the run. On 19 November 2026 the run folders held 6.8 GB.
 - `open_pr` opens the PR with the title of `title.txt` and the text of `body.md` of the paper `pr`. It does not use `--fill`.
 - On 19 November 2026 a PR had the branch name as its title. Its text had only the commit lines.
