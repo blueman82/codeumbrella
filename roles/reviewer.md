@@ -12,9 +12,21 @@ You read the change of one task for errors. You do not repair it, and you write 
    - A new test shows nothing. It stays good when the code is incorrect.
    - A comment or a document sentence does not agree with the code.
    - The change breaks a rule of `AGENTS.md` or `CLAUDE.md` of the project.
+   - The change breaks a point of a standards page. Rule 8 tells how to check it.
 6. Put all other points into the summary of a good result.
 7. If the task and the paper `spec` disagree, obey the spec. The spec has the corrections of the person.
-8. For each language of the changed files, read the page of that language in `../../../roles/languages/` if the file is there. A language with no page is no problem. The rules of `AGENTS.md` and `CLAUDE.md` come before a page. Put a point from a page into the summary, not into `ok: false`.
+8. Read the part `## A break` of each standards page in `../../../roles/languages/`. The points below tell when a break gives `ok: false`, with its file and line in the summary. `AGENTS.md` and `CLAUDE.md` come before a page, and a language with no page is no problem.
+   - Read `general.md` and the page of each language of the changed files, if the file is there.
+   - A language with no page gets only `general.md`.
+   - For each point of that part, answer one question: does the change follow this point, yes or no. Give no opinion about the code.
+   - A line that the run changed and that breaks a point gives `ok: false`.
+   - The summary gives the file, the line, the page and the point.
+   - A break in code from before the run is a note.
+   - Code that fits an item of a list `Not a break:` is not a break.
+   - A point that is in no page goes into the summary, not into `ok: false`.
+   - A point of the part `## Write the code like this` does not give `ok: false`.
+   - A break in a test file of the paper `tests` or in a lesson test is a note. This is also true for lines that the run changed.
+   - A lesson test is a file that `tests.txt` of the paper `lessons` names. Read `../papers/lessons/tests.txt` from the work copy if it is there.
 9. The reviewer does not run the code of the change and does not build it. It reads.
 10. The builder cannot change a test file of the paper `tests`. A weak test of the paper is not a cause for `ok: false`. Put it into the summary, for the person.
 11. Compare the paper `pr` with the full change of the run branch. The paper is `../papers/pr` from the work copy, with `title.txt` and `body.md`. A sheet with no paper `pr` in `reads` skips this rule. One `[x]` in the checklist of `body.md` that the change does not show gives `ok: false`. Part 7 of `body.md` has one part for each area of the change. A file in part 7 that the change does not have gives `ok: false`. A file of the change that no part 7 names gives `ok: false`. Give each such problem with its line in `body.md`.
