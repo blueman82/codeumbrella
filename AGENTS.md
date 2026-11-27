@@ -27,11 +27,11 @@ The supervisor knows nothing about software work. All knowledge of the steps is 
 | `worker.<number>` | A file in the run folder. It holds the start time of the worker with that number. The computer gives this number to each command. |
 | `trace` | `<step>.<number>.trace.jsonl` in the run folder: all that one worker did in one try. |
 | Paper | A folder in `.codeumbrella/runs/<run-id>/papers/` that one step writes and other steps read. |
-| Paper `pr` | The paper with the PR text. `title.txt` is the title, in one line. `body.md` is the text. The planner writes the title and parts 1 to 5. The writer adds parts 6 to 8. |
+| Paper `pr` | The paper with the PR text. `title.txt` is the title, in one line. `body.md` is the text. The planner writes the title and parts 1 to 5. The writer adds parts 6 to 8. After a bad check, the writer can correct a sentence of parts 1 to 5 that the report names. |
 | Lesson | A problem of a run that can come again in a different task. The learner makes it a lesson test, or a short entry. |
 | `.codeumbrella/lessons.md` | The entries of the lessons of a project. The step `save_lessons` adds to it after the merge. The step `tidy_lessons` removes done entries. Git does not see it. |
 | Role | The type of a worker. Its rules page is `.codeumbrella/roles/<role>.md` in a project. The folder `roles` holds the defaults. |
-| Writer | The role `writer`. It reads the change with git. It adds the version line, the areas of the change and the checklist to `body.md` of the paper `pr`. |
+| Writer | The role `writer`. It reads the change with git. It adds the version line, the areas of the change and the checklist to `body.md` of the paper `pr`. After a bad check, it also corrects named sentences of parts 1 to 5. |
 | Queue | The folder `.codeumbrella/queue/`: one text file for each task that waits. The file name sets the sequence. `run --next` starts the first one. |
 
 ## Commands
@@ -114,6 +114,7 @@ To install the command and the chat command on a computer, run `./install.sh`.
 | `tests/lessons_keep.rs` | Tests of the lessons that stay: the steps `copy`, `save_lessons` and `tidy_lessons`, the rules pages and the documents. |
 | `tests/clean_up.rs` | Tests of the step `clean_up`: the default sheet, runs with the built command and the documents. |
 | `tests/pr_text.rs` | Tests of the PR text: the paper `pr`, the role `writer` and the step `write_pr`. Also `find_pr` and `open_pr`, with a simulated `gh`. |
+| `tests/writer_fix.rs` | Tests of the writer that corrects a sentence of the PR text after a bad check: the run path, the rules pages, the sheet and the documents. |
 | `tests/run_total.rs` | Tests of the numbers of each worker, the total in the notebook, the lines of `status` and the documents. |
 | `tests/full_check.rs` | Tests of the full check that cannot run in the sandbox: the chat page, the rules pages, `init` and the documents. |
 | `tests/run_id.rs` | Tests of the run id with four digits, of `status` on an id of before, of the chat page and the documents. |
@@ -158,6 +159,7 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - A worker step that runs a second time gets one line for each paper that changed since its last run. The notebook keeps the data in `seen`.
 - The steps of the planner write the papers `spec`, `tests` and `pr`.
 - The worker step `write_pr` comes after `set_version` and after `repair`, before `check`. The writer completes the PR text in the paper `pr`.
+- With problems only in `body.md` of the paper `pr`, `repair` changes no file. The run then goes to `write_pr`, and the writer corrects the sentences.
 - `work_was_done` comes right after `simplify`. It makes `new-work.bundle` in the run folder from the commits after `copy_tests`. Only the commits of `build` and `simplify` count.
 - With no new commit and no `new-work.bundle`, git gives an error. The run then goes to the builder step `do_work`. Then it checks again. After the third try of `do_work` the run stops.
 - After a no, `work_was_done` is good with no new commit if the run folder has `new-work.bundle`. The run then goes on to the checks.
@@ -306,6 +308,9 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - After a no, `find_pr` puts the new title and text of the paper `pr` into the open PR. Thus a PR has no text of an earlier try.
 - The step `write_pr` comes after `set_version` and after each `repair`. Thus the PR text agrees with the change before each check.
 - A bad result of `write_pr` stops the run.
+- A `repair` with problems only in the paper `pr` changes no file and uses no try of `plan`. A problem in `title.txt` goes to `plan`.
+- After a bad check, the writer corrects only the named sentences of parts 1 to 5. It keeps their meaning, the title, the purpose and each point of the no.
+- The cause: in a run of this project, the reviewer refused two words of the PR text. The run used its last try of `plan`.
 - The writer has the walls of the reviewer and one write entry for the paper `pr`. It writes no file of the work copy and commits nothing.
 - In Claude settings a deny rule comes before an allow rule. So the writer has a deny rule for the work copy, not for the full project folder.
 - The reviewer compares the paper `pr` with the change. One `[x]` that the change does not show gives a bad result.
