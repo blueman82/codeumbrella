@@ -6,7 +6,7 @@ This file is the one source of the project rules for all agents. `CLAUDE.md` imp
 
 Codeumbrella is a software factory. A person gives it a task. It puts code into `main` only after two things. First, the code agrees with the tests that the person gave approval for. Second, the person gave approval for the PR.
 
-The factory is written in Rust. The projects that go through it can be in each language. Knowledge of one language is only in the language pages (`roles/languages/`). The supervisor, the default sheet and the rules pages of the roles have none. Only the six page file names in the file list of `init` are permitted.
+The factory is written in Rust. The projects that go through it can be in each language. Knowledge of one language is only in the language pages (`roles/languages/`). The supervisor, the default sheet and the rules pages of the roles have none. Only the seven page file names in the file list of `init` are permitted.
 
 The heart is an instruction sheet (`.codeumbrella/graph.yaml` in each project) and a small supervisor that reads the sheet and does what it says. The supervisor starts workers, keeps a notebook, and stops for the person. Claude came first and Codex after, and a step can pick its tool.
 
@@ -78,7 +78,7 @@ To install the command and the chat command on a computer, run `./install.sh`.
 | `roles/writer.md` | The rules page of the writer. It adds parts 6 to 8 of the PR text and the checklist. |
 | `roles/writer.claude.json` | The Claude settings of the writer: the walls of the reviewer, and one write entry for the paper `pr`. |
 | `roles/writer.codex.txt` | The Codex settings of the writer: the reviewer file, and one write entry for the paper `pr`. |
-| `roles/languages/<language>.md` | The good practice of one language: Python, Go, JavaScript, TypeScript, Java, Rust. Only the reviewer and the simplifier read them. `init` copies them. |
+| `roles/languages/<language>.md` | The standards page of one language: Python, Go, JavaScript, TypeScript, Java, Rust. `general.md` has the general coding standards. Each page has 300 lines at the maximum and two parts: `## Write the code like this` and `## A break`. The builder, the reviewer and the simplifier read the pages. `init` copies them. |
 | `roles/<role>.claude.json` | The Claude permissions and the sandbox settings of each role. In this file, `{project}` is the full path of the project folder and `{run}` is the id of the run. |
 | `src/graph.rs` | Reads the sheet and finds its errors before a run. |
 | `src/engine.rs` | Does one step at a time, keeps the notebook, keeps the papers safe. |
@@ -107,7 +107,7 @@ To install the command and the chat command on a computer, run `./install.sh`.
 | `tests/stop.rs` | Tests of `stop`, with a simulated `claude`. The last three use `ps` and `pkill`, and skip themselves in a sandbox. |
 | `tests/copy_tests.rs` | Tests of the step `copy_tests`, the list of changed papers, the checker page and the documents. |
 | `tests/find_each_point.rs` | Tests of `mark`, `work_was_done`, the new rules lines and the repair that changes no file. |
-| `tests/language_pages.rs` | Tests of the six language pages, `init` and the two rules pages. |
+| `tests/language_pages.rs` | Tests of the seven standards pages, `init`, three rules pages and the documents. |
 | `tests/bad_repair.rs` | Tests of the bad repair that goes to the plan, the new rules lines, the chat page and the documents. |
 | `tests/user_checker.rs` | Tests of the fifth checker `check_use`: its step, the files of the role `user`, its rules page and the documents. |
 | `tests/learner.rs` | Tests of the role `learner`: the steps `learn` and `save_lessons`, its files, its rules page and the documents. |
@@ -325,6 +325,10 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - In the change or in the paper `pr`, such a problem gives a bad result of the reviewer.
 - A problem in the paper `lessons` gives only a note of the reviewer. The chat shows that note at the question `approval`.
 - No repair worker can write the paper `lessons`. So the chat corrects that paper on the word of the person.
+- A break of a point of a standards page gives a bad result of the reviewer, from 25 November 2026. The step `repair` then gets the work.
+- The person of this project decided this on 24 and 25 November 2026. A break was only a note, and the person does not read the code.
+- The reviewer reads each point of the part `## A break`. The check is "does the change follow this point, yes or no".
+- The person gave approval for the pages on 25 November 2026. So no worker writes or changes a point of a page.
 
 ## Rust rules
 

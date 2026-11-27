@@ -145,7 +145,7 @@ The factory does not work in a linked git worktree.
 |---|---|
 | `graph.yaml` | The steps and their sequence. Comments in the file tell each option. |
 | `roles/<role>.md` | The rules of one worker. |
-| `roles/languages/<language>.md` | The language pages for Python, Go, JavaScript, TypeScript, Java and Rust. The reviewer and the simplifier read the page of each language in the change. |
+| `roles/languages/<language>.md` | The language pages for Python, Go, JavaScript, TypeScript, Java and Rust, and `general.md` for each language. The builder, the reviewer and the simplifier read them. |
 | `roles/<role>.claude.json`, `roles/<role>.codex.txt` | What one worker can do. |
 
 The workers write short sentences for you: 20 words at the maximum. A project can put a list of refused words into its `AGENTS.md`. Then the workers use no word of that list, and the reviewer checks it.

@@ -22,6 +22,7 @@ macro_rules! defaults {
           ("../.gitignore", include_str!("../default.gitignore")),
           $(role!($role, ".md"), role!($role, ".claude.json"), role!($role, ".codex.txt")),*,
           page!("python"), page!("go"), page!("javascript"), page!("typescript"), page!("java"),
+          page!("general"),
           page!("rust")]
     };
 }
