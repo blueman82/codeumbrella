@@ -1087,3 +1087,102 @@ fn the_chat_shows_the_title_and_each_open_item_at_approval() {
     assert!(item.contains("approval"), "{item}");
     assert!(item.contains("[ ]"), "{item}");
 }
+
+// ---------------------------------------------------------------------
+// No link to a chat transcript
+// ---------------------------------------------------------------------
+
+/// The words of the new line for the PR text. The last one is the start
+/// of a Claude link, in code marks.
+const PR_WORDS: [&str; 5] = [
+    "PR text",
+    "no link",
+    "chat transcript",
+    "AI tool",
+    "`https://claude.ai/code/session_`",
+];
+
+/// The words of the new line for a commit message.
+const COMMIT_WORDS: [&str; 4] = [
+    "commit message",
+    "no link",
+    "chat transcript",
+    "no line `Claude-Session:`",
+];
+
+/// The date of the decision about these links.
+const LINK_DATE: &str = "25 November 2026";
+
+/// Each sentence of a line has 20 words at the maximum.
+fn short_sentences(name: &str, line: &str) {
+    for sentence in line.split(". ") {
+        let count = sentence.split_whitespace().count();
+        assert!(count <= 20, "{name}: {count} words: {sentence}");
+    }
+}
+
+/// The line of rule `number` of a page that has each of `words`. It is a
+/// line of its own, not the first line of the rule. It gives the line
+/// with no list mark.
+fn rule_line(rel: &str, number: usize, words: &[&str]) -> String {
+    let page = text(rel);
+    let head = format!("{number}. ");
+    let next = format!("{}. ", number + 1);
+    let from = page.lines().skip_while(|l| !l.starts_with(&head));
+    let mut rule = from.skip(1).take_while(|l| !l.starts_with(&next));
+    let found = rule.find(|l| words.iter().all(|w| l.contains(w)));
+    let found = found.unwrap_or_else(|| panic!("{rel} rule {number}: {words:?}"));
+    let line = found.trim_start().trim_start_matches("- ");
+    short_sentences(rel, line);
+    line.to_owned()
+}
+
+#[test]
+fn rule_8_of_the_writer_refuses_a_chat_link_in_the_pr_text() {
+    rule_line("roles/writer.md", 8, &PR_WORDS);
+}
+
+#[test]
+fn rule_17_of_the_planner_has_the_same_line_as_the_writer() {
+    let planner = rule_line("roles/planner.md", 17, &PR_WORDS);
+    let writer = rule_line("roles/writer.md", 8, &PR_WORDS);
+    assert_eq!(planner, writer);
+}
+
+#[test]
+fn rule_4_of_the_builder_refuses_a_chat_link_in_a_commit_message() {
+    rule_line("roles/builder.md", 4, &COMMIT_WORDS);
+}
+
+#[test]
+fn rule_7_of_the_simplifier_refuses_a_chat_link_in_a_commit_message() {
+    rule_line("roles/simplifier.md", 7, &COMMIT_WORDS);
+}
+
+#[test]
+fn rule_4_of_the_checker_refuses_a_chat_link_in_a_commit_message() {
+    rule_line("roles/checker.md", 4, &COMMIT_WORDS);
+}
+
+/// The first list line of the safety rules with each of `words`.
+fn link_rule(words: &[&str]) -> String {
+    let rules = section("AGENTS.md", "Safety rules");
+    let mut lines = rules.lines().filter(|l| l.starts_with("- "));
+    let found = lines.find(|l| words.iter().all(|w| l.contains(w)));
+    let found = found.unwrap_or_else(|| panic!("no line with {words:?}"));
+    short_sentences("AGENTS.md", found.trim_start_matches("- "));
+    found.to_owned()
+}
+
+#[test]
+fn the_safety_rules_have_the_rule_and_the_cause_with_the_date() {
+    let rule = link_rule(&[
+        "chat transcript",
+        "PR text",
+        "commit message",
+        "each AI",
+        "by hand",
+    ]);
+    let cause = link_rule(&["chat transcript", "cause", LINK_DATE]);
+    assert_ne!(rule, cause);
+}

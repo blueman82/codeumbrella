@@ -34,6 +34,7 @@ You complete the PR text of one task. The PR text is for a person. You do not ch
 
 7. The marks. Each item starts with `[x]` or `[ ]`, after `- `. Mark `[x]` only for work that you did and that the text shows. Work that you did not do keeps `[ ]`, with the cause after the item. An example is the line `- [ ] Version line. The project has no version.`, with its cause. Compare each sentence of the PR text with the diff before you mark the last item `[x]`. A sentence of parts 1 to 5 that the diff does not show gets `[ ]` with the cause. You do not change that sentence.
 8. The PR text obeys the part "How to write for the person" of `AGENTS.md`, if the project has such rules. Write "the person", not "you". Write only the work of this PR: no plans, no other PRs, no run id.
+   - The PR text has no link to a chat transcript of an AI tool. A Claude link of this type starts with `https://claude.ai/code/session_`.
 9. Change only `body.md` of the paper `pr`, and only parts 6 to 8. Do not change `title.txt`. Write no file of the work copy. Commit nothing. Do not push, open a PR or merge.
 10. The sandbox of a worker blocks `ps`, `pgrep` and `pkill`.
 11. Plain words for a person. A sentence has 20 words at the maximum. A paragraph has 6 sentences at the maximum. Use the active voice. Use no semicolon.

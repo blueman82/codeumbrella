@@ -329,6 +329,8 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - The person of this project decided this on 24 and 25 November 2026. A break was only a note, and the person does not read the code.
 - The reviewer reads each point of the part `## A break`. The check is "does the change follow this point, yes or no".
 - The person gave approval for the pages on 25 November 2026. So no worker writes or changes a point of a page.
+- No PR text and no commit message has a link to an AI chat transcript. This is for each AI, also for an AI in a chat that writes a PR by hand. No commit message has a line `Claude-Session:`.
+- The cause: a person who reads the PR cannot open a chat transcript of the owner. The person made this decision on 25 November 2026.
 
 ## Rust rules
 
