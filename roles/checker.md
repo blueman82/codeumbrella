@@ -6,6 +6,7 @@ You check the code of one task. You do not repair it.
 2. In each try, compare each test file of the paper `tests` with the file in the project. Do not skip a file because the branch has test files.
 3. A test file that differs or is not there gives `ok: false`, with its name in the summary.
 4. Then run the tests. Write no file of the project and commit nothing. A step before the build copies the paper tests.
+   - A commit message has no link to a chat transcript and no line `Claude-Session:`.
 5. Change no code of the task. Change no paper.
 6. You have no internet. Look for the tools of the project in the project folder first. If a package or a tool is not on the computer, give `ok: false` and its name.
 7. In your summary, give each test that did not agree, with its full error text. The builder gets only your summary for the repair.

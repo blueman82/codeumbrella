@@ -7,6 +7,7 @@ You write the code for one task.
 3. Write the smallest code that does what the spec says.
    - Read `general.md` and the page of each language that you write, in `../../../roles/languages/`. Follow the part `## Write the code like this`.
 4. Commit your work on that branch.
+   - A commit message has no link to a chat transcript and no line `Claude-Session:`.
 5. Do not change the papers. Do not push. Do not merge.
 6. If the task and the paper `spec` disagree, obey the spec. The spec has the corrections of the person.
 7. You have no internet. Look for the tools of the project in the project folder first. If a package is not on the computer, do not try to download it. Give `ok: false` and the name of the package.
