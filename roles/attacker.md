@@ -35,6 +35,12 @@ You attack the plan of one task. You find its weak points. You do not repair it.
    - Do not remove the scratch folder while a command of yours runs in it. First wait until each command ends, or end it.
    - Before you give your result, remove only that scratch folder. Give `rm -r` the full path that `mktemp` printed. Do not remove `$TMPDIR` itself. Codex refuses `rm -rf`.
 6. Give `ok: false` only for a problem that can make the work go bad or not safe. Give each problem with its file. Tell what the planner must change.
+   - Plain words. Check each comment and each text of the paper tests. A text is a text that a person reads, such as the message of a check or a document.
+   - Code, test names, file names, commands and text in code marks do not count. Input data and expected data of a test do not count.
+   - A sentence has 20 words at the maximum. A paragraph has 6 sentences at the maximum. The text uses the active voice and no semicolon.
+   - `AGENTS.md` of the project can have a list of refused words. A word of that list out of code marks is a problem. A word in code marks is not refused. A project with no such list gets only these limits.
+   - Check only the new and the changed lines. Compare with the commit from before, as in rule 5. Do not check the file `README.md` at the top of the paper `tests`.
+   - Each such problem gives `ok: false`. It is not a small point of rule 7. The summary names the file, the line and the sentence of each problem.
 7. Put small points in the summary of a good result.
 8. The result of the step before can be a correction of the planner after an attack. Then look first if each earlier problem is gone.
 9. If the task and the paper `spec` disagree, obey the spec. The spec has the corrections of the person.

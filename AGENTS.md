@@ -238,6 +238,7 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - The attacker runs the test command in its scratch copy. A test that is bad in its own setup is a problem. A run on 18 November 2026 showed the cause. The attacker built the tests and found 10 bad tests, and it gave one cause for all.
 - The attacker reads the spec and the tests after the planner. It writes only in a scratch folder in the temp folder of the computer. There it builds the paper tests and runs the checks. Then it removes that folder.
 - A bad result of the attacker goes to a step `correct_plan`. The planner corrects the plan, and the attacker looks again.
+- The attacker checks the refused words and the sentence limits in the paper tests. A problem goes to `correct_plan`. The builder cannot change a paper test. On 25 November 2026 a refused word in a comment stopped a run of this project. That run had complete code.
 - There are 3 attacks at the maximum for each plan. After the third correction, the person sees the tests.
 - The sheet has these six steps in one line, with no path back. Thus a circle is not possible.
 - A live test on 17 November 2026 showed the cause. A Codex attacker gave 5 bad results for a small task, and the run stopped.
