@@ -638,3 +638,138 @@ fn agents_md_tells_the_new_rule() {
         assert!(part.lines().any(has), "no line with {one} and {two}");
     }
 }
+
+// ---------------------------------------------------------------------
+// The plain words of the paper tests
+// ---------------------------------------------------------------------
+
+/// The rule of the attacker page with the words `refused words`.
+fn words_rule() -> String {
+    rule_with("roles/attacker.md", "refused words")
+}
+
+/// The sentences of one line, with no list mark at its start.
+fn sentences(line: &str) -> Vec<&str> {
+    let line = line.trim_start();
+    let line = match line.split_once(". ") {
+        Some((n, after)) if n.parse::<u32>().is_ok() => after,
+        _ => line.strip_prefix("- ").unwrap_or(line),
+    };
+    line.split(". ").filter(|s| !s.is_empty()).collect()
+}
+
+/// A new text obeys the limits for sentences and the list of `AGENTS.md`.
+fn assert_plain(name: &str, new: &str) {
+    let agents = text("AGENTS.md");
+    let words_line = agents.lines().find(|l| l.starts_with("- Words:"));
+    let words_line = words_line.expect("no line `- Words:`");
+    let marked = words_line.split('`').skip(1).step_by(2);
+    let refused: Vec<&str> = marked.collect();
+    for line in new.lines() {
+        let all = sentences(line);
+        assert!(all.len() <= 6, "{name}: more than 6 sentences: {line}");
+        for one in all {
+            let count = one.split_whitespace().count();
+            assert!(count <= 20, "{name}: {count} words: {one}");
+        }
+    }
+    let parts: Vec<&str> = new.split('`').step_by(2).collect();
+    let plain = parts.join(" ").to_lowercase();
+    assert!(!plain.contains(';'), "{name}: a semicolon: {new}");
+    for word in plain.split(|c: char| !c.is_alphanumeric()) {
+        assert!(!refused.contains(&word), "{name}: {word}: {new}");
+    }
+}
+
+#[test]
+fn the_attacker_page_checks_the_plain_words_of_the_paper_tests() {
+    let rule = words_rule().to_lowercase();
+    let words = [
+        "`agents.md`",
+        "paper test",
+        "comment",
+        "text",
+        "20 words",
+        "6 sentences",
+        "active voice",
+        "semicolon",
+        "code marks",
+        "no such list",
+        "commit from before",
+        "`readme.md`",
+    ];
+    for word in words {
+        assert!(rule.contains(word), "{word}: {rule}");
+    }
+}
+
+#[test]
+fn the_attacker_page_leaves_out_code_and_data_from_the_word_check() {
+    let rule = words_rule().to_lowercase();
+    assert!(rule.contains("person reads"), "person reads: {rule}");
+    let all = rule.lines().flat_map(sentences);
+    let left_out: Vec<String> = all
+        .filter(|s| s.contains("not count"))
+        .map(|s| s.replace("code marks", ""))
+        .collect();
+    let words = [
+        "code",
+        "test names",
+        "file names",
+        "commands",
+        "input data",
+        "expected data",
+    ];
+    for word in words {
+        let has = left_out.iter().any(|s| s.contains(word));
+        assert!(has, "no `not count` sentence with {word}: {rule}");
+    }
+}
+
+#[test]
+fn a_plain_words_problem_of_a_paper_test_is_a_bad_result() {
+    let rule = words_rule();
+    let all: Vec<&str> = rule.lines().flat_map(sentences).collect();
+    let wanted: [&[&str]; 2] = [
+        &["such problem", "`ok: false`"],
+        &["summary", "file", "line", "sentence"],
+    ];
+    // A sentence that says the opposite does not count.
+    let denies = |s: &str| {
+        let low = s.to_lowercase();
+        let mut parts = low.split(|c: char| !c.is_alphabetic());
+        parts.any(|w| w == "not" || w == "no")
+    };
+    for words in wanted {
+        let has = |s: &&str| !denies(s) && words.iter().all(|w| s.contains(w));
+        assert!(all.iter().any(has), "no sentence with {words:?}: {rule}");
+    }
+}
+
+#[test]
+fn the_new_rule_of_the_attacker_obeys_the_plain_words() {
+    assert_plain("roles/attacker.md", &words_rule());
+}
+
+#[test]
+fn the_safety_rules_tell_the_plain_words_check_of_the_attacker() {
+    let page = text("AGENTS.md");
+    let (_, after) = page.split_once("\n## Safety rules\n").expect("part");
+    let (part, _) = after.split_once("\n## ").expect("a next part");
+    let words = [
+        "attacker",
+        "refused words",
+        "sentence",
+        "paper tests",
+        "`correct_plan`",
+        "25 november 2026",
+        "project",
+    ];
+    let has = |l: &&str| {
+        let low = l.to_lowercase();
+        words.iter().all(|w| low.contains(w))
+    };
+    let line = part.lines().find(has);
+    let line = line.unwrap_or_else(|| panic!("no line with {words:?}"));
+    assert_plain("AGENTS.md", line);
+}
