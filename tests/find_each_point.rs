@@ -211,6 +211,7 @@ fn good_path() -> Vec<(String, bool)> {
         ("mark", true),
         ("copy_tests", true),
         ("build", true),
+        ("after_no", true),
         ("simplify", true),
         ("work_was_done", true),
         ("take_master", true),
@@ -237,12 +238,13 @@ fn with_no_commit_work_was_done_is_bad_and_the_run_stops_after_do_work() {
         "mark",
         "copy_tests",
         "build",
+        "after_no",
         "simplify",
         "work_was_done",
         "do_work",
     ];
-    assert_eq!(names.get(..6), Some(&head[..]), "{after:?}");
-    assert!(!after[4].1, "{after:?}");
+    assert_eq!(names.get(..7), Some(&head[..]), "{after:?}");
+    assert!(!after[5].1, "{after:?}");
     let tries = names.iter().filter(|s| **s == "do_work").count();
     assert_eq!(tries, 3, "{after:?}");
     // The builder in `do_work` gets the error text of git.
@@ -266,6 +268,7 @@ fn a_commit_of_do_work_passes_the_second_check_and_goes_to_take_master() {
         ("mark", true),
         ("copy_tests", true),
         ("build", true),
+        ("after_no", true),
         ("simplify", true),
         ("work_was_done", false),
         ("do_work", true),
@@ -402,6 +405,7 @@ fn after_a_build_with_no_commit_a_bad_review_goes_to_repair() {
         ("mark", true),
         ("copy_tests", true),
         ("build", true),
+        ("after_no", true),
         ("simplify", true),
         ("work_was_done", true),
         ("take_master", true),
@@ -510,13 +514,15 @@ fn the_default_sheet_has_mark_before_build_and_work_was_done_after_simplify() {
         ("mark", "look_at_tests"),
         ("copy_tests", "mark"),
         ("build", "copy_tests"),
+        ("build", "check_no"),
         ("no_locked_files", "check"),
     ];
     for (name, step) in &graph.steps {
         let targets = [&step.next, &step.on_bad];
-        for (to, from) in ways {
+        for (to, _) in ways {
             let goes = targets.contains(&&Some(to.to_owned()));
-            assert_eq!(goes, name == from, "{name} to {to}");
+            let from = ways.contains(&(to, name.as_str()));
+            assert_eq!(goes, from, "{name} to {to}");
         }
     }
 }

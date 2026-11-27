@@ -955,6 +955,7 @@ fn a_run_with_work_goes_through_take_master_to_the_approval() {
         ("mark", true),
         ("copy_tests", true),
         ("build", true),
+        ("after_no", true),
         ("simplify", true),
         ("work_was_done", true),
         ("take_master", true),
@@ -1025,6 +1026,7 @@ fn a_commit_of_do_work_passes_the_second_check_and_goes_to_take_master() {
         ("mark", true),
         ("copy_tests", true),
         ("build", true),
+        ("after_no", true),
         ("simplify", true),
         ("work_was_done", false),
         ("do_work", true),
@@ -1067,6 +1069,7 @@ fn after_a_no_with_no_commit_files_txt_names_no_file_of_the_merge() {
         ("mark", true),
         ("copy_tests", true),
         ("build", true),
+        ("after_no", true),
         ("simplify", true),
         ("work_was_done", true),
         ("take_master", true),
@@ -1154,6 +1157,7 @@ fn after_a_bad_build_with_a_commit_a_build_with_no_commit_goes_on() {
         ("mark", true),
         ("copy_tests", true),
         ("build", true),
+        ("after_no", true),
         ("simplify", true),
         ("work_was_done", true),
         ("take_master", true),
@@ -1190,9 +1194,16 @@ fn after_a_bad_build_with_no_commit_the_run_still_goes_to_do_work() {
     // The commits of `copy_tests` are not work of a builder.
     let ran = after(&w.run, "look_at_tests");
     let names: Vec<&str> = ran.iter().map(|(s, _)| s.as_str()).collect();
-    let head = ["mark", "copy_tests", "build", "simplify", "work_was_done"];
-    assert_eq!(names.get(..5), Some(&head[..]), "{ran:?}");
-    assert!(!ran[4].1, "{ran:?}");
+    let head = [
+        "mark",
+        "copy_tests",
+        "build",
+        "after_no",
+        "simplify",
+        "work_was_done",
+    ];
+    assert_eq!(names.get(..6), Some(&head[..]), "{ran:?}");
+    assert!(!ran[5].1, "{ran:?}");
     assert!(names.contains(&"do_work"), "{names:?}");
     assert!(!names.contains(&"take_master"), "{names:?}");
     assert_eq!(w.run.state.status, Status::Stopped);

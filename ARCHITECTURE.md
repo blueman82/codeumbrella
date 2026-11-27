@@ -59,6 +59,10 @@ copy_tests: copies the paper tests, commits (no AI)     │
   ▼                                                     │
 build: a bad result goes to plan, as a no does          │
   ▼                                                     │
+after_no: did you say no before? (no AI)                │
+  ├── yes ──► check_no: is each point of the no done?   │
+  │           not done ──► build again (3 tries)        │
+  ▼ no, or after a good check_no                        │
 simplify: the simplifier makes the code simpler         │
   ▼                                                     │
 work_was_done: builder work? no ──► do_work             │

@@ -340,18 +340,47 @@ steps:
   # the run stops.
   # After a no, a builder with no changed file gives a good result only with
   # a proof for each point of the no.
+  #
+  # After a no, the step `check_no` looks at the build. A point that is not
+  # done sends the run back here. So the step has a maximum of 6 tries. Thus
+  # this step does not stop the run before `check_no` does.
   build:
     role: builder
     reads: [spec]
+    max_tries: 6
     on_bad: plan
+    next: after_no
+
+  # No AI. This step reads the log of the run, which no worker can write.
+  # A bad result is not a fault. It means a no of the person at
+  # `look_at_tests` or at `approval`, and the run goes to `check_no`. A good
+  # result means no such line, and the run goes to `simplify`. A log that
+  # `jq` cannot read gives a bad result too.
+  after_no:
+    type: command
+    run:
+      - [jq, -en, 'all(inputs; .ok or (.step != "look_at_tests" and .step != "approval"))', ".codeumbrella/runs/{run}/log.jsonl"]
+    on_bad: check_no
+    next: simplify
+
+  # A reviewer checks the `Points of the no` of the spec against the change,
+  # right after the build. A point that is not done goes back to `build`, with
+  # the list of the points. The count of 3 tries is for the full run, and a
+  # good result counts too. After the third bad result, the run does `build`
+  # one more time and then stops here. `resume` then checks that build.
+  check_no:
+    role: reviewer
+    reads: [spec]
+    max_tries: 3
+    on_bad: build
     next: simplify
 
   # A simplifier makes the new code simpler, and does not change what it does.
   # It changes no test file. This is for new runs.
   # A run reads the sheet at each command, so do not change the sheet
   # while a run is active.
-  # For a faster run, remove this step. Then set `next` of `build` to
-  # `work_was_done`.
+  # For a faster run, remove this step. Then set `next` of `after_no` and of
+  # `check_no` to `work_was_done`.
   # The simplifier reads the language pages in `roles/languages/` for the
   # languages of the changed files.
   simplify:

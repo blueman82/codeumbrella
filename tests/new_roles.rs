@@ -246,7 +246,7 @@ fn the_simplifier_page_names_its_six_rules_and_its_limits() {
 fn the_default_sheet_has_the_step_simplify_between_build_and_learn() {
     let graph = graph();
     let build = graph.step("build").unwrap();
-    assert_eq!(build.next.as_deref(), Some("simplify"));
+    assert_eq!(build.next.as_deref(), Some("after_no"));
     let simplify = graph.step("simplify").unwrap();
     assert_eq!(simplify.kind, Kind::Worker);
     assert_eq!(simplify.role.as_deref(), Some("simplifier"));
@@ -255,10 +255,10 @@ fn the_default_sheet_has_the_step_simplify_between_build_and_learn() {
     assert_eq!(simplify.on_bad, None);
     let repair = graph.step("repair").unwrap();
     assert_eq!(repair.next.as_deref(), Some("write_pr"));
-    // Only `build` goes to `simplify`. The repair does not go through it.
+    // Only `after_no` and `check_no` go to `simplify`. The repair does not go through it.
     for (name, step) in &graph.steps {
         let to = [&step.next, &step.on_bad].contains(&&Some("simplify".to_owned()));
-        assert_eq!(to, name == "build", "{name}");
+        assert_eq!(to, name == "after_no" || name == "check_no", "{name}");
     }
 }
 

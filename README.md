@@ -38,7 +38,7 @@ Two runs can work at the same time. Before the PR question, the step `take_maste
 - `claude` (Claude Code) or `codex` (Codex). These start the workers. Check: `claude --version` or `codex --version`
 - A GitHub project for your code, with the name `origin`. Check: `git remote get-url origin`
 - `gh` signed in. Check: `gh auth status`
-- `jq`, which the default sheet uses to read the log of a run. Without it, the tests question always comes. Check: `jq --version`
+- `jq`, which the default sheet uses to read the log of a run. Without it, the tests question always comes, and the run stops after each build. Check: `jq --version`
 - macOS. There is no test on Linux or Windows.
 
 ## Install
