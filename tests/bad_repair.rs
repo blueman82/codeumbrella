@@ -60,12 +60,14 @@ const NOT_PERMITTED: [&str; 47] = [
 ];
 
 /// Each step of the default sheet with an `on_bad` line, and its target.
-const ON_BAD: [(&str, &str); 14] = [
+const ON_BAD: [(&str, &str); 16] = [
     ("attack_plan", "correct_plan"),
     ("attack_plan_2", "correct_plan_2"),
     ("attack_plan_3", "correct_plan_3"),
     ("look_at_tests", "plan"),
     ("build", "plan"),
+    ("after_no", "check_no"),
+    ("check_no", "build"),
     ("check", "repair"),
     ("work_was_done", "do_work"),
     ("take_master", "fix_merge"),
@@ -78,12 +80,14 @@ const ON_BAD: [(&str, &str); 14] = [
 ];
 
 /// Each step of the default sheet with a `max_tries` line, and its number.
-const MAX_TRIES: [(&str, u32); 9] = [
+const MAX_TRIES: [(&str, u32); 11] = [
     ("plan", 3),
     ("correct_plan", 3),
     ("correct_plan_2", 3),
     ("correct_plan_3", 3),
     ("repair", 3),
+    ("build", 6),
+    ("check_no", 3),
     ("take_master", 3),
     ("fix_merge", 3),
     ("do_work", 3),
@@ -258,7 +262,7 @@ fn only_the_step_repair_gets_a_new_line_in_the_sheet() {
     assert_eq!(repair.reads, ["spec"]);
     assert_eq!(repair.next.as_deref(), Some("write_pr"));
     let build = graph.step("build").unwrap();
-    assert_eq!(build.next.as_deref(), Some("simplify"));
+    assert_eq!(build.next.as_deref(), Some("after_no"));
 }
 
 #[test]

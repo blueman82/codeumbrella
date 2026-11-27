@@ -106,6 +106,7 @@ To install the command and the chat command on a computer, run `./install.sh`.
 | `tests/kill_repair.rs` | Tests of the repair after a kill. The last four use `ps` and `pkill`, and skip themselves in a sandbox. |
 | `tests/stop.rs` | Tests of `stop`, with a simulated `claude`. The last three use `ps` and `pkill`, and skip themselves in a sandbox. |
 | `tests/copy_tests.rs` | Tests of the step `copy_tests`, the list of changed papers, the checker page and the documents. |
+| `tests/check_no.rs` | Tests of the steps `after_no` and `check_no`, the rules pages and the documents. |
 | `tests/find_each_point.rs` | Tests of `mark`, `work_was_done`, the new rules lines and the repair that changes no file. |
 | `tests/language_pages.rs` | Tests of the seven standards pages, `init`, three rules pages and the documents. |
 | `tests/bad_repair.rs` | Tests of the bad repair that goes to the plan, the new rules lines, the chat page and the documents. |
@@ -146,6 +147,9 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - `next` is the step after a good result. `on_bad` is the step after a bad result.
 - A step that an `on_bad` line goes to must have `max_tries`.
 - A line that the supervisor does not know is an error.
+- The command step `after_no` has no AI. It comes after `build`. With no no of the person in the log, it goes to `simplify`. After a no, its bad result goes to `check_no`.
+- The worker step `check_no` has the role `reviewer`. It checks the `Points of the no` of `spec.md`. A good result goes to `simplify`, and a bad result goes to `build`.
+- `check_no` has `max_tries: 3`, and `build` has `max_tries: 6`. After the third bad result of `check_no`, `build` runs one more time. Then the run stops at `check_no`.
 - The command step `set_version` comes after `learn` and before `write_pr`. It runs `.codeumbrella/set-version` on the work copy. A bad result stops the run. A task text names no version: only the script sets it.
 - `work_was_done` also writes the files of the new commits into `files.txt` in the run folder. With no new commit, the list stays.
 - `check_review` reads `spec`, `pr` and `lessons`. It reads the paper `lessons` for plain words.
@@ -250,7 +254,7 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - `copy_tests` runs with no sandbox in the work copy. Each git call has `-c core.fsmonitor=false`, `-c core.hooksPath=/dev/null` and `-c commit.gpgSign=false`, and the commit has `--no-verify`. It refuses a config name that `take_master` refuses. The cause: a worker of a project can write that copy and the paper.
 - `copy_tests` refuses a link in the paper or on a target path, and a paper file with a second hard link. It refuses a path with `.git`, `.github`, `.claude` or `.codeumbrella`. Each refusal comes before the first copy. The cause is the same: a worker of a project must not reach a file of the person.
 - The default check step is a fan of five checkers. `check_tests` runs the tests. `check_safety`, `check_review` and `check_security` read the change. They cannot write a file. `check_use` runs the examples of the spec as a user does. It writes only in a scratch folder in the temp folder.
-- The step `simplify` follows `build`. The simplifier changes no test file, and it commits only if the test command passes. The step `repair` does not go through it.
+- The step `simplify` follows `after_no` or `check_no`. The simplifier changes no test file, and it commits only if the test command passes. The step `repair` does not go through it.
 - The reviewer and the `security` checker have the same settings as the safety checker. The simplifier has the same settings as the builder.
 - The stopped run prints `To continue: codeumbrella resume <run id>` and a line that says: resume only after the person says yes. An AI must not give this approval. The limit for the note does not cut them.
 - `answer` and `resume` with a `--tool` that is different from the tool of the run give an error. They give it before a step starts and before the answer is written. A notebook with no tool uses Claude, and `--tool` writes it. `status` changes the notebook only in the repair.
@@ -260,6 +264,8 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - After a no, the planner puts a part `Points of the no` at the top of `spec.md`. It is a list with numbers.
 - Each point of that part is one file, one behaviour or one sentence. A point with two demands becomes two points.
 - The part stays in each correction of the run. Each new no adds its points.
+- After a no, `check_no` checks each point of the no right after the build. The reviewer in the fan checks the points a second time. The cause: in 5 runs of this project, a builder did not do such a point.
+- `after_no` reads the log, which no worker can write. If it cannot read the log, the run goes to `check_no`.
 - Rule 1 of the reviewer gives one line for each point. It is `found` with the file and the line, or `not found`.
 - One `not found` gives `ok: false`. A commit or a word of the builder is not a proof.
 - The reviewer looks in the full change of the run branch. A point that a change cannot show gets `kept` or `not kept`.

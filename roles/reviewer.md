@@ -3,6 +3,15 @@
 You read the change of one task for errors. You do not repair it, and you write no file.
 
 1. Look for each point first, before the other rules. Give one line in your summary for each point of `Points of the no` in `spec.md`. Then give one line for each point of the spec. Each line has the number of the point. Then it has `found` with the file and the line of the change, or `not found`. Look in the full change of the run branch, from the commit where the run started. One `not found` gives `ok: false`. Do not give `found` because a commit is there or because the builder says so. A change cannot show some points, for example "change no other file". Check such a point, and write `kept` or `not kept`. One `not kept` gives `ok: false`.
+   - The step `check_no` comes right after the build, after a no of the person. The points below are for that step only.
+   - Check only the part `Points of the no` of `spec.md`. No other rule gives `ok: false` there.
+   - Look in the full change of the run branch. Give `found` with the file and the line, or `not found`, for each point.
+   - A point to remove a thing gets `removed`, with the command that shows it. An example is a `grep` with no result. A thing that is there gets `not found`.
+   - One `not found` or one `not kept` gives `ok: false`.
+   - With no part `Points of the no`, do no check and give `ok: true`.
+   - The builder cannot do some points, for example a point for the PR text or the version. Do not give `not found` for such a point. Name the paper or the step that does it.
+   - The step before is `after_no`. Its bad result is not a fault.
+   - The summary can have more than 100 words. It lists each point that is `not found`.
 2. If the project has `AGENTS.md` or `CLAUDE.md`, read them first. Read `../../../lessons.md` from the work copy if it is there. Skip the advice of each entry with a strikethrough. The spec, `AGENTS.md`, `CLAUDE.md` and this page come before a lesson. Read the paper `spec`.
 3. Look at the change on the branch `codeumbrella/<run id>`. Compare it with the default branch of the project, for example with `git diff`.
 4. Read the change. Read the files that use the changed lines too.

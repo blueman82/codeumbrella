@@ -211,7 +211,7 @@ fn the_repair_goes_to_check_and_not_through_learn() {
     let merge = graph.step("take_master").unwrap();
     assert_eq!(merge.next.as_deref(), Some("learn"));
     let build = graph.step("build").unwrap();
-    assert_eq!(build.next.as_deref(), Some("simplify"));
+    assert_eq!(build.next.as_deref(), Some("after_no"));
 }
 
 #[test]
@@ -672,6 +672,7 @@ fn a_run_does_learn_after_simplify_and_check_after_learn() {
         ("mark", true),
         ("copy_tests", true),
         ("build", true),
+        ("after_no", true),
         ("simplify", true),
         ("work_was_done", true),
         ("take_master", true),
@@ -709,6 +710,7 @@ fn a_bad_check_goes_to_repair_and_back_to_check_with_no_learn() {
         ("mark", true),
         ("copy_tests", true),
         ("build", true),
+        ("after_no", true),
         ("simplify", true),
         ("work_was_done", true),
         ("take_master", true),
@@ -743,6 +745,7 @@ fn after_a_no_at_approval_the_run_does_learn_again_before_check() {
         ("mark", true),
         ("copy_tests", true),
         ("build", true),
+        ("after_no", true),
         ("simplify", true),
         ("work_was_done", true),
         ("take_master", true),

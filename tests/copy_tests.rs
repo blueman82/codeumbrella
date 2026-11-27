@@ -134,12 +134,13 @@ fn the_sheet_has_copy_tests_between_mark_and_build() {
     assert_eq!(step.on_bad, None);
     let mark = graph.step("mark").unwrap();
     assert_eq!(mark.next.as_deref(), Some(STEP));
-    let ways = [(STEP, "mark"), ("build", STEP)];
+    let ways = [(STEP, "mark"), ("build", STEP), ("build", "check_no")];
     for (name, other) in &graph.steps {
         let targets = [&other.next, &other.on_bad];
-        for (to, from) in ways {
+        for (to, _) in ways {
             let goes = targets.contains(&&Some(to.to_owned()));
-            assert_eq!(goes, name == from, "{name} to {to}");
+            let from = ways.contains(&(to, name.as_str()));
+            assert_eq!(goes, from, "{name} to {to}");
         }
     }
 }
