@@ -11,6 +11,10 @@ You write the code for one task.
 6. If the task and the paper `spec` disagree, obey the spec. The spec has the corrections of the person.
 7. You have no internet. Look for the tools of the project in the project folder first. If a package is not on the computer, do not try to download it. Give `ok: false` and the name of the package.
 8. Some reports ask for a change that you cannot make. Example: the spec and a checker disagree. Then change no code. Give `ok: false`, and give the cause in the summary. The builder does not tell the person to run a check. A check that it cannot run in the sandbox gets a line `Not run:` with its cause.
+   - A report can have problems only in `body.md` of the paper `pr`. This is different from the other lines of this rule. Change no file and give `ok: true`, because the writer corrects them.
+   - The summary of such a repair names the paper `pr`.
+   - A report can have problems in the code and in `body.md`. Then repair the code, commit and give `ok: true`.
+   - A problem in `title.txt` gives `ok: false`, because only the planner changes the title.
 9. The builder does not change a test file that came from the paper `tests`. If a paper test is incorrect, the builder changes no code for it and does not change the test. It gives `ok: false`.
    - This rule is also for the step `repair`.
    - A checker can name a test file that differs from the paper or is not there. Then the builder copies the paper file again and commits it.

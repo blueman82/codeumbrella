@@ -515,6 +515,9 @@ steps:
   # with the file names, and the PR text checklist. It changes only `body.md`
   # of that paper. It comes after `learn` and after each `repair`, so the PR
   # text agrees with the change before each check. A bad result stops the run.
+  #
+  # After a bad check, the writer also corrects the sentences of parts 1 to 5
+  # that the report names.
   write_pr:
     role: writer
     reads: [spec]
@@ -584,6 +587,11 @@ steps:
   # This is for a paper test that no code can repair. The planner corrects
   # only that test. A bad repair uses one of the 3 tries of `plan`.
   # After the third try of `repair` the run stops here.
+  #
+  # A report can have problems only in the paper `pr`, in `body.md`. Then the
+  # builder changes no file and gives a good result. The run goes to
+  # `write_pr`, where the writer corrects the sentences. It uses no try of
+  # `plan`.
   repair:
     role: builder
     reads: [spec]

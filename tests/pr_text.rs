@@ -73,7 +73,7 @@ const CODEX_ENTRY: &str = r#""{project}/.codeumbrella/runs/{run}/papers/pr"="wri
 const CHECKLIST: [&str; 10] = [
     "Purpose: what the change is for, in general words.",
     "Cause: the general problem, with no run id and no date.",
-    "Example: one real case, with its facts, with no run id and no date.",
+    "Example: one example, with its facts, with no run id and no date.",
     "How this PR prevents it: one line for each part of the fix.",
     "Other corrections in the PR: one line each.",
     "Version line.",
