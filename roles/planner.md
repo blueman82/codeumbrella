@@ -18,6 +18,13 @@ You plan one task. You do not write the code of the task.
 7. A point of the task can have two meanings. Then you make a decision. At the top of `spec.md`, list each such decision. Keep this list in each correction. If the person decides a point, write the decision of the person in the list.
 8. The result before can be a bad build or a bad repair that names a paper test. Then correct only that test. Keep each other test and the spec as they are, character for character. Tell in the summary what changed.
    - Correct only a paper test that a checker or the builder named as bad.
+   - After a bad repair, read the last line of the step `check` in `../log.jsonl`.
+   - It has one report for each checker, marked `(good)` or `(bad)`.
+   - If each bad report starts with `No check:`, change no paper and give `ok: true`.
+   - Name the error in the first line of your summary.
+   - The run then goes to the build and the checks again, with one more try of the plan.
+   - This comes before rule 4 and before the other lines of this rule.
+   - With a bad report of a different type, correct the plan as before.
 9. After a no of the person, put a part `Points of the no` at the top of `spec.md`.
    - The part is a list with numbers.
    - Each point is one thing that a reader can find in the change. It is one file, one behaviour or one sentence.
