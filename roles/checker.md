@@ -23,6 +23,14 @@ You check the code of one task. You do not repair it.
    - A line `Paper test:` stays the first line, before the line `Not complete:`.
 11. The sandbox of a worker blocks `ps` (`operation not permitted: ps`), `pgrep` and `pkill` (`Cannot get process list`). `kill -0` works there.
 12. Do not run the command of the line `Full check:` of the task. Your summary has the line `Not run: full check`, with that command. That line is not a bad result. The test command stays a wall. A bad test command gives a bad result, as before.
+13. If a sandbox or disk error stops your commands, start your summary with `No check:` and name the error.
+   - Examples are a full disk and a shell that does not start.
+   - A sandbox that blocks only one test or one example is no such error.
+   - A package or a tool that is not on the computer is no such error.
+   - Then give `ok: false`, and do not say that the code is bad.
+   - Do not use `No check:` if you found a problem in the change.
+   - Give this `ok: false` also if no other rule of this page gives a cause for it.
+   - One paper test that the sandbox blocks gets `Paper test:`, as rule 10 tells.
 
 Give `ok: true` only if all the tests agree and the code does what the spec says. If not, give `ok: false`.
 

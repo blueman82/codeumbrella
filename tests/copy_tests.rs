@@ -754,7 +754,7 @@ n=1
 while [ -f "$bin/$step.$n" ]; do n=$((n+1)); done
 printf '%s\n' "$2" > "$bin/$step.$n"
 if [ "$step" = plan ]; then sh "$bin/plan$n.sh"; fi
-echo '{"is_error":false,"result":"","structured_output":{"ok":true,"summary":"done"}}'
+echo '{"type":"result","is_error":false,"result":"","structured_output":{"ok":true,"summary":"done"}}'
 "#;
 
 const PLAN_1: &str = "mkdir -p ../papers/tests/tests

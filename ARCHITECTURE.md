@@ -109,7 +109,7 @@ an error · a bad result with no path for it · a changed paper · a maximum
 ```
 
 - A fan is a step that starts two or more worker steps at the same time. It waits for all of them.
-- `resume` tries a stopped step again. The person must say yes first. After a changed paper, a person must put the paper back first.
+- `resume` tries a stopped step again. The person must say yes first. A `known cause` is the exception. After a changed paper, a person must put the paper back first.
 - The plan step has 3 tries for one run, and the first plan uses one. A no, a bad build or a bad repair uses one more. After the third try the run stops.
 - A bad build goes to `plan`. The planner corrects only the bad paper test. The attacker looks, and `build` runs again. You see the tests again only if the `skip_if` line of `look_at_tests` is bad.
 - A bad repair also goes to `plan`, on the same path. After the third try of `repair`, the run stops.

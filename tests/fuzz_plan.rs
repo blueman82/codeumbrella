@@ -300,7 +300,7 @@ fn no_panic(o: &Output) {
 fn a_claude_sum_that_is_too_large_gives_no_panic() {
     let max = u64::MAX;
     let line = format!(
-        "{{\"is_error\":false,\"result\":\"\",\"structured_output\":{{\"ok\":true,\"summary\":\"done\"}},\"usage\":{{\"input_tokens\":{max},\"cache_creation_input_tokens\":1,\"cache_read_input_tokens\":1,\"output_tokens\":1}}}}"
+        "{{\"type\":\"result\",\"is_error\":false,\"result\":\"\",\"structured_output\":{{\"ok\":true,\"summary\":\"done\"}},\"usage\":{{\"input_tokens\":{max},\"cache_creation_input_tokens\":1,\"cache_read_input_tokens\":1,\"output_tokens\":1}}}}"
     );
     let script = format!("echo '{{\"type\":\"system\"}}'\necho '{line}'");
     let dir = project("claude", &script);
@@ -417,7 +417,7 @@ fn the_version_script_refuses_a_linked_fuzz_file() {
 #[test]
 fn a_claude_worker_still_gives_the_numbers_of_today() {
     let line = concat!(
-        r#"{"is_error":false,"result":"","#,
+        r#"{"type":"result","is_error":false,"result":"","#,
         r#""structured_output":{"ok":true,"summary":"done"},"#,
         r#""total_cost_usd":1.25,"num_turns":7,"#,
         r#""usage":{"input_tokens":10,"#,

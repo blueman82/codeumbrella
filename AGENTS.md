@@ -54,7 +54,7 @@ codeumbrella status [run-id]                   # show where a run is: the step o
 codeumbrella status --wait <run-id>            # wait until the run is not `Running`, then show it
 codeumbrella answer <run-id> <step> yes|no ["text"]   # answer the question of that step, then continue
 codeumbrella stop <run-id>                     # end an active run: its command and its workers. Only after the person says stop
-codeumbrella resume <run-id>                   # try a stopped step again, with its count of tries at 0. Only after the person says yes
+codeumbrella resume <run-id>                   # try a stopped step again, with its count of tries at 0. Only after the person says yes, or for a `known cause`
 ```
 
 Run all four `cargo` commands before you say that work is complete.
@@ -106,6 +106,7 @@ To install the command and the chat command on a computer, run `./install.sh`.
 | `tests/kill_repair.rs` | Tests of the repair after a kill. The last four use `ps` and `pkill`, and skip themselves in a sandbox. |
 | `tests/stop.rs` | Tests of `stop`, with a simulated `claude`. The last three use `ps` and `pkill`, and skip themselves in a sandbox. |
 | `tests/copy_tests.rs` | Tests of the step `copy_tests`, the list of changed papers, the checker page and the documents. |
+| `tests/copy_repairs.rs` | Tests of the run branch that keeps its commits, the merge that did not complete, the note and the lesson test rules. |
 | `tests/find_each_point.rs` | Tests of `mark`, `work_was_done`, the new rules lines and the repair that changes no file. |
 | `tests/language_pages.rs` | Tests of the seven standards pages, `init`, three rules pages and the documents. |
 | `tests/bad_repair.rs` | Tests of the bad repair that goes to the plan, the new rules lines, the chat page and the documents. |
@@ -120,6 +121,7 @@ To install the command and the chat command on a computer, run `./install.sh`.
 | `tests/run_id.rs` | Tests of the run id with four digits, of `status` on an id of before, of the chat page and the documents. |
 | `tests/plain_words.rs` | Tests of the rules for plain words: the rules pages, the list of `AGENTS.md`, the sheet and the documents. |
 | `tests/test_parts.rs` | Tests of the test command in parts: the four rules pages, the Rust page, the sheet, the documents and the run path. |
+| `tests/known_causes.rs` | Tests of the `resume` after a known cause: the chat page and the documents. |
 | `fuzz/` | The fuzzer, with its own workspace. A fuzzer gives the code many automatic inputs. Its targets are `fuzz_sheet`, `fuzz_claude_reply` and `fuzz_codex_trace`. |
 | `fuzz/deny.toml` | The package check of `fuzz/`. It also accepts the license NCSA, in `fuzz/` only. |
 | `fuzz/seeds/` | Good inputs for each target. The fuzzer starts from them. |
@@ -144,7 +146,7 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - A step in a `fan` line has only `role`, `reads`, `tool`, `model` and `effort`. It writes no paper.
 - Only a worker step can have `tool`, `model` and `effort`. `tool` is `claude` or `codex`. With no line, the step uses the tool of the run.
 - The step gives `model` and `effort` to its tool. The role needs the settings file of that tool.
-- A step with `type: command` has a `run` line: a list of commands. The supervisor runs them itself, with no shell and no worker. In a word, `{run}` is the id of the run. If a command gives an error, the result is bad.
+- A step with `type: command` has a `run` line: a list of commands. The supervisor runs them itself, with no shell and no worker. In a word, `{run}` is the id of the run. If a command gives an error, the result is bad. The error text comes before the command.
 - `next` is the step after a good result. `on_bad` is the step after a bad result.
 - A step that an `on_bad` line goes to must have `max_tries`.
 - A line that the supervisor does not know is an error.
@@ -157,6 +159,7 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - After an attack, a planner can have no paper to correct. It gives `ok: false` only with a cause that a person can act on. It names that cause in the first line of its summary.
 - Before that, `mark` writes `new-work.bundle` and `files.txt` for the commits of a builder that no check saw. It does this only while the run folder has no `new-work.bundle`.
 - The command step `copy_tests` has no AI. It comes after `mark` and before `build`. It copies the paper `tests` into the work copy and commits the copied files. Then it moves `refs/codeumbrella/before` to that commit. A bad result stops the run.
+- `copy_tests` keeps the commits of the run branch. With a merge that did not complete in the work copy, it gives a bad result.
 - A worker step that runs a second time gets one line for each paper that changed since its last run. The notebook keeps the data in `seen`.
 - The steps of the planner write the papers `spec`, `tests` and `pr`.
 - The worker step `write_pr` comes after `set_version` and after `repair`, before `check`. The writer completes the PR text in the paper `pr`.
@@ -207,6 +210,8 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - `model` and `effort` have only letters, digits, `.`, `-` and `_`. Thus no quote or brace can get to the tool command.
 - `model` and `effort` cannot start with `-`. Thus the tool does not read them as an option.
 - A worker that ends with an error code gives no good result.
+- The result of a Claude worker is the last line of its reply with `"type":"result"`. Lines after it do not count.
+- The cause: on 27 November 2026 the disk of the Mac was full. After the result of a safety checker, `claude` wrote a `session_writes_lost` line. The run stopped and did not use the result.
 - A worker does not get the values `GH_TOKEN` and `GITHUB_TOKEN` of the person.
 - For a Claude worker, only the settings file of its role counts. The worker uses no settings, hooks or tool servers of the project or of the person.
 - A live test on 16 November 2026 showed the cause. With the project settings, a hook of the project ran in a worker, with no sandbox.
@@ -246,7 +251,9 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - A live test on 17 November 2026 showed the cause. A Codex attacker gave 5 bad results for a small task, and the run stopped.
 - For Claude, the settings of the attacker are the same as those of the safety checker. For Codex, they have one more entry: write in the temp folder.
 - Each role has one rules page.
-- The chat starts `run`, `answer` and `resume` with `nohup`, so a command lives after the shell ends. It adds `--tool codex` to `run` only. The chat uses `status --wait`. That command repairs a dead run and shows Stopped. The chat runs `resume` only after the person says yes. It does not remove `lock`.
+- The chat starts `run`, `answer` and `resume` with `nohup`, so a command lives after the shell ends. It adds `--tool codex` to `run` only. The chat uses `status --wait`. That command repairs a dead run and shows Stopped. It does not remove `lock`.
+- The chat runs `resume` only after the person says yes. A `known cause` is the exception.
+- For a known cause only, the chat starts `resume` with no question. The person decided this on 27 November 2026. The cause: in this project, a worker could not reach the Claude server. GitHub also refused a merge while the checks had no result. The person said yes to each `resume`, and wants no such simple question.
 - The checker compares each test file of the paper `tests` with the project in each try. A file that is different or not there gives `ok: false`. The checker writes no file. The builder in `repair` then copies the paper file again.
 - The step `copy_tests` copies the paper tests before each build, because the person approved the paper. The builder does not change such a file. A run of this project showed the cause. The builder worked against a test from before a correction of the planner.
 - The paper test always wins, also over a change or a removal from master. The person decided this for this project.
@@ -255,7 +262,7 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - The default check step is a fan of five checkers. `check_tests` runs the tests. `check_safety`, `check_review` and `check_security` read the change. They cannot write a file. `check_use` runs the examples of the spec as a user does. It writes only in a scratch folder in the temp folder.
 - The step `simplify` follows `build`. The simplifier changes no test file, and it commits only if the test command passes. The step `repair` does not go through it.
 - The reviewer and the `security` checker have the same settings as the safety checker. The simplifier has the same settings as the builder.
-- The stopped run prints `To continue: codeumbrella resume <run id>` and a line that says: resume only after the person says yes. An AI must not give this approval. The limit for the note does not cut them.
+- The stopped run prints `To continue: codeumbrella resume <run id>` and a line that says: resume only after the person says yes. An AI must not give this approval. A `known cause` is the exception. The limit for the note does not cut them.
 - `answer` and `resume` with a `--tool` that is different from the tool of the run give an error. They give it before a step starts and before the answer is written. A notebook with no tool uses Claude, and `--tool` writes it. `status` changes the notebook only in the repair.
 - The safety checker also reads the files that use the changed lines, for example settings files. A run on 17 November 2026 showed the cause.
 - Four checkers work in the same copy. No checker writes a file of the project. `check_use` clones the run branch into its scratch folder.
@@ -303,6 +310,7 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - The cause: a limit removed useful entries, and a copy could remove the entries of a second run.
 - `save_lessons` refuses a paper with a symbolic link or a second hard link. Thus only a file of the paper goes into the lessons file.
 - The builder does not change a lesson test. The file `tests.txt` of the paper `lessons` names each lesson test.
+- Each lesson test goes into a new file of its own. A file of the paper `tests` is not a lesson test, also if `tests.txt` names it.
 - After the merge, the step `clean_up` removes `work` and `clean` of the run. On 19 November 2026 the run folders held 6.8 GB.
 - `open_pr` opens the PR with the title of `title.txt` and the text of `body.md` of the paper `pr`. It does not use `--fill`.
 - On 19 November 2026 a PR had the branch name as its title. Its text had only the commit lines.
@@ -340,6 +348,14 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - A part that stops two times gets `Not complete:`. A builder with no bad test then gives a good result, with no try of `plan`.
 - A checker with a `Not complete:` part gives a bad result. `repair` changes no file for it, and the checkers run again.
 - No worker runs a test part in the background. One rules page is for Claude and Codex.
+- A checker that cannot run its commands starts its summary with `No check:` and names the error.
+- It does not say that the code is bad.
+- If each bad report of the checks starts with `No check:`, the planner changes no paper.
+- The planner then gives `ok: true`, and the run goes to the build and the checks again.
+- This uses a try of the plan, so an error that stays stops the run after the third try.
+- Each such result also uses a try of `repair`.
+- The cause: on 27 November 2026 each shell call of the checkers stopped with `ENOTSUP`.
+- The planner found no paper to correct, and the run stopped.
 
 ## Rust rules
 
