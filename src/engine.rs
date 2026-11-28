@@ -519,7 +519,10 @@ impl Run {
     }
 
     /// Sets the status and the note, and writes the notebook.
-    fn halt(&mut self, status: Status, note: String) -> Result<()> {
+    ///
+    /// # Errors
+    /// Gives an error if it cannot write the notebook.
+    pub fn halt(&mut self, status: Status, note: String) -> Result<()> {
         self.state.status = status;
         self.state.note = note;
         self.save()

@@ -32,11 +32,8 @@ pub fn record(
             ("tokens_in", n.tokens_in.map(Value::from)),
             ("tokens_out", n.tokens_out.map(Value::from)),
         ];
-        for (key, value) in fields {
-            if let Some(value) = value {
-                map.insert(key.to_owned(), value);
-            }
-        }
+        let given = fields.into_iter();
+        map.extend(given.filter_map(|(key, value)| Some((key.to_owned(), value?))));
     }
     let path = dir.join("log.jsonl");
     let mut file = OpenOptions::new().create(true).append(true).open(path)?;

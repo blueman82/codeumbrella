@@ -20,29 +20,21 @@ macro_rules! defaults {
         &[(".gitignore", "*\n"), ("graph.yaml", include_str!("../graph.example.yaml")),
           // For a project that has no ignore file. The path goes up to the project folder.
           ("../.gitignore", include_str!("../default.gitignore")),
-          $(role!($role, ".md"), role!($role, ".claude.json"), role!($role, ".codex.txt")),*,
-          page!("python"), page!("go"), page!("javascript"), page!("typescript"), page!("java"),
-          page!("general"),
-          page!("rust")]
+          $(shipped!("roles/", $role, ".md"), shipped!("roles/", $role, ".claude.json"),
+            shipped!("roles/", $role, ".codex.txt")),*,
+          shipped!("roles/languages/python.md"), shipped!("roles/languages/go.md"),
+          shipped!("roles/languages/javascript.md"), shipped!("roles/languages/typescript.md"),
+          shipped!("roles/languages/java.md"), shipped!("roles/languages/general.md"),
+          shipped!("roles/languages/rust.md")]
     };
 }
 
-/// One role file: its path in the folder of the factory, and its text.
-macro_rules! role {
-    ($role:literal, $ext:literal) => {
+/// One default file: its path in the folder of the factory, and its text.
+macro_rules! shipped {
+    ($($part:literal),+) => {
         (
-            concat!("roles/", $role, $ext),
-            include_str!(concat!("../roles/", $role, $ext)),
-        )
-    };
-}
-
-/// One language page: its path in the folder of the factory, and its text.
-macro_rules! page {
-    ($name:literal) => {
-        (
-            concat!("roles/languages/", $name, ".md"),
-            include_str!(concat!("../roles/languages/", $name, ".md")),
+            concat!($($part),+),
+            include_str!(concat!("../", $($part),+)),
         )
     };
 }
@@ -324,6 +316,25 @@ fn remove(path: &Path) -> Result<()> {
     }
 }
 
+/// The text of `ps -o <columns> -p <pid>`. `None` if `ps` did not end well.
+fn ps(columns: &str, pid: u32) -> Option<String> {
+    let out = Command::new("ps")
+        .args(["-o", columns, "-p", &pid.to_string()])
+        .output();
+    let good = out.ok().filter(|o| o.status.success());
+    good.map(|o| String::from_utf8_lossy(&o.stdout).into_owned())
+}
+
+/// Ends the children of a command, then the command.
+fn end_command(pid: u32) {
+    // An error is no problem: the command can be gone.
+    Command::new("pkill")
+        .args(["-TERM", "-P", &pid.to_string()])
+        .output()
+        .ok();
+    Command::new("kill").arg(pid.to_string()).output().ok();
+}
+
 /// Ends the workers of the files `worker.<number>`, then removes the files.
 /// A number is a worker only if its start time is the one in the file.
 /// It first looks at each file and changes nothing. An error changes no file.
@@ -337,15 +348,9 @@ fn end_workers(dir: &Path) -> Result<()> {
         };
         let mut ours = false;
         if alive(pid) {
-            let start = Command::new("ps")
-                .args(["-o", "lstart=", "-p", &pid.to_string()])
-                .output()
-                .ok()
-                .filter(|o| o.status.success());
-            let start = start.with_context(|| {
+            let start = ps("lstart=", pid).with_context(|| {
                 format!("cannot see the worker {pid} with `ps`. Run the command with no sandbox.")
             })?;
-            let start = String::from_utf8_lossy(&start.stdout);
             let held = fs::read_to_string(&path).unwrap_or_default();
             ours = start.trim() == held.trim();
         }
@@ -353,10 +358,7 @@ fn end_workers(dir: &Path) -> Result<()> {
     }
     for (path, pid, ours) in found {
         if ours {
-            let _ = Command::new("pkill")
-                .args(["-TERM", "-P", &pid.to_string()])
-                .output();
-            let _ = Command::new("kill").arg(pid.to_string()).output();
+            end_command(pid);
         }
         remove(&path)?;
     }
@@ -383,9 +385,8 @@ fn repair(dir: &Path) -> Result<bool> {
     remove(&lock)?;
     if run.state.status == Status::Running {
         let at = run.state.at.clone().unwrap_or_default();
-        run.state.status = Status::Stopped;
-        run.state.note = format!("The command of the run ended at the step {at} with no result.");
-        run.save()?;
+        let note = format!("The command of the run ended at the step {at} with no result.");
+        run.halt(Status::Stopped, note)?;
     }
     println!("Repaired: the command of this run was dead.");
     Ok(true)
@@ -397,15 +398,8 @@ fn owner(pid: u32) -> Result<Option<bool>> {
     if !alive(pid) {
         return Ok(None);
     }
-    let pid = pid.to_string();
-    let ps = Command::new("ps")
-        .args(["-o", "stat=,comm=", "-p", &pid])
-        .output();
-    let text = ps
-        .ok()
-        .filter(|o| o.status.success())
-        .map(|o| String::from_utf8_lossy(&o.stdout).into_owned());
-    let text = text.filter(|t| !t.trim().is_empty()).with_context(|| {
+    let text = ps("stat=,comm=", pid).filter(|t| !t.trim().is_empty());
+    let text = text.with_context(|| {
         format!("cannot see the command {pid} with `ps`. Run `codeumbrella stop` with no sandbox.")
     })?;
     let (stat, name) = text
@@ -429,10 +423,7 @@ fn stop(dir: &Path) -> Result<()> {
     let lock = dir.join("lock");
     let pid = number(&fs::read_to_string(&lock).unwrap_or_default());
     if let Some(pid) = pid.filter(|p| owner(*p).is_ok_and(|o| o == Some(true))) {
-        let _ = Command::new("pkill")
-            .args(["-TERM", "-P", &pid.to_string()])
-            .output();
-        let _ = Command::new("kill").arg(pid.to_string()).output();
+        end_command(pid);
         let end = Instant::now() + Duration::from_secs(10);
         while owner(pid)?.is_some() {
             ensure!(
@@ -449,9 +440,8 @@ fn stop(dir: &Path) -> Result<()> {
     let mut run = Run::open(dir.to_path_buf())?;
     remove(&lock)?;
     let at = run.state.at.clone().unwrap_or_default();
-    run.state.status = Status::Stopped;
-    run.state.note = format!("A person stopped the run at the step {at}.");
-    run.save()?;
+    let note = format!("A person stopped the run at the step {at}.");
+    run.halt(Status::Stopped, note)?;
     show(&run);
     Ok(())
 }
