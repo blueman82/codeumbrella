@@ -6,6 +6,18 @@ Use it only after the rules of `AGENTS.md` and `CLAUDE.md` of the project.
 
 The layout tool and the linter of the project check layout and names, so this page has none of that.
 
+## Run the tests
+
+One run of `cargo test` can use more than 10 minutes. Then run these parts:
+
+- For each test target, one part: `cargo test --test <name>`. For a file in `tests/`, the name has no `.rs`.
+- One part for the library and the commands: `cargo test --lib --bins`.
+- One part for the example targets, if the project has them: `cargo test --examples`.
+- One part for the examples in the docs: `cargo test --doc`.
+- A project with no library has no `--lib` and no `--doc`.
+
+Add the other words of the test command, such as `--offline`, to each part.
+
 ## Write the code like this
 
 - Give back a `Result` for a fault that normal use can cause, such as a bad file. Use `panic!` only when the caller broke the contract of the function.

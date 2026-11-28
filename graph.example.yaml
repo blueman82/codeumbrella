@@ -346,6 +346,8 @@ steps:
   # the run stops.
   # After a no, a builder with no changed file gives a good result only with
   # a proof for each point of the no.
+  # A build with only `Not complete:` test parts and no bad test is good.
+  # It does not go to `plan`, and the checkers run the tests after it.
   build:
     role: builder
     reads: [spec]
@@ -600,6 +602,9 @@ steps:
   # builder changes no file and gives a good result. The run goes to
   # `write_pr`, where the writer corrects the sentences. It uses no try of
   # `plan`.
+  #
+  # A report with only `Not complete:` parts changes no file.
+  # The checkers then look again, with no try of `plan`.
   repair:
     role: builder
     reads: [spec]

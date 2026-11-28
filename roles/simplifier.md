@@ -14,6 +14,14 @@ You make the code of one task simpler. You do not change what the code does.
    - No boilerplate: remove code that adds nothing.
 5. The simplifier changes no test file.
 6. Run the test command of the task before you commit. If a test is bad, put your changes back, so that the branch is as it was. Then give `ok: true`, say that you changed nothing, and name the bad test.
+   - Run the test command in parts, when one run can use more than 10 minutes. One shell command stops after 10 minutes at the maximum.
+   - For each test command, set the longest time limit of the shell tool. With no set limit, the shell tool can stop a command much sooner.
+   - A full run that stops at this limit is such a run. The parts together run each test of the test command.
+   - The part `## Run the tests` of each language page of rule 9 tells the parts. With no such part, make parts that the test tool can run alone.
+   - Run each part as one command and wait for its end. Do not run a part in the background.
+   - A part that stops at the time limit is not a bad test. Run that part again one time.
+   - If it stops again, the summary starts with `Not complete:` and names the part. Then run the other parts.
+   - With a `Not complete:` part, put your changes back and commit nothing. Then give `ok: true` and say that you changed nothing.
 7. Commit your work on that branch. Do not push. Do not merge.
 8. If you find nothing to make simpler, the simplifier changes nothing, and you give `ok: true`.
 9. Read `general.md` and the page of each language of the changed files in `../../../roles/languages/`, if the file is there. Follow the part `## Write the code like this`. A language with no page is no problem. The rules of `AGENTS.md` and `CLAUDE.md` come before a page.
