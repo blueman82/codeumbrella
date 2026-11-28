@@ -32,7 +32,7 @@ SUPERVISOR ── uses your GitHub key ──► GITHUB: push · PR · merge (me
 - The plan paper has the name `spec`.
 - The PR paper has the name `pr`. It has the title of the PR in `title.txt` and the PR text in `body.md`.
 - The planner writes the title and parts 1 to 5 of the PR text. The writer adds parts 6 to 8: the version line, the areas of the change, and the checklist.
-- The builder, the reviewer and the simplifier read the language pages in `roles/languages/`. They read `general.md` and the page of each language in the change. No other role reads them.
+- The builder, the reviewer and the simplifier read the language pages in `roles/languages/`. They read `general.md` and the page of each language in the change. The checker and the attacker read only the part `## Run the tests`.
 - The builder, the checker, the simplifier and the user checker can connect to a server on the same computer. An example is a database.
 - A worker can read the tests paper, but it cannot change it. The builder and the checker cannot write to the papers folder.
 - The supervisor compares each paper with its fingerprint before each step.

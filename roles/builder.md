@@ -34,6 +34,16 @@ You write the code for one task.
 11. The sandbox of a worker blocks `ps` (`operation not permitted: ps`), `pgrep` and `pkill` (`Cannot get process list`). `kill -0` works there.
 12. A task text names no version. Only the step `set_version` sets the version. Change no version file, unless the spec tells you.
 13. Do not run the command of the line `Full check:` of the task. Your summary has the line `Not run: full check`, with that command. That line is not a bad result. The test command stays a wall. A bad test command gives a bad result, as before.
+   - Run the test command in parts, when one run can use more than 10 minutes. One shell command stops after 10 minutes at the maximum.
+   - For each test command, set the longest time limit of the shell tool. With no set limit, the shell tool can stop a command much sooner.
+   - A full run that stops at this limit is such a run. The parts together run each test of the test command.
+   - The part `## Run the tests` of each language page of rule 3 tells the parts. With no such part, make parts that the test tool can run alone.
+   - Run each part as one command and wait for its end. Do not run a part in the background.
+   - A part that stops at the time limit is not a bad test. Run that part again one time.
+   - If it stops again, the summary starts with `Not complete:` and names the part. Then run the other parts.
+   - A `Not complete:` part of a report is not a problem to repair.
+   - With only `Not complete:` parts and no other problem, give `ok: true`. Commit the work that you have. Change no code for such a part.
+   - Such a result does not go to the plan, also in the step `repair`. A bad test or a bad paper test gets its usual rule.
 14. Plain words for a person. A sentence has 20 words at the maximum. A paragraph has 6 sentences at the maximum. Use the active voice. Use no semicolon.
    - This rule is for `spec.md`, the paper `pr` and the entries of the paper `lessons`. It is also for the documents of the project and the commit messages.
    - It is not for code, test names, file names, commands or text in code marks.
