@@ -118,13 +118,14 @@ impl Claude {
 }
 
 /// Reads the reply text of a Claude worker. The result is the last line with
-/// `"type":"result"`, because `claude` can write more lines after it, for example
-/// when the disk is full. It writes the cost, the turns, the model and the tokens
+/// `"type":"result"`. `claude` can write more lines after it, for example when
+/// the disk is full. It writes the cost, the turns, the model and the tokens
 /// into `numbers`.
 ///
 /// # Errors
-/// Gives an error for a text with no result line, for a result line that it
-/// cannot read, for an error that claude reported, and for a reply with no result in the correct format.
+/// Gives an error for a text with no result line. A result line that it cannot
+/// read also gives an error. So does an error that claude reported. The same
+/// applies to a reply with no result in the correct format.
 pub fn read_reply(text: &str, numbers: &mut Numbers) -> Result<Outcome> {
     let line = text.lines().rev().find(|line| {
         serde_json::from_str::<serde_json::Value>(line).is_ok_and(|v| v["type"] == "result")
