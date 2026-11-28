@@ -1,6 +1,7 @@
 //! Tests of the lines `tool`, `model` and `effort` of a step. They start the
 //! real command with a simulated `claude` and `codex`. No worker, no network.
 
+use serde_json::Value;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
@@ -69,7 +70,7 @@ fn out(o: &Output) -> String {
 
 /// A simulated `claude`. Each call writes its words, one on each line, to its own file.
 const CLAUDE: &str = r#"for a in "$@"; do echo "$a"; done > "$PWD/bin/claude.$$"
-echo '{"is_error":false,"result":"","structured_output":{"ok":true,"summary":"done"}}'"#;
+echo '{"type":"result","is_error":false,"result":"","structured_output":{"ok":true,"summary":"done"}}'"#;
 
 /// A simulated `codex`. Each call writes its words, one on each line, to its own file.
 const CODEX: &str = r#"for a in "$@"; do echo "$a"; done > "$PWD/bin/codex.$$"
@@ -301,5 +302,174 @@ fn the_default_sheet_sets_none_of_the_three_lines() {
         for name in ["tool:", "model:", "effort:"] {
             assert!(!line.starts_with(name), "the default sheet sets {line}");
         }
+    }
+}
+
+// Which line of the reply of `claude` is the result.
+
+/// A good result line, with its numbers. Its `type` is not the first field.
+const GOOD: &str = concat!(
+    r#"{"is_error":false,"result":"","type":"result","#,
+    r#""structured_output":{"ok":true,"summary":"done"},"#,
+    r#""total_cost_usd":1.25,"num_turns":7,"#,
+    r#""modelUsage":{"model-b":{}},"#,
+    r#""usage":{"input_tokens":10,"#,
+    r#""cache_creation_input_tokens":200,"#,
+    r#""cache_read_input_tokens":3000,"output_tokens":40}}"#,
+);
+
+/// A result line with a bad result and different numbers.
+const OTHER: &str = concat!(
+    r#"{"type":"result","is_error":false,"result":"","#,
+    r#""structured_output":{"ok":false,"summary":"other"},"#,
+    r#""total_cost_usd":0.15,"num_turns":3,"#,
+    r#""modelUsage":{"model-a":{}},"#,
+    r#""usage":{"input_tokens":1,"output_tokens":2}}"#,
+);
+
+/// The line that `claude` writes after its result when the disk is full.
+const DISK_FULL: &str = concat!(
+    r#"{"type":"system","subtype":"session_writes_lost","#,
+    r#""error_code":"ENOSPC"}"#,
+);
+
+/// A line with all fields of a result, but with a different `type`.
+const NOT_A_RESULT: &str = concat!(
+    r#"{"type":"system","is_error":false,"result":"","#,
+    r#""structured_output":{"ok":true,"summary":"done"},"#,
+    r#""content":[{"type":"result"}]}"#,
+);
+
+/// Runs the two steps with a `claude` that prints `lines` and ends with `code`.
+/// Gives the project folder and the output of the command.
+fn reply(lines: &[&str], code: i32) -> (PathBuf, String) {
+    let dir = project();
+    let words = lines.join("' '");
+    let script = format!("printf '%s\\n' '{words}'\nexit {code}");
+    tool(&dir, "claude", &script);
+    sheet(&dir, TWO_STEPS, "", "");
+    let text = out(&cu(&dir, &["run", "a task"]));
+    (dir, text)
+}
+
+/// The line of the step `one` in the log of the only run of the project.
+fn log_of_one(dir: &Path) -> Value {
+    let mut runs = fs::read_dir(dir.join(".codeumbrella/runs")).unwrap();
+    let run = runs.next().unwrap().unwrap().path();
+    let text = fs::read_to_string(run.join("log.jsonl")).unwrap();
+    let parse = |l: &str| serde_json::from_str::<Value>(l).unwrap();
+    let mut all = text.lines().map(parse);
+    all.find(|v| v["step"] == "one").expect("a line of one")
+}
+
+/// Checks that the log line of the step `one` has the numbers of `GOOD`.
+fn has_the_numbers_of_good(dir: &Path) {
+    let line = log_of_one(dir);
+    assert_eq!(line["dollars"], 1.25, "{line}");
+    assert_eq!(line["turns"], 7, "{line}");
+    assert_eq!(line["model"], "model-b", "{line}");
+    assert_eq!(line["tokens_in"], 3210, "{line}");
+    assert_eq!(line["tokens_out"], 40, "{line}");
+}
+
+/// Checks that the run stopped with the error for a reply with no result.
+fn has_no_result(text: &str) {
+    assert!(text.contains("Status:   Stopped"), "{text}");
+    assert!(text.contains("claude gave no result; see "), "{text}");
+    assert!(text.contains("one.1.err.txt"), "{text}");
+}
+
+#[test]
+fn a_line_after_the_result_does_not_remove_the_result() {
+    let (dir, text) = reply(&[GOOD, DISK_FULL], 0);
+    assert!(text.contains("Status:   Done"), "{text}");
+    has_the_numbers_of_good(&dir);
+}
+
+#[test]
+fn a_line_that_is_not_json_after_the_result_does_not_count() {
+    let half = r#"{"type":"system","subty"#;
+    let (dir, text) = reply(&[GOOD, half, "plain words", ""], 0);
+    assert!(text.contains("Status:   Done"), "{text}");
+    has_the_numbers_of_good(&dir);
+}
+
+#[test]
+fn of_two_result_lines_the_step_uses_the_last_one() {
+    let (dir, text) = reply(&[OTHER, GOOD, DISK_FULL], 0);
+    assert!(text.contains("Status:   Done"), "{text}");
+    has_the_numbers_of_good(&dir);
+}
+
+#[test]
+fn a_reply_with_no_result_line_gives_no_result() {
+    let (_, text) = reply(&[DISK_FULL, NOT_A_RESULT], 0);
+    has_no_result(&text);
+}
+
+#[test]
+fn a_line_with_no_type_is_not_a_result_line() {
+    let untyped = concat!(
+        r#"{"is_error":false,"result":"","#,
+        r#""structured_output":{"ok":true,"summary":"done"}}"#,
+    );
+    let (_, text) = reply(&[DISK_FULL, untyped], 0);
+    has_no_result(&text);
+}
+
+#[test]
+fn no_result_line_comes_before_the_exit_status() {
+    let (_, text) = reply(&[NOT_A_RESULT], 1);
+    has_no_result(&text);
+}
+
+#[test]
+fn a_last_result_line_that_cannot_be_read_gives_no_result() {
+    let bare = r#"{"type":"result"}"#;
+    let (_, text) = reply(&[GOOD, bare, DISK_FULL], 0);
+    has_no_result(&text);
+}
+
+#[test]
+fn a_result_line_with_an_error_gives_that_error() {
+    let bad = r#"{"type":"result","is_error":true,"result":"boom"}"#;
+    let (_, text) = reply(&[bad, DISK_FULL], 1);
+    assert!(text.contains("Status:   Stopped"), "{text}");
+    assert!(text.contains("claude reported an error: boom"), "{text}");
+}
+
+#[test]
+fn a_good_result_with_exit_status_1_stays_an_error() {
+    let (_, text) = reply(&[GOOD, DISK_FULL], 1);
+    assert!(text.contains("Status:   Stopped"), "{text}");
+    assert!(text.contains("claude ended with an error"), "{text}");
+}
+
+#[test]
+fn each_claude_seed_of_the_fuzzer_is_a_result_line() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let seeds = root.join("fuzz/seeds/fuzz_claude_reply");
+    for entry in fs::read_dir(seeds).unwrap() {
+        let text = fs::read_to_string(entry.unwrap().path()).unwrap();
+        let value: Value = serde_json::from_str(&text).unwrap();
+        assert_eq!(value["type"], "result", "{text}");
+        let mut numbers = codeumbrella::engine::Numbers::default();
+        let read = codeumbrella::claude::read_reply(&text, &mut numbers);
+        assert!(read.is_ok(), "{text}");
+    }
+}
+
+#[test]
+fn the_safety_rules_tell_the_result_line_its_cause_and_its_date() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let text = fs::read_to_string(root.join("AGENTS.md")).unwrap();
+    let from = text.split("\n## Safety rules\n").nth(1).unwrap();
+    let rules = from.split("\n## ").next().unwrap();
+    for word in [
+        r#"`"type":"result"`"#,
+        "`session_writes_lost`",
+        "27 November 2026",
+    ] {
+        assert!(rules.contains(word), "no {word} in the safety rules");
     }
 }

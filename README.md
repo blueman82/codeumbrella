@@ -69,6 +69,8 @@ In a chat, these rules apply:
 
 - After a run is `Done`, the chat starts the next task. It starts 3 tasks by itself at the maximum. Then it shows you each task that waits.
 - A run can stop at a plan step with no paper to correct, after new commits. The chat then starts that task again, one time only. It writes the cause as a new task at the end of the queue.
+- For a known cause only, the chat starts `resume` with no question. A worker could not reach its server, with `Can't reach the API server` or `ENOTFOUND`. Or the step `merge` got `the base branch policy prohibits the merge`. The merge cause counts only if a GitHub check had no result.
+- The chat first waits until the server answers, or until the GitHub checks end. A bad check goes to you. A second stop of the same step with the same cause comes to you. The chat tells you each such `resume` in one line, at the next question.
 - Each other stop comes to you.
 
 The step `set_version` sets the version of the project before the PR text. It runs the script `.codeumbrella/set-version`. `init` writes a script that does nothing. Put your own version commands in it. A task text names no version.
@@ -134,7 +136,7 @@ The run keeps the tool of the run in its notebook. `answer` and `resume` use it.
 | `.codeumbrella/runs/<run-id>/log.jsonl` | One line for each step: time, result, seconds. A worker step also gets the numbers of its worker, for example `dollars`. |
 | `.codeumbrella/runs/<run-id>/<step>.<number>.trace.jsonl` | All that one worker did. |
 | `codeumbrella stop <run-id>` | Ends an active run: its command and its workers. The status becomes Stopped. Run it with no sandbox, and only when you say stop. |
-| `codeumbrella resume <run-id>` | Tries the stopped step again. A stopped run prints this line, but not after a changed paper. Run it only after you say yes. |
+| `codeumbrella resume <run-id>` | Tries the stopped step again. A stopped run prints this line, but not after a changed paper. Run it only after you say yes. A `known cause` is the exception. |
 
 Three stops have their own cause:
 
@@ -152,7 +154,7 @@ The factory does not work in a linked git worktree.
 |---|---|
 | `graph.yaml` | The steps and their sequence. Comments in the file tell each option. |
 | `roles/<role>.md` | The rules of one worker. |
-| `roles/languages/<language>.md` | The language pages for Python, Go, JavaScript, TypeScript, Java and Rust, and `general.md` for each language. The builder, the reviewer and the simplifier read them. |
+| `roles/languages/<language>.md` | The language pages for Python, Go, JavaScript, TypeScript, Java and Rust, and `general.md` for each language. The builder, the reviewer and the simplifier read them. The checker and the attacker read only the part `## Run the tests`. |
 | `roles/<role>.claude.json`, `roles/<role>.codex.txt` | What one worker can do. |
 
 The workers write short sentences for you: 20 words at the maximum. A project can put a list of refused words into its `AGENTS.md`. Then the workers use no word of that list, and the reviewer checks it.

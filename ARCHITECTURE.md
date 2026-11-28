@@ -32,7 +32,7 @@ SUPERVISOR ── uses your GitHub key ──► GITHUB: push · PR · merge (me
 - The plan paper has the name `spec`.
 - The PR paper has the name `pr`. It has the title of the PR in `title.txt` and the PR text in `body.md`.
 - The planner writes the title and parts 1 to 5 of the PR text. The writer adds parts 6 to 8: the version line, the areas of the change, and the checklist.
-- The builder, the reviewer and the simplifier read the language pages in `roles/languages/`. They read `general.md` and the page of each language in the change. No other role reads them.
+- The builder, the reviewer and the simplifier read the language pages in `roles/languages/`. They read `general.md` and the page of each language in the change. The checker and the attacker read only the part `## Run the tests`.
 - The builder, the checker, the simplifier and the user checker can connect to a server on the same computer. An example is a database.
 - A worker can read the tests paper, but it cannot change it. The builder and the checker cannot write to the papers folder.
 - The supervisor compares each paper with its fingerprint before each step.
@@ -109,7 +109,7 @@ an error · a bad result with no path for it · a changed paper · a maximum
 ```
 
 - A fan is a step that starts two or more worker steps at the same time. It waits for all of them.
-- `resume` tries a stopped step again. The person must say yes first. After a changed paper, a person must put the paper back first.
+- `resume` tries a stopped step again. The person must say yes first. A `known cause` is the exception. After a changed paper, a person must put the paper back first.
 - The plan step has 3 tries for one run, and the first plan uses one. A no, a bad build or a bad repair uses one more. After the third try the run stops.
 - A bad build goes to `plan`. The planner corrects only the bad paper test. The attacker looks, and `build` runs again. You see the tests again only if the `skip_if` line of `look_at_tests` is bad.
 - A bad repair also goes to `plan`, on the same path. After the third try of `repair`, the run stops.

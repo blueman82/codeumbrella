@@ -82,7 +82,7 @@ fn id(o: &Output) -> String {
 
 /// A simulated `claude`. Each call writes a file of its own.
 const CLAUDE: &str = r#"echo called > "$PWD/bin/claude.$$"
-echo '{"is_error":false,"result":"","structured_output":{"ok":true,"summary":"done"}}'"#;
+echo '{"type":"result","is_error":false,"result":"","structured_output":{"ok":true,"summary":"done"}}'"#;
 
 /// A simulated `codex`. Each call writes a file of its own.
 const CODEX: &str = r#"echo called > "$PWD/bin/codex.$$"
@@ -356,7 +356,7 @@ fn resume_with_a_different_tool_is_an_error_and_changes_nothing() {
 /// A simulated `claude` that ends with an error code until the file `ok` is there.
 const CLAUDE_FAILS: &str = r#"echo called > "$PWD/bin/claude.$$"
 [ -f "$PWD/bin/ok" ] || exit 3
-echo '{"is_error":false,"result":"","structured_output":{"ok":true,"summary":"done"}}'"#;
+echo '{"type":"result","is_error":false,"result":"","structured_output":{"ok":true,"summary":"done"}}'"#;
 
 #[test]
 fn a_run_of_the_claude_tool_gives_the_error_for_tool_codex() {

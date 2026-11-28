@@ -284,6 +284,10 @@ steps:
   # a path with `.git`, `.github`, `.claude` or `.codeumbrella`.
   #
   # Each refusal comes before the first copy. A bad result stops the run.
+  #
+  # The step keeps the commits of the run branch. In the work copy, a merge
+  # that did not complete gives a bad result. The signs are `MERGE_HEAD` or a
+  # file with two changes. The step does not stop or complete that merge.
   copy_tests:
     type: command
     run:
@@ -299,6 +303,8 @@ steps:
           n=$(g config --local --includes --list --name-only) || no "git cannot read the config of the work copy"
           n=$(printf "%s\n" "$n" | grep -Evx "core\.(repositoryformatversion|filemode|bare|logallrefupdates|ignorecase|precomposeunicode|symlinks)|remote\.origin\.(url|fetch)|branch\..*\.(remote|merge)|user\.(name|email)") || true
           [ -z "$n" ] || no "the config of the work copy has: $n"
+          u=$(g ls-files --unmerged)
+          if [ -n "$u" ] || g rev-parse --quiet --verify MERGE_HEAD >/dev/null; then no "a merge that did not complete in the work copy: $w"; fi
           [ -d "$p" ] && [ ! -L "$p" ] || no "the paper tests is not a folder: $p"
           nl=$(printf "\nx"); nl=${nl%x}
           bad=$(cd "$p" && find . \( ! -type d ! -type f -o -type f ! -links 1 -o -iname .git -o -iname .github -o -iname .claude -o -iname .codeumbrella -o -name "*$nl*" \) -print)
@@ -340,6 +346,8 @@ steps:
   # the run stops.
   # After a no, a builder with no changed file gives a good result only with
   # a proof for each point of the no.
+  # A build with only `Not complete:` test parts and no bad test is good.
+  # It does not go to `plan`, and the checkers run the tests after it.
   build:
     role: builder
     reads: [spec]
@@ -592,6 +600,9 @@ steps:
   # builder changes no file and gives a good result. The run goes to
   # `write_pr`, where the writer corrects the sentences. It uses no try of
   # `plan`.
+  #
+  # A report with only `Not complete:` parts changes no file.
+  # The checkers then look again, with no try of `plan`.
   repair:
     role: builder
     reads: [spec]

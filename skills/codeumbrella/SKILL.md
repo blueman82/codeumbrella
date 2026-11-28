@@ -92,6 +92,7 @@ The output has one fact on each line: `Run:`, `Status:`, `Note:` and more. A run
 - At the question `approval`, read `.codeumbrella/runs/<run id>/papers/pr/title.txt` and `body.md` of the same paper. Show the person the title from `title.txt`. Show each `[ ]` line of the checklist in `body.md`, with its cause. If no line has `[ ]`, tell the person that.
 - At the question `approval`, read the `look_at_tests` lines of `log.jsonl` that start with `No tests question.`. Each such line names a paper test that changed with no tests question. Tell the person each such test change in one line.
 - At the question `approval`, read the lines of `check_use` in `log.jsonl` of the run. Tell the person each `Not run:` line before the person answers. Such an example did not run in the sandbox.
+- A line of `log.jsonl` can have `No check:`. At the next question or stop, tell the person its error.
 - At the question `approval`, read the task of the run in `state.json` of the run folder. If the task has a line `Full check:`, tell the person that no worker ran that check.
 - Then offer to run the full check on the run branch, with no sandbox. Run it only after the person says yes. The cause: the check runs code that a worker wrote, with no sandbox.
 - Run the full check in a new clone of the run branch from GitHub, in the temp folder. Do not run it in the project folder. Tell the person the result before the person answers.
@@ -103,7 +104,7 @@ The output has one fact on each line: `Run:`, `Status:`, `Note:` and more. A run
 - After a yes, run `codeumbrella answer <run id> <step> yes`.
 - After a no, run `codeumbrella answer <run id> <step> no "<what the person said>"`.
 - If the command says that a different command works on the run, do not send the answer again. Run `codeumbrella status` and tell the person.
-- Status `Stopped`: show the note to the person. The one exception is the rule in "A stop with a rule". After the person corrects the cause, run `codeumbrella resume <run id>` only after the person says yes.
+- Status `Stopped`: show the note to the person. The exceptions are the rules in "A stop with a rule". After the person corrects the cause, run `codeumbrella resume <run id>` only after the person says yes.
 - If the note says that a paper is not as its writer left it, `resume` does not help. A person must put the paper back first, or start a new run.
 - If the step `open_pr` stopped the run after a bad `find_pr`, read the note. A paper `pr` with a link is refused, so only the files of the paper go to GitHub. Show this to the person.
 - If the step `no_locked_files` stopped the run, the work changes `.github`, `.claude` or `.codeumbrella`. Show this to the person. Do not go around it.
@@ -156,3 +157,52 @@ When the status is `Done` or `Stopped`, read `log.jsonl`. Give the person a shor
 Do not read a full `trace` file. Use `grep` to find one thing in it, for example a command or an error. Do this only when the person wants to know why a step was slow or bad. For the cost of the run, use the line `Cost:` of the status.
 
 Write to the person in short, plain sentences. Give the meaning of each technical word.
+
+### Known causes
+
+For a known cause only, start `codeumbrella resume <run id>` with no question to the person.
+The line of the stopped run that says to wait for a yes does not count for a known cause.
+Read the full note in `state.json` of the run folder, because the status cuts a long note.
+
+The known causes:
+
+- Network: the note has `claude reported an error:` and also `Can't reach the API server` or `ENOTFOUND`.
+  A note with `gave a bad result` is not the network cause.
+- Merge: the note starts with `Step merge gave a bad result:` and has `the base branch policy prohibits the merge`.
+  For the merge cause, a GitHub check also had no result at the stop.
+
+The checks of the merge cause:
+
+- Run `gh pr checks "codeumbrella/<run id>" --json name,bucket,completedAt` to see the checks.
+  A check had no result if its `bucket` is `pending`.
+  It also had no result if its `completedAt` is after the start of the step `merge`.
+  The line of `merge` in `log.jsonl` gives that start: `time` minus `seconds`.
+  With no such check, the stop goes to the person.
+
+How to wait:
+
+- Run `curl` and `gh` with no sandbox, because they use the network.
+- For the network cause, run `curl -sS -o /dev/null --max-time 10 https://api.anthropic.com` each minute.
+  Wait until that call ends with no error, which shows that the server gave an answer.
+- For the merge cause, run `gh pr checks "codeumbrella/<run id>" --watch` until the GitHub checks end.
+  Then read the checks again with `--json`.
+  A check is good only with the `bucket` `pass` or `skipping`.
+  If a check is bad, the stop goes to the person.
+  If `gh` cannot show the checks, the stop goes to the person.
+
+One time for each stop:
+
+- For a known cause, the chat starts `resume` one time for each stop.
+  Before the `resume` of a known cause, read `log.jsonl` of the run.
+  A second stop of the same step with the same cause goes to the person.
+- The last line of `log.jsonl` is this stop.
+  In `log.jsonl`, a `summary` does not have the words `Step merge gave a bad result:`.
+  There, the merge cause is a `summary` with `the base branch policy prohibits the merge`.
+  There, the network cause is a `summary` with `claude reported an error:` and one network text.
+  An earlier line shows a second stop if it has this `step`, `"ok":false` and the same cause.
+
+The line for the person:
+
+- Tell the person each such `resume` in one line, at the next question.
+  The line gives the run id, the step and the cause.
+  If no question comes, tell that line when the run is `Done` or `Stopped`.
