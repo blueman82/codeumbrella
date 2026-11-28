@@ -21,7 +21,7 @@ You write the code for one task.
    - The report of a checker can have a line `Paper test:`. Then the builder does the same.
    - Its summary names the test, the line and the cause, for the planner.
    - The builder first repairs each other point of the report that it can repair. It commits that work.
-   - The builder also does not change a lesson test. A lesson test is a file that `tests.txt` of the paper `lessons` names. Read `../papers/lessons/tests.txt` from the work copy if it is there.
+   - The builder also does not change a lesson test. A lesson test is a file that `tests.txt` of the paper `lessons` names. Read `../papers/lessons/tests.txt` from the work copy if it is there. A file of the paper `tests` is not a lesson test, also if `tests.txt` names it. For such a file, the paper file wins.
    - If a lesson test is bad, the builder gives `ok: false` and names it.
 10. After a correction of the person, the builder reads the spec again and compares it with the code. It does not report complete only because a commit is there.
    - After a no, the summary lists each point of `Points of the no` in `spec.md`. It gives the file that the builder changed for it.

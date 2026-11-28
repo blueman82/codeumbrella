@@ -89,7 +89,7 @@ fn lacks(o: &Output, needle: &str) {
 }
 
 const CLAUDE: &str = r#"echo called > "$PWD/bin/claude.$$"
-echo '{"is_error":false,"result":"","structured_output":{"ok":true,"summary":"done"}}'"#;
+echo '{"type":"result","is_error":false,"result":"","structured_output":{"ok":true,"summary":"done"}}'"#;
 
 /// A simulated `claude` that writes its number and then waits 30 seconds.
 const CLAUDE_HANG: &str = r#"echo $$ > "$PWD/bin/worker.pid"

@@ -1,11 +1,17 @@
 //! Tests: the step `repair` of the default sheet goes to the plan after a
 //! bad result. Also the new rules of the checker, the builder, the planner
-//! and the attacker, the chat page and the documents. No Claude, no Codex.
+//! and the attacker, the chat page and the documents. Also the path of a
+//! check with a computer error (`No check:`). No Claude, no Codex.
 
+use anyhow::Result;
+use codeumbrella::engine::{Job, Outcome, Run, Status, Worker};
 use codeumbrella::graph::Graph;
+use std::env;
 use std::fs;
 use std::path::PathBuf;
-use std::process::Command;
+use std::process::{self, Command};
+use std::sync::Mutex;
+use std::sync::atomic::{AtomicU32, Ordering};
 
 /// The words of point K of the task. The words `true` and `false` are not
 /// in it, because a rules page gives `ok: true` and `ok: false`.
@@ -460,4 +466,238 @@ fn the_bar_of_the_line_of_check_use_is_in_line_with_the_line_above() {
     let want = last_bar(above);
     assert!(want.is_some(), "no bar: {above}");
     assert_eq!(last_bar(lines[at]), want, "{}", lines[at]);
+}
+
+// ---------------------------------------------------------------------
+// A check with a computer error: the path of the run
+// ---------------------------------------------------------------------
+
+/// A simulated worker on a computer with an error. In its first `broken`
+/// times, each part of the fan gives `No check:`. The step `repair` changes
+/// no file and gives a bad result. The planner writes only the first time.
+struct NoCheck {
+    broken: usize,
+    calls: Mutex<Vec<String>>,
+}
+
+impl NoCheck {
+    fn new(broken: usize) -> Self {
+        Self {
+            broken,
+            calls: Mutex::default(),
+        }
+    }
+
+    fn count(&self, step: &str) -> usize {
+        let calls = self.calls.lock().unwrap();
+        calls.iter().filter(|c| c.as_str() == step).count()
+    }
+}
+
+impl Worker for NoCheck {
+    fn run(&self, job: &Job) -> Result<Outcome> {
+        self.calls.lock().unwrap().push(job.step.to_owned());
+        let tries = self.count(job.step);
+        if job.step != "plan" || tries == 1 {
+            for paper in job.writes {
+                let path = job.dir.join("papers").join(paper);
+                fs::write(path.join("file.md"), job.step)?;
+            }
+        }
+        let broken = job.step.starts_with("check_") && tries <= self.broken;
+        let (ok, summary) = if broken {
+            (false, "No check: the shell does not start, ENOTSUP")
+        } else if job.step == "repair" {
+            (false, "I changed no file.")
+        } else {
+            (true, "good")
+        };
+        let summary = summary.to_owned();
+        Ok(Outcome { ok, summary })
+    }
+}
+
+/// The default sheet. Each command step does nothing, and the tests
+/// question always comes.
+fn quiet_sheet() -> Graph {
+    let mut graph = default_sheet();
+    for step in graph.steps.values_mut() {
+        if !step.run.is_empty() {
+            step.run = vec![vec!["true".to_owned()]];
+        }
+        if !step.skip_if.is_empty() {
+            step.skip_if = vec![vec!["false".to_owned()]];
+        }
+    }
+    graph
+}
+
+fn folder() -> PathBuf {
+    static NEXT: AtomicU32 = AtomicU32::new(0);
+    let number = NEXT.fetch_add(1, Ordering::SeqCst);
+    let id = process::id();
+    let name = format!("codeumbrella-no-check-{id}-{number}");
+    let dir = env::temp_dir().join(name);
+    let _ = fs::remove_dir_all(&dir);
+    dir
+}
+
+/// Says yes to the tests question and does the steps that follow.
+fn yes(run: &mut Run, graph: &Graph, worker: &NoCheck) {
+    assert_eq!(run.state.at.as_deref(), Some("look_at_tests"));
+    run.answer(true, "").unwrap();
+    run.go(graph, &root().join("roles"), worker).unwrap();
+}
+
+/// Starts a run and says yes to the first tests question.
+fn started(graph: &Graph, worker: &NoCheck) -> Run {
+    let mut run = Run::start(folder(), "a task", graph).unwrap();
+    fs::write(run.dir.join("work/file"), "x").unwrap();
+    run.go(graph, &root().join("roles"), worker).unwrap();
+    yes(&mut run, graph, worker);
+    run
+}
+
+#[test]
+fn a_no_check_result_goes_through_the_plan_back_to_the_build() {
+    let graph = quiet_sheet();
+    let worker = NoCheck::new(1);
+    let mut run = started(&graph, &worker);
+    assert_eq!(run.state.status, Status::Waiting, "{}", run.state.note);
+    assert_eq!(worker.count("plan"), 2);
+    assert_eq!(run.state.tries.get("plan"), Some(&2));
+    assert_eq!(run.state.tries.get("repair"), Some(&1));
+    // The planner reads the reports of the checks in this log line.
+    let log = fs::read_to_string(run.dir.join("log.jsonl")).unwrap();
+    let report = "check_tests (bad): No check:";
+    assert!(log.contains(report), "{log}");
+
+    yes(&mut run, &graph, &worker);
+    assert_eq!(worker.count("build"), 2);
+    assert_eq!(worker.count("check_tests"), 2);
+    assert_eq!(run.state.status, Status::Waiting, "{}", run.state.note);
+    assert_eq!(run.state.at.as_deref(), Some("approval"));
+}
+
+#[test]
+fn the_third_no_check_result_stops_the_run() {
+    let graph = quiet_sheet();
+    let worker = NoCheck::new(3);
+    let mut run = started(&graph, &worker);
+    yes(&mut run, &graph, &worker);
+    assert_eq!(run.state.status, Status::Waiting, "{}", run.state.note);
+    assert_eq!(run.state.tries.get("plan"), Some(&3));
+
+    yes(&mut run, &graph, &worker);
+    assert_eq!(run.state.status, Status::Stopped);
+    assert_eq!(run.state.at.as_deref(), Some("plan"));
+    let note = &run.state.note;
+    assert!(note.contains("maximum of 3 tries"), "{note}");
+    assert_eq!(worker.count("build"), 3);
+    assert_eq!(worker.count("check_tests"), 3);
+    assert_eq!(worker.count("plan"), 3);
+    assert_eq!(run.state.tries.get("repair"), Some(&3));
+}
+
+// ---------------------------------------------------------------------
+// A check with a computer error: the rules pages and the documents
+// ---------------------------------------------------------------------
+
+/// The pages of the five parts of the fan of `check`.
+const CHECK_PAGES: [&str; 5] = [
+    "roles/checker.md",
+    "roles/safety.md",
+    "roles/reviewer.md",
+    "roles/security.md",
+    "roles/user.md",
+];
+
+#[test]
+fn each_page_of_the_fan_tells_the_rule_of_no_check() {
+    let sentences = [
+        "If a sandbox or disk error stops your commands, start your summary with `No check:` and name the error.",
+        "Examples are a full disk and a shell that does not start.",
+        "A sandbox that blocks only one test or one example is no such error.",
+        "A package or a tool that is not on the computer is no such error.",
+        "Then give `ok: false`, and do not say that the code is bad.",
+        "Do not use `No check:` if you found a problem in the change.",
+        "Give this `ok: false` also if no other rule of this page gives a cause for it.",
+    ];
+    for page in CHECK_PAGES {
+        let rule = rule_with(page, "`No check:`");
+        for sentence in sentences {
+            assert!(rule.contains(sentence), "{page}: {sentence}");
+        }
+        plain_and_short(page, &rule);
+    }
+}
+
+#[test]
+fn the_checker_keeps_paper_test_for_one_blocked_test() {
+    let new = rule_with("roles/checker.md", "`No check:`");
+    let sentence = "One paper test that the sandbox blocks gets `Paper test:`, as rule 10 tells.";
+    assert!(new.contains(sentence), "{new}");
+    let ten = rule("roles/checker.md", 10);
+    assert!(ten.contains("`Paper test:`"), "{ten}");
+}
+
+#[test]
+fn the_user_checker_keeps_not_run_for_one_blocked_example() {
+    let rule = rule_with("roles/user.md", "`No check:`");
+    let sentence = "One example that the sandbox blocks gets `Not run:`, as rule 11 tells.";
+    assert!(rule.contains(sentence), "{rule}");
+}
+
+#[test]
+fn the_planner_changes_no_paper_after_reports_with_no_check() {
+    let rule = rule_with("roles/planner.md", "`No check:`");
+    let sentences = [
+        "After a bad repair, read the last line of the step `check` in `../log.jsonl`.",
+        "It has one report for each checker, marked `(good)` or `(bad)`.",
+        "If each bad report starts with `No check:`, change no paper and give `ok: true`.",
+        "Name the error in the first line of your summary.",
+        "The run then goes to the build and the checks again, with one more try of the plan.",
+        "This comes before rule 4 and before the other lines of this rule.",
+        "With a bad report of a different type, correct the plan as before.",
+    ];
+    for sentence in sentences {
+        assert!(rule.contains(sentence), "{sentence}: {rule}");
+    }
+    plain_and_short("planner", &rule);
+}
+
+#[test]
+fn the_chat_tells_the_error_of_a_no_check_line() {
+    let item = item_with(SKILL, "After each command", "No check:");
+    let sentences = [
+        "A line of `log.jsonl` can have `No check:`.",
+        "At the next question or stop, tell the person its error.",
+    ];
+    for sentence in sentences {
+        assert!(item.contains(sentence), "{sentence}: {item}");
+    }
+    plain_and_short("SKILL.md", &item);
+}
+
+#[test]
+fn the_safety_rules_tell_the_rule_of_no_check_with_cause_and_date() {
+    let rules = section("AGENTS.md", "Safety rules");
+    let sentences = [
+        "A checker that cannot run its commands starts its summary with `No check:` and names the error.",
+        "It does not say that the code is bad.",
+        "If each bad report of the checks starts with `No check:`, the planner changes no paper.",
+        "The planner then gives `ok: true`, and the run goes to the build and the checks again.",
+        "This uses a try of the plan, so an error that stays stops the run after the third try.",
+        "Each such result also uses a try of `repair`.",
+        "The cause: on 27 November 2026 each shell call of the checkers stopped with `ENOTSUP`.",
+        "The planner found no paper to correct, and the run stopped.",
+    ];
+    for sentence in sentences {
+        assert!(rules.contains(sentence), "{sentence}");
+    }
+    for line in rules.lines() {
+        if line.contains("No check:") || line.contains("27 November 2026") {
+            plain_and_short("AGENTS.md", line);
+        }
+    }
 }
