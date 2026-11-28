@@ -145,7 +145,7 @@ fn rule_6_of_the_simplifier_runs_the_tests_in_parts() {
     has_all(&found, &own);
 }
 
-// This test is good before the code. It guards the rule of `AGENTS.md`.
+// This test is good before the code. It keeps the rule of `AGENTS.md`.
 #[test]
 fn the_four_rules_pages_have_no_knowledge_of_one_language() {
     for role in ["builder", "checker", "attacker", "simplifier"] {
@@ -264,7 +264,7 @@ fn the_other_documents_name_the_two_new_readers() {
 }
 
 // The run path, with a simulated worker. These two tests are good before
-// the code. They guard the path that the new rules use.
+// the code. They check the path that the new rules use.
 
 /// The default sheet. Each command step gets a command that does nothing.
 fn quiet_sheet() -> Graph {
