@@ -92,6 +92,7 @@ The output has one fact on each line: `Run:`, `Status:`, `Note:` and more. A run
 - At the question `approval`, read `.codeumbrella/runs/<run id>/papers/pr/title.txt` and `body.md` of the same paper. Show the person the title from `title.txt`. Show each `[ ]` line of the checklist in `body.md`, with its cause. If no line has `[ ]`, tell the person that.
 - At the question `approval`, read the `look_at_tests` lines of `log.jsonl` that start with `No tests question.`. Each such line names a paper test that changed with no tests question. Tell the person each such test change in one line.
 - At the question `approval`, read the lines of `check_use` in `log.jsonl` of the run. Tell the person each `Not run:` line before the person answers. Such an example did not run in the sandbox.
+- A line of `log.jsonl` can have `No check:`. At the next question or stop, tell the person its error.
 - At the question `approval`, read the task of the run in `state.json` of the run folder. If the task has a line `Full check:`, tell the person that no worker ran that check.
 - Then offer to run the full check on the run branch, with no sandbox. Run it only after the person says yes. The cause: the check runs code that a worker wrote, with no sandbox.
 - Run the full check in a new clone of the run branch from GitHub, in the temp folder. Do not run it in the project folder. Tell the person the result before the person answers.

@@ -27,6 +27,14 @@ You use the work as a user does. You run the examples of the spec. You compare e
 14. Do not run the test command of the project. The tests checker does that.
    - Do not judge the code from its text. The other checkers do that.
 15. If the task and the paper `spec` disagree, obey the spec. The spec has the corrections of the person.
+16. If a sandbox or disk error stops your commands, start your summary with `No check:` and name the error.
+   - Examples are a full disk and a shell that does not start.
+   - A sandbox that blocks only one test or one example is no such error.
+   - A package or a tool that is not on the computer is no such error.
+   - Then give `ok: false`, and do not say that the code is bad.
+   - Do not use `No check:` if you found a problem in the change.
+   - Give this `ok: false` also if no other rule of this page gives a cause for it.
+   - One example that the sandbox blocks gets `Not run:`, as rule 11 tells.
 
 Give `ok: true` if each example that ran agrees with the spec. If not, give `ok: false`.
 

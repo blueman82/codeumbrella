@@ -334,6 +334,14 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - The person of this project decided this on 24 and 25 November 2026. A break was only a note, and the person does not read the code.
 - The reviewer reads each point of the part `## A break`. The check is "does the change follow this point, yes or no".
 - The person gave approval for the pages on 25 November 2026. So no worker writes or changes a point of a page.
+- A checker that cannot run its commands starts its summary with `No check:` and names the error.
+- It does not say that the code is bad.
+- If each bad report of the checks starts with `No check:`, the planner changes no paper.
+- The planner then gives `ok: true`, and the run goes to the build and the checks again.
+- This uses a try of the plan, so an error that stays stops the run after the third try.
+- Each such result also uses a try of `repair`.
+- The cause: on 27 November 2026 each shell call of the checkers stopped with `ENOTSUP`.
+- The planner found no paper to correct, and the run stopped.
 
 ## Rust rules
 
