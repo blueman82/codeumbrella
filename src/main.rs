@@ -19,6 +19,12 @@ const HOME: &str = ".codeumbrella";
 /// The bytes of 1 GB.
 const GB: u64 = 1_000_000_000;
 
+/// The bytes of 1 MB.
+const MB: u64 = 1_000_000;
+
+/// The bytes of one block of `df -Pk`.
+const DF_BLOCK: u64 = 1024;
+
 /// The file at the top of a temp folder of a worker. It holds the run id.
 const MARK: &str = "codeumbrella-run";
 
@@ -292,7 +298,7 @@ fn check_space(limit: u64) -> Result<()> {
             error.trim()
         )
     })?;
-    let free = blocks.saturating_mul(1024);
+    let free = blocks.saturating_mul(DF_BLOCK);
     ensure!(
         free >= limit.saturating_mul(GB),
         "the disk of the project has {} free, and the limit is {limit} GB. No run started. `codeumbrella clean` frees space.",
@@ -338,7 +344,7 @@ fn clean(runs: &Path, only: Option<&str>) -> Result<()> {
         }
     };
     let temp = temp_folders();
-    let (mut freed, mut complete) = (0, true);
+    let (mut freed, mut complete) = (0_u64, true);
     for dir in dirs {
         let real = fs::symlink_metadata(&dir).is_ok_and(|m| m.is_dir());
         let done = || Run::open(dir.clone()).is_ok_and(|r| ended(r.state.status));
@@ -369,11 +375,11 @@ fn clean(runs: &Path, only: Option<&str>) -> Result<()> {
                 println!("Not cleaned: {id}: {}: {e}", path.display());
                 complete = false;
             }
-            freed += before.saturating_sub(size(path));
+            freed = freed.saturating_add(before.saturating_sub(size(path)));
         }
     }
     let freed = if freed < GB {
-        format!("{} MB", freed / 1_000_000)
+        format!("{} MB", freed / MB)
     } else {
         gigabytes(freed)
     };
@@ -431,7 +437,9 @@ fn entries(dir: &Path) -> impl Iterator<Item = DirEntry> {
 /// The sum of the file lengths in `path`. It follows no link.
 fn size(path: &Path) -> u64 {
     match fs::symlink_metadata(path) {
-        Ok(m) if m.is_dir() => entries(path).map(|e| size(&e.path())).sum(),
+        Ok(m) if m.is_dir() => entries(path)
+            .map(|e| size(&e.path()))
+            .fold(0, u64::saturating_add),
         Ok(m) if m.is_file() => m.len(),
         _ => 0,
     }
