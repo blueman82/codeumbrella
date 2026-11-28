@@ -476,14 +476,16 @@ steps:
 
   # A builder repairs a merge that `take_master` could not do. The builder
   # gets the error of `take_master`. It merges the default branch of the work
-  # copy, repairs each line with two changes, and runs the test command.
-  # Then it commits. Then the run goes to `take_master` again. A bad result goes to
-  # the planner.
+  # copy and repairs each line with two changes.
+  #
+  # It commits the merge when no line has two changes. Then it runs the test
+  # command. Then the run goes to `take_master` again. A bad result goes to
+  # `fix_merge` again. After the third try the run stops.
   fix_merge:
     role: builder
     reads: [spec]
     max_tries: 3
-    on_bad: plan
+    on_bad: fix_merge
     next: take_master
 
   # A learner reads the log of this run and of the runs before it. It finds

@@ -502,11 +502,6 @@ fn a_bad_do_work_goes_to_the_person() {
 }
 
 #[test]
-fn a_bad_fix_merge_goes_to_the_person() {
-    assert_asks_after("take_master", "fix_merge");
-}
-
-#[test]
 fn mark_renews_its_copy_with_a_bundle_in_the_run_folder() {
     let bad = [("build", NAMED), ("build", "tests/b.rs is bad.")];
     let worker = Planner::new(Change::TwoTimes).bad(&bad);
