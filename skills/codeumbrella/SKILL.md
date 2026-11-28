@@ -109,6 +109,19 @@ The output has one fact on each line: `Run:`, `Status:`, `Note:` and more. A run
 - If the step `no_locked_files` stopped the run, the work changes `.github`, `.claude` or `.codeumbrella`. Show this to the person. Do not go around it.
 - Status `Done`: tell the person that the merge of the PR is complete. Tell the person to run `git pull`. The workers wrote in a copy, so the project branch did not change. The step `clean_up` removed the copies `work` and `clean`. The record stays: `state.json`, `log.jsonl` and the papers.
 
+## Clean up
+
+The command `codeumbrella clean` removes the copies `work` and `clean` of ended runs, and the marked temp folders of their workers.
+
+- After status `Done`, run `codeumbrella clean <run id>`.
+- After status `Stopped`, run it only when the person says that the run ends.
+- Tell the person the freed space in one line, from the line `Freed:`.
+- A cleaned run cannot continue with `resume`.
+- Run `codeumbrella clean` with no run id only when the person tells you to.
+- If `run` gives the error for free space, tell the person that error. The limit is 10 GB, and `--min-free-gb <number>` sets a different one.
+- Then offer to run `codeumbrella clean`.
+- Run `clean` with no sandbox if your sandbox stops it.
+
 ## The log and the `trace` files
 
 The run folder is `.codeumbrella/runs/<run id>/`.

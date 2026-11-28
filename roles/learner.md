@@ -12,9 +12,12 @@ You find the lessons of the runs. You do not write the code of the task.
    - For an earlier run, get its commits with `git fetch ../../<run id>/work codeumbrella/<run id>`.
    - A mistake of this run has no repair at this time. The learner of the next run reads it.
    - Make a copy of that commit with `git worktree add --detach` and a path from `mktemp -u "$TMPDIR/lesson.XXXXXX"`.
+   - Then write the run id into the file `codeumbrella-run` at the top of that copy.
+   - Give one line `Copy: <full path>` in your summary for each copy.
    - Put the lesson test into that copy and run it.
 8. A lesson test must be bad on that commit and good on the branch. If it is good on the two, or if there is no such commit, the lesson becomes an entry. If that commit does not build, the lesson also becomes an entry.
 9. Keep that copy at the end. Remove no file and no folder. The copy is in the temp folder of the computer, not in the project. The person cleans it up.
+   - After your step, `clean_up` or `codeumbrella clean` cleans up that copy for the person.
 10. Write the file `lessons.md` in the paper `lessons`. From the work copy, it is `../papers/lessons/lessons.md`. Start from the text of `../../../lessons.md`. If that file is not there, start with the line `Runs read to:`.
 11. A lesson that cannot become a test becomes one entry. An entry has at most two sentences. Add entries, and remove no entry. Do not add a lesson that the file or a test has. Copy each entry that you do not mark character for character.
 12. An entry ends with the run id and the date, for example `(run-1795046614, 18 November 2026)`. An entry that a person wrote has only the date.

@@ -48,6 +48,8 @@ codeumbrella init                              # put the default sheet and rules
 codeumbrella init --update                     # replace changed factory files with the new defaults, keep a copy of each as `.before`
 codeumbrella run "<task>"                      # start a run with Claude workers
 codeumbrella run --next                        # start the first task of the queue `.codeumbrella/queue/`. An error if the queue is empty. It starts also while a different run is `Running` or `Waiting`
+codeumbrella clean [run-id]                    # remove `work`, `clean` and the marked temp folders of each Done or Stopped run, or of one
+codeumbrella --min-free-gb <number> run "<task>"  # `run` and `run --next` start no run below this free disk space. Default 10 GB, 0 is off
 codeumbrella queue                             # show the tasks that wait: the file name, its `Files:` line and its `Purpose:` line
 codeumbrella --tool codex run "<task>"         # start a run with Codex workers. The run keeps this tool
 codeumbrella status [run-id]                   # show where a run is: the step of this moment and the total of the workers. After a kill, it repairs the run first (see Safety rules)
@@ -113,6 +115,7 @@ To install the command and the chat command on a computer, run `./install.sh`.
 | `tests/learner.rs` | Tests of the role `learner`: the steps `learn` and `save_lessons`, its files, its rules page and the documents. |
 | `tests/lessons_keep.rs` | Tests of the lessons that stay: the steps `copy`, `save_lessons` and `tidy_lessons`, the rules pages and the documents. |
 | `tests/clean_up.rs` | Tests of the step `clean_up`: the default sheet, runs with the built command and the documents. |
+| `tests/disk_space.rs` | Tests of the free space check, of `codeumbrella clean`, of the copy of the learner and of the documents. |
 | `tests/pr_text.rs` | Tests of the PR text: the paper `pr`, the role `writer` and the step `write_pr`. Also `find_pr` and `open_pr`, with a simulated `gh`. |
 | `tests/writer_fix.rs` | Tests of the writer that corrects a sentence of the PR text after a bad check: the run path, the rules pages, the sheet and the documents. |
 | `tests/run_total.rs` | Tests of the numbers of each worker, the total in the notebook, the lines of `status` and the documents. |
@@ -294,7 +297,7 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - The Codex learner has no entry for the temp folder. A test on 19 November 2026 showed that the sandbox of the simplifier can write there.
 - The learner reads the log of this run and of each run after the line `Runs read to:`. Thus a stopped run also gives its lessons.
 - A lesson test must be bad on the commit from before the repair, and good on the branch. If not, the lesson becomes an entry. The person made this decision on 19 November 2026.
-- The learner keeps its copy in the temp folder and removes no file. The person cleans it up. On 19 November 2026 a removal of the attacker broke a check.
+- The learner keeps its copy in the temp folder and removes no file. After its step, `clean_up` or `codeumbrella clean` removes the copy. On 19 November 2026 a removal of the attacker broke a check.
 - A lesson cannot make a rule, a check, a test or a wall weaker. The person made this decision on 19 November 2026, because a log is data from a worker.
 - The safety checker reads the paper `lessons`. An entry that makes a wall weaker gives a bad result. This came from the decisions of 19 November 2026.
 - Only the steps `save_lessons` and `tidy_lessons` write `.codeumbrella/lessons.md`. The person made this decision on 19 November 2026.
@@ -303,6 +306,7 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - `save_lessons` refuses a paper with a symbolic link or a second hard link. Thus only a file of the paper goes into the lessons file.
 - The builder does not change a lesson test. The file `tests.txt` of the paper `lessons` names each lesson test.
 - After the merge, the step `clean_up` removes `work` and `clean` of the run. On 19 November 2026 the run folders held 6.8 GB.
+- `codeumbrella clean` removes the copies of ended runs, and `run` checks the free disk space. On 27 November 2026, 13 runs of this project filled the disk 3 times.
 - `open_pr` opens the PR with the title of `title.txt` and the text of `body.md` of the paper `pr`. It does not use `--fill`.
 - On 19 November 2026 a PR had the branch name as its title. Its text had only the commit lines.
 - After a no, `find_pr` puts the new title and text of the paper `pr` into the open PR. Thus a PR has no text of an earlier try.

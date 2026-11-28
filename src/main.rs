@@ -6,6 +6,7 @@ use codeumbrella::claude::Claude;
 use codeumbrella::codex::Codex;
 use codeumbrella::engine::{Job, Lock, Numbers, Outcome, Run, Status, Worker};
 use codeumbrella::graph::{Graph, Tool};
+use std::collections::BTreeMap;
 use std::io::ErrorKind;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use std::{env, fs, path::Path, path::PathBuf, process::Command};
@@ -13,6 +14,12 @@ use time::{OffsetDateTime, format_description::well_known::Rfc3339};
 
 /// The folder in a project that holds the sheet, the rules pages and the runs.
 const HOME: &str = ".codeumbrella";
+
+/// The bytes of 1 GB.
+const GB: u64 = 1_000_000_000;
+
+/// The file at the top of a temp folder of a worker. It holds the run id.
+const MARK: &str = "codeumbrella-run";
 
 /// The default files that `init` writes into the folder of the factory.
 macro_rules! defaults {
@@ -78,6 +85,9 @@ struct Cli {
     /// (default claude), and `answer` and `resume` must use it.
     #[arg(long, value_enum)]
     tool: Option<Tool>,
+    /// The free disk space in GB that `run` must find. 0 turns the check off.
+    #[arg(long, default_value_t = 10)]
+    min_free_gb: u64,
     #[command(subcommand)]
     command: Cmd,
 }
@@ -122,6 +132,8 @@ enum Cmd {
     },
     /// Show the tasks that wait in the queue.
     Queue,
+    /// Remove the copies of each Done or Stopped run, or of one such run.
+    Clean { run: Option<String> },
     /// Show where a run is. Without an id: the newest run.
     Status {
         run: Option<String>,
@@ -159,6 +171,9 @@ fn main() -> Result<()> {
     if let Cmd::Stop { run } = &cli.command {
         return stop(&runs.join(run));
     }
+    if let Cmd::Clean { run } = &cli.command {
+        return clean(&runs, run.as_deref());
+    }
     let target = match &cli.command {
         Cmd::Status { run: None, .. } => Some(newest(&runs)?),
         Cmd::Status { run: Some(id), .. }
@@ -182,6 +197,8 @@ fn main() -> Result<()> {
     let mut run = match &cli.command {
         Cmd::Init { update } => return init(*update),
         Cmd::Run { task, .. } => {
+            // Before the run folder and the queue: a refused run changes nothing.
+            check_space(cli.min_free_gb)?;
             let (task, queued) = match task {
                 Some(task) => (task.clone(), None),
                 None => next_task()?,
@@ -204,7 +221,9 @@ fn main() -> Result<()> {
         Cmd::Status { .. } | Cmd::Answer { .. } | Cmd::Resume { .. } => {
             Run::open(target.context("no run")?)?
         }
-        Cmd::Stop { .. } | Cmd::Queue => bail!("stop must return before this point"),
+        Cmd::Stop { .. } | Cmd::Queue | Cmd::Clean { .. } => {
+            bail!("this command must return before this point")
+        }
     };
     let _lock = match lock {
         None if matches!(cli.command, Cmd::Run { .. }) => Some(Lock::take(&run.dir)?),
@@ -246,6 +265,174 @@ fn main() -> Result<()> {
     }
     show(&run);
     Ok(())
+}
+
+/// Gives an error if the disk of the project has less than `limit` GB free.
+fn check_space(limit: u64) -> Result<()> {
+    if limit == 0 {
+        return Ok(());
+    }
+    let df = Command::new("df")
+        .arg("-Pk")
+        .arg(env::current_dir()?)
+        .output()
+        .context("cannot start `df`, so no run started")?;
+    let text = String::from_utf8_lossy(&df.stdout);
+    // The name of the disk can have spaces, so count from the field with `%`.
+    let blocks = text.lines().skip(1).find_map(|line| {
+        let words: Vec<&str> = line.split_whitespace().collect();
+        let pair = words.windows(2).find(|w| w[1].ends_with('%'))?;
+        pair[0].parse::<u64>().ok()
+    });
+    let blocks = blocks.filter(|_| df.status.success()).with_context(|| {
+        let error = String::from_utf8_lossy(&df.stderr);
+        format!(
+            "`df` gave no free space, so no run started. {}",
+            error.trim()
+        )
+    })?;
+    let free = blocks.saturating_mul(1024);
+    ensure!(
+        free >= limit.saturating_mul(GB),
+        "the disk of the project has {} free, and the limit is {limit} GB. No run started. `codeumbrella clean` frees space.",
+        gigabytes(free)
+    );
+    Ok(())
+}
+
+/// Bytes as GB with one digit after the point, rounded down.
+fn gigabytes(bytes: u64) -> String {
+    let tenths = bytes / (GB / 10);
+    format!("{}.{} GB", tenths / 10, tenths % 10)
+}
+
+/// Removes the copies and the temp folders of each Done or Stopped run, or
+/// only of the run `only`. Then it prints the freed space.
+fn clean(runs: &Path, only: Option<&str>) -> Result<()> {
+    let dirs = if let Some(id) = only {
+        // One folder name only, so no path gets to a different folder.
+        ensure!(
+            !matches!(id, "" | "." | "..") && !id.contains('/'),
+            "{id} is not a run id"
+        );
+        let dir = runs.join(id);
+        fs::symlink_metadata(&dir).with_context(|| format!("there is no run {id}"))?;
+        if let Ok(run) = Run::open(dir.clone()) {
+            let status = run.state.status;
+            ensure!(
+                ended(status),
+                "the run {id} has the status {status:?}, so `clean` keeps its copies"
+            );
+        }
+        vec![dir]
+    } else {
+        match fs::read_dir(runs) {
+            Ok(found) => {
+                let mut dirs: Vec<PathBuf> =
+                    found.filter_map(|e| e.ok().map(|e| e.path())).collect();
+                dirs.sort();
+                dirs
+            }
+            Err(e) if e.kind() == ErrorKind::NotFound => Vec::new(),
+            Err(e) => bail!("cannot read {}: {e}", runs.display()),
+        }
+    };
+    let temp = temp_folders();
+    let (mut freed, mut complete) = (0, true);
+    for dir in dirs {
+        let real = fs::symlink_metadata(&dir).is_ok_and(|m| m.is_dir());
+        let done = || Run::open(dir.clone()).is_ok_and(|r| ended(r.state.status));
+        if !real || !done() {
+            continue;
+        }
+        let id = dir.file_name().unwrap_or_default().to_string_lossy();
+        let _lock = match Lock::take(&dir) {
+            Ok(lock) => lock,
+            Err(e) => {
+                println!("Not cleaned: {id}: {e:#}");
+                continue;
+            }
+        };
+        // A `resume` can change the status before the lock, so read it again.
+        if !done() {
+            continue;
+        }
+        let marked = temp.iter().filter(|(_, run)| **run == *id);
+        let copies = [dir.join("work"), dir.join("clean")];
+        for path in copies.iter().chain(marked.map(|(path, _)| path)) {
+            if fs::symlink_metadata(path).is_err() {
+                continue;
+            }
+            let before = size(path);
+            // `remove_dir_all` removes a link itself and does not follow it.
+            if let Err(e) = fs::remove_dir_all(path) {
+                println!("Not cleaned: {id}: {}: {e}", path.display());
+                complete = false;
+            }
+            freed += before.saturating_sub(size(path));
+        }
+    }
+    let freed = if freed < GB {
+        format!("{} MB", freed / 1_000_000)
+    } else {
+        gigabytes(freed)
+    };
+    println!("{:<10}{freed}", "Freed:");
+    ensure!(complete, "some folders stay. See the lines `Not cleaned:`.");
+    Ok(())
+}
+
+/// Tells if a run with this status can lose its copies.
+fn ended(status: Status) -> bool {
+    matches!(status, Status::Done | Status::Stopped)
+}
+
+/// The temp folders of workers, each with the run id of its marker. The full
+/// path is the key, so a folder of two bases counts one time.
+fn temp_folders() -> BTreeMap<PathBuf, String> {
+    let mut bases = vec![env::temp_dir(), PathBuf::from("/tmp")];
+    bases.extend(env::var_os("CLAUDE_CODE_TMPDIR").map(PathBuf::from));
+    // A base can be a link. A `claude` folder or a temp folder cannot.
+    let folders = |dir: &Path| {
+        let found = fs::read_dir(dir).into_iter().flatten().flatten();
+        found
+            .filter(|e| e.file_type().is_ok_and(|t| t.is_dir()))
+            .map(|e| (e.file_name().to_string_lossy().into_owned(), e.path()))
+            .collect::<Vec<_>>()
+    };
+    let mut found = BTreeMap::new();
+    for base in bases {
+        let mut all = folders(&base);
+        let inner: Vec<_> = all
+            .iter()
+            .filter(|(name, _)| name.starts_with("claude"))
+            .flat_map(|(_, path)| folders(path))
+            .collect();
+        all.extend(inner);
+        for (name, path) in all {
+            let mark = path.join(MARK);
+            let ours = name.starts_with("scratch.") || name.starts_with("lesson.");
+            if !ours || !fs::symlink_metadata(&mark).is_ok_and(|m| m.is_file()) {
+                continue;
+            }
+            if let (Ok(id), Ok(full)) = (fs::read_to_string(mark), fs::canonicalize(path)) {
+                found.insert(full, id.trim().to_owned());
+            }
+        }
+    }
+    found
+}
+
+/// The sum of the file lengths in `path`. It follows no link.
+fn size(path: &Path) -> u64 {
+    match fs::symlink_metadata(path) {
+        Ok(m) if m.is_dir() => {
+            let found = fs::read_dir(path).into_iter().flatten().flatten();
+            found.map(|e| size(&e.path())).sum()
+        }
+        Ok(m) if m.is_file() => m.len(),
+        _ => 0,
+    }
 }
 
 /// Makes the folder of a new run with a new id.
