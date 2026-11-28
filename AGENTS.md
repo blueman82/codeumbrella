@@ -78,7 +78,7 @@ To install the command and the chat command on a computer, run `./install.sh`.
 | `roles/writer.md` | The rules page of the writer. It adds parts 6 to 8 of the PR text and the checklist. |
 | `roles/writer.claude.json` | The Claude settings of the writer: the walls of the reviewer, and one write entry for the paper `pr`. |
 | `roles/writer.codex.txt` | The Codex settings of the writer: the reviewer file, and one write entry for the paper `pr`. |
-| `roles/languages/<language>.md` | The standards page of one language: Python, Go, JavaScript, TypeScript, Java, Rust. `general.md` has the general coding standards. Each page has 300 lines at the maximum and two parts: `## Write the code like this` and `## A break`. The builder, the reviewer and the simplifier read the pages. `init` copies them. |
+| `roles/languages/<language>.md` | The standards page of one language: Python, Go, JavaScript, TypeScript, Java, Rust. `general.md` has the general coding standards. Each page has 300 lines at the maximum and the parts `## Write the code like this` and `## A break`. Only `rust.md` also has the part `## Run the tests`. The builder, the reviewer and the simplifier read the pages, and `init` copies them. The checker and the attacker read only the part `## Run the tests`. |
 | `roles/<role>.claude.json` | The Claude permissions and the sandbox settings of each role. In this file, `{project}` is the full path of the project folder and `{run}` is the id of the run. |
 | `src/graph.rs` | Reads the sheet and finds its errors before a run. |
 | `src/engine.rs` | Does one step at a time, keeps the notebook, keeps the papers safe. |
@@ -120,6 +120,7 @@ To install the command and the chat command on a computer, run `./install.sh`.
 | `tests/full_check.rs` | Tests of the full check that cannot run in the sandbox: the chat page, the rules pages, `init` and the documents. |
 | `tests/run_id.rs` | Tests of the run id with four digits, of `status` on an id of before, of the chat page and the documents. |
 | `tests/plain_words.rs` | Tests of the rules for plain words: the rules pages, the list of `AGENTS.md`, the sheet and the documents. |
+| `tests/test_parts.rs` | Tests of the test command in parts. They check the pages, the sheet, the documents and the run path. |
 | `tests/known_causes.rs` | Tests of the `resume` after a known cause: the chat page and the documents. |
 | `fuzz/` | The fuzzer, with its own workspace. A fuzzer gives the code many automatic inputs. Its targets are `fuzz_sheet`, `fuzz_claude_reply` and `fuzz_codex_trace`. |
 | `fuzz/deny.toml` | The package check of `fuzz/`. It also accepts the license NCSA, in `fuzz/` only. |
@@ -342,6 +343,11 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - The person of this project decided this on 24 and 25 November 2026. A break was only a note, and the person does not read the code.
 - The reviewer reads each point of the part `## A break`. The check is "does the change follow this point, yes or no".
 - The person gave approval for the pages on 25 November 2026. So no worker writes or changes a point of a page.
+- A worker runs the test command in parts when one run can use more than 10 minutes. One shell command stops at that limit.
+- The cause: on 28 November 2026, 11 runs of this project worked at the same time. A build stopped at that limit.
+- A part that stops two times gets `Not complete:`. A builder with no bad test then gives a good result, with no try of `plan`.
+- A checker with a `Not complete:` part gives a bad result. `repair` changes no file for it, and the checkers run again.
+- No worker runs a test part in the background. One rules page is for Claude and Codex.
 - A checker that cannot run its commands starts its summary with `No check:` and names the error.
 - It does not say that the code is bad.
 - If each bad report of the checks starts with `No check:`, the planner changes no paper.
