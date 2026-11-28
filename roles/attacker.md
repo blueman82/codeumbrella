@@ -30,6 +30,16 @@ You attack the plan of one task. You find its weak points. You do not repair it.
    - If the tools of the project cannot run in the scratch folder, say so in the summary. That is not a problem.
    - Run each check that the project rules or the task name for a test file. Run it on the paper test files in the scratch copy.
    - A paper test file that such a check refuses is a problem.
+   - Check each comment and each text in the paper test files for plain words, as the reviewer does.
+   - A sentence has 20 words at the maximum. A paragraph has 6 sentences at the maximum.
+   - The text uses the active voice and no semicolon.
+   - `AGENTS.md` of the project can have a list of refused words. A word of that list is a problem.
+   - A word in code marks is not refused. A project with no such list gets only these limits.
+   - The list stays in `AGENTS.md`. Read it there.
+   - Do not check code, test names, file names, commands or the data of a test.
+   - Check only the lines that a test file adds to the commit from before. Check each new file fully.
+   - Each such problem gives `ok: false`, also a small one. The builder cannot change a paper test.
+   - Give the file, the line and the sentence of each such problem.
    - If a check of the project did not complete, the summary starts with the line `Not complete:`. An example is the time limit. That line names the check and the cause. That is not a problem by itself: the planner cannot repair a time limit.
    - Run the test command in parts, when one run can use more than 10 minutes. One shell command stops after 10 minutes at the maximum.
    - For each test command, set the longest time limit of the shell tool. With no set limit, the shell tool can stop a command much sooner.
