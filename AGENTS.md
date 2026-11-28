@@ -54,7 +54,7 @@ codeumbrella status [run-id]                   # show where a run is: the step o
 codeumbrella status --wait <run-id>            # wait until the run is not `Running`, then show it
 codeumbrella answer <run-id> <step> yes|no ["text"]   # answer the question of that step, then continue
 codeumbrella stop <run-id>                     # end an active run: its command and its workers. Only after the person says stop
-codeumbrella resume <run-id>                   # try a stopped step again, with its count of tries at 0. Only after the person says yes
+codeumbrella resume <run-id>                   # try a stopped step again, with its count of tries at 0. Only after the person says yes, or for a `known cause`
 ```
 
 Run all four `cargo` commands before you say that work is complete.
@@ -120,6 +120,7 @@ To install the command and the chat command on a computer, run `./install.sh`.
 | `tests/full_check.rs` | Tests of the full check that cannot run in the sandbox: the chat page, the rules pages, `init` and the documents. |
 | `tests/run_id.rs` | Tests of the run id with four digits, of `status` on an id of before, of the chat page and the documents. |
 | `tests/plain_words.rs` | Tests of the rules for plain words: the rules pages, the list of `AGENTS.md`, the sheet and the documents. |
+| `tests/known_causes.rs` | Tests of the `resume` after a known cause: the chat page and the documents. |
 | `fuzz/` | The fuzzer, with its own workspace. A fuzzer gives the code many automatic inputs. Its targets are `fuzz_sheet`, `fuzz_claude_reply` and `fuzz_codex_trace`. |
 | `fuzz/deny.toml` | The package check of `fuzz/`. It also accepts the license NCSA, in `fuzz/` only. |
 | `fuzz/seeds/` | Good inputs for each target. The fuzzer starts from them. |
@@ -247,7 +248,9 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - A live test on 17 November 2026 showed the cause. A Codex attacker gave 5 bad results for a small task, and the run stopped.
 - For Claude, the settings of the attacker are the same as those of the safety checker. For Codex, they have one more entry: write in the temp folder.
 - Each role has one rules page.
-- The chat starts `run`, `answer` and `resume` with `nohup`, so a command lives after the shell ends. It adds `--tool codex` to `run` only. The chat uses `status --wait`. That command repairs a dead run and shows Stopped. The chat runs `resume` only after the person says yes. It does not remove `lock`.
+- The chat starts `run`, `answer` and `resume` with `nohup`, so a command lives after the shell ends. It adds `--tool codex` to `run` only. The chat uses `status --wait`. That command repairs a dead run and shows Stopped. It does not remove `lock`.
+- The chat runs `resume` only after the person says yes. A `known cause` is the exception.
+- For a known cause only, the chat starts `resume` with no question. The person decided this on 27 November 2026. The cause: in this project, a worker could not reach the Claude server. GitHub also refused a merge while the checks had no result. The person said yes to each `resume`, and wants no such simple question.
 - The checker compares each test file of the paper `tests` with the project in each try. A file that is different or not there gives `ok: false`. The checker writes no file. The builder in `repair` then copies the paper file again.
 - The step `copy_tests` copies the paper tests before each build, because the person approved the paper. The builder does not change such a file. A run of this project showed the cause. The builder worked against a test from before a correction of the planner.
 - The paper test always wins, also over a change or a removal from master. The person decided this for this project.
@@ -256,7 +259,7 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - The default check step is a fan of five checkers. `check_tests` runs the tests. `check_safety`, `check_review` and `check_security` read the change. They cannot write a file. `check_use` runs the examples of the spec as a user does. It writes only in a scratch folder in the temp folder.
 - The step `simplify` follows `build`. The simplifier changes no test file, and it commits only if the test command passes. The step `repair` does not go through it.
 - The reviewer and the `security` checker have the same settings as the safety checker. The simplifier has the same settings as the builder.
-- The stopped run prints `To continue: codeumbrella resume <run id>` and a line that says: resume only after the person says yes. An AI must not give this approval. The limit for the note does not cut them.
+- The stopped run prints `To continue: codeumbrella resume <run id>` and a line that says: resume only after the person says yes. An AI must not give this approval. A `known cause` is the exception. The limit for the note does not cut them.
 - `answer` and `resume` with a `--tool` that is different from the tool of the run give an error. They give it before a step starts and before the answer is written. A notebook with no tool uses Claude, and `--tool` writes it. `status` changes the notebook only in the repair.
 - The safety checker also reads the files that use the changed lines, for example settings files. A run on 17 November 2026 showed the cause.
 - Four checkers work in the same copy. No checker writes a file of the project. `check_use` clones the run branch into its scratch folder.
