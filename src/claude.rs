@@ -119,8 +119,8 @@ impl Claude {
 
 /// Reads the reply text of a Claude worker. The result is the last line with
 /// `"type":"result"`. `claude` can write more lines after it, for example when
-/// the disk is full. It writes the cost, the turns, the model and the tokens
-/// into `numbers`.
+/// the disk is full. This function writes the cost, the turns, the model and
+/// the tokens into `numbers`.
 ///
 /// # Errors
 /// Gives an error for a text with no result line. A result line that it cannot
