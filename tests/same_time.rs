@@ -422,17 +422,19 @@ fn fix_merge_and_do_work_are_builder_steps_with_a_next_step() {
     // `do_work` goes back to the check, so a builder with no commit
     // does not get to the PR question.
     assert_eq!(next(&graph, "do_work"), "work_was_done");
-    for name in ["fix_merge", "do_work"] {
+    // A bad `fix_merge` tries again: the plan cannot complete a merge.
+    for (name, bad) in [("fix_merge", "fix_merge"), ("do_work", "plan")] {
         let step = graph.step(name).unwrap();
         assert_eq!(step.kind, Kind::Worker, "{name}");
         assert_eq!(step.role.as_deref(), Some("builder"), "{name}");
         assert_eq!(step.reads, ["spec"], "{name}");
         assert!(step.writes.is_empty(), "{name}");
         assert_eq!(step.max_tries, Some(3), "{name}");
-        assert_eq!(step.on_bad.as_deref(), Some("plan"), "{name}");
+        assert_eq!(step.on_bad.as_deref(), Some(bad), "{name}");
     }
     assert_eq!(next(&graph, "fix_merge"), "take_master");
-    assert_eq!(ways_to(&graph, "fix_merge"), ["take_master"]);
+    let from = ["fix_merge", "take_master"];
+    assert_eq!(ways_to(&graph, "fix_merge"), from);
     assert_eq!(ways_to(&graph, "do_work"), ["work_was_done"]);
     let into = ["do_work", "simplify"];
     assert_eq!(ways_to(&graph, "work_was_done"), into);
@@ -929,7 +931,7 @@ fn pairs(list: &[(&str, bool)]) -> Vec<(String, bool)> {
 }
 
 /// Does the run to `look_at_tests`, answers yes, and goes on.
-fn to_build(w: &mut World, graph: &Graph, worker: &Sim) {
+fn to_build(w: &mut World, graph: &Graph, worker: &dyn Worker) {
     let roles = root().join("roles");
     w.run.go(graph, &roles, worker).unwrap();
     assert_eq!(w.run.state.at.as_deref(), Some("look_at_tests"));
@@ -1458,4 +1460,168 @@ fn the_chat_page_starts_a_queue_task_while_a_run_is_active() {
     let six = six.expect("no step 6");
     assert!(six.contains("codeumbrella status"), "{six}");
     assert!(six.contains("`Running` or `Waiting`"), "{six}");
+}
+
+// ---------------------------------------------------------------------
+// A bad `fix_merge`
+// ---------------------------------------------------------------------
+
+/// A simulated builder of `fix_merge`. Its first try repairs the line, makes
+/// no commit and gives a bad result. Its second try makes the commit. Each
+/// other step is the step of `sim`.
+struct Merger {
+    sim: Sim,
+    tries: AtomicU32,
+}
+
+impl Worker for Merger {
+    fn run(&self, job: &Job) -> Result<Outcome> {
+        let mut outcome = self.sim.run(job)?;
+        if job.step != "fix_merge" {
+            return Ok(outcome);
+        }
+        let work = job.dir.join("work");
+        if self.tries.fetch_add(1, Ordering::SeqCst) == 0 {
+            assert!(!git_ok(&work, &["merge", "--no-edit", MASTER]));
+            fs::write(work.join("build"), "mine and theirs")?;
+            git(&work, &["add", "build"]);
+            outcome.ok = false;
+            "the merge has no commit".clone_into(&mut outcome.summary);
+        } else {
+            assert!(work.join(".git/MERGE_HEAD").exists(), "no open merge");
+            git(&work, &["commit", "--quiet", "--no-edit"]);
+        }
+        Ok(outcome)
+    }
+}
+
+#[test]
+fn a_bad_fix_merge_goes_to_fix_merge_again_and_not_to_the_plan() {
+    let mut w = world();
+    let graph = sheet(&w.project);
+    // The build and master make the same file, so the merge stops.
+    let tip = push_to(&w.base, &w.server, "build", "theirs\n");
+    let worker = Merger {
+        sim: Sim::new(&["build"]),
+        tries: AtomicU32::new(0),
+    };
+    to_build(&mut w, &graph, &worker);
+    let path = pairs(&[
+        ("mark", true),
+        ("copy_tests", true),
+        ("build", true),
+        ("simplify", true),
+        ("work_was_done", true),
+        ("take_master", false),
+        ("fix_merge", false),
+        ("fix_merge", true),
+        ("take_master", true),
+        ("learn", true),
+        ("set_version", true),
+        ("write_pr", true),
+        ("check", true),
+        ("no_locked_files", true),
+        ("push", true),
+        ("find_pr", true),
+    ]);
+    let ran = after(&w.run, "look_at_tests");
+    assert_eq!(ran, path, "{}", w.run.state.note);
+    assert_eq!(w.run.state.at.as_deref(), Some("approval"));
+    assert_eq!(worker.sim.got("plan").len(), 1, "the plan ran again");
+    // The second try gets the report of the first try.
+    let got = worker.sim.got("fix_merge");
+    assert_eq!(got[1], "the merge has no commit", "{got:?}");
+    assert!(has(&w.work, &tip, "HEAD"), "master is not in the branch");
+}
+
+#[test]
+fn after_the_third_bad_fix_merge_the_run_stops_at_fix_merge() {
+    let mut w = world();
+    let graph = sheet(&w.project);
+    push_to(&w.base, &w.server, "build", "theirs\n");
+    let worker = Sim::new(&["build"]);
+    *worker.bad.lock().unwrap() = vec!["fix_merge"; 3];
+    to_build(&mut w, &graph, &worker);
+    let path = pairs(&[
+        ("mark", true),
+        ("copy_tests", true),
+        ("build", true),
+        ("simplify", true),
+        ("work_was_done", true),
+        ("take_master", false),
+        ("fix_merge", false),
+        ("fix_merge", false),
+        ("fix_merge", false),
+    ]);
+    let ran = after(&w.run, "look_at_tests");
+    assert_eq!(ran, path, "{}", w.run.state.note);
+    assert_eq!(w.run.state.status, Status::Stopped);
+    assert_eq!(w.run.state.at.as_deref(), Some("fix_merge"));
+    let note = &w.run.state.note;
+    assert!(note.contains("fix_merge"), "{note}");
+    assert!(note.contains("3 tries"), "{note}");
+    assert_eq!(worker.got("plan").len(), 1, "the plan ran again");
+}
+
+#[test]
+fn rule_15_of_the_builder_tells_to_commit_the_merge() {
+    let rule = rule_in(&text("roles/builder.md"), 15);
+    let sentences = [
+        "For the step `fix_merge`, the result before is the error of `take_master`.",
+        "Merge the default branch of the work copy into the branch.",
+        "Repair each line with two changes.",
+        "Change no paper test and no lesson test.",
+        "Commit the merge when no line has two changes. Then run the test command.",
+        "A test command that did not complete is not a cause to keep the merge open.",
+        "The checks run the tests after the merge.",
+        "With a committed merge, such a test command gives `ok: true` and a line `Not run:` in the summary.",
+        "After a bad try, the result before is the report of that try.",
+        "If a merge is open, complete it.",
+    ];
+    for sentence in sentences {
+        assert!(rule.contains(sentence), "{sentence}: {rule}");
+    }
+    let gone = "Run the test command and commit.";
+    assert!(!rule.contains(gone), "{rule}");
+}
+
+#[test]
+fn the_comment_of_fix_merge_tells_that_it_tries_again() {
+    // `comment_above` gives the lines from the last to the first.
+    let comment = comment_above("fix_merge");
+    let mut words = Vec::new();
+    for line in comment.lines().rev() {
+        let line = line.trim_start_matches([' ', '#']);
+        words.extend(line.split_whitespace());
+    }
+    let said = words.join(" ");
+    let again = "a bad result goes to `fix_merge` again.";
+    assert!(said.contains(again), "{said}");
+    assert!(said.contains("third try"), "{said}");
+    assert!(!said.contains("goes to the planner"), "{said}");
+    // The commit comes before the test command.
+    let order = "it commits the merge when no line has two changes. then it runs the test command.";
+    assert!(said.contains(order), "{said}");
+    assert!(!said.contains("then it commits"), "{said}");
+}
+
+#[test]
+fn agents_md_tells_the_rule_the_cause_and_the_date_of_fix_merge() {
+    let rules = section("AGENTS.md", "Safety rules");
+    let lines = [
+        "- A bad result of `fix_merge` goes to `fix_merge` again, up to its `max_tries`. Then the run stops there. The date is 28 November 2026.",
+        "- The cause: a run of this project stopped at `plan` with an open merge. The plan cannot complete a merge.",
+        "- In `fix_merge`, the builder commits the merge when no line has two changes. The checks run the tests after the merge.",
+        "- The check cannot see why the run came back. A bad repair that goes to the plan gets the same path.",
+    ];
+    for line in lines {
+        assert!(rules.lines().any(|l| l == line), "no line: {line}");
+    }
+    let gone = "A bad repair or `fix_merge` that goes to the plan";
+    assert!(!rules.contains(gone), "{gone}");
+    let sheet = section("AGENTS.md", "The sheet");
+    let again = "A bad `fix_merge` goes to `fix_merge` again. After its third try the run stops.";
+    let mut found = sheet.lines().filter(|l| l.contains(again));
+    let line = found.next().expect("no line in The sheet");
+    assert!(line.starts_with("- `take_master` comes after"), "{line}");
 }
