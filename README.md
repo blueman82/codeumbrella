@@ -75,6 +75,13 @@ In a chat, these rules apply:
 
 The step `set_version` sets the version of the project before the PR text. It runs the script `.codeumbrella/set-version`. `init` writes a script that does nothing. Put your own version commands in it. A task text names no version.
 
+## Free disk space
+
+`codeumbrella run` and `run --next` give an error and start no run with less than 10 GB free.
+The option `--min-free-gb <number>` sets a different limit, and 0 turns the check off.
+The command `codeumbrella clean` removes the copies of each run with status `Done` or `Stopped`.
+A cleaned run cannot continue with `resume`.
+
 ## Before a run
 
 - Workers have no internet. Install the packages of your project first.

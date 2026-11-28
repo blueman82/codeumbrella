@@ -791,7 +791,31 @@ steps:
   # `next: clean_up` of `tidy_lessons`.
   # `rm` gives an error if a folder is not there. Then the run stops with
   # status Stopped, after a good merge. You can remove the folder by hand.
+  #
+  # The second command removes each copy of the learner of this run in the
+  # temp folder. A line `Copy: <full path>` of its summary in the log names one.
+  # The path must end in `lesson.` with letters and digits. The file
+  # `codeumbrella-run` of the copy must have the run id. A refused path does not
+  # make the result bad.
+  #
+  # For a run that ends with no merge, use `codeumbrella clean <run id>`.
   clean_up:
     type: command
     run:
       - [rm, -r, ".codeumbrella/runs/{run}/work", ".codeumbrella/runs/{run}/clean"]
+      # The log is data from a worker, so no part of it runs as a command.
+      - - sh
+        - -c
+        - |
+          export LC_ALL=C
+          jq -r 'select(.step == "learn") | .summary' .codeumbrella/runs/{run}/log.jsonl |
+          while IFS= read -r line; do
+            case $line in "Copy: /"*) p=${line#Copy: } ;; *) continue ;; esac
+            case $p/ in */../*) continue ;; esac
+            case ${p##*/} in lesson.?*) ;; *) continue ;; esac
+            case ${p##*/lesson.} in *[!A-Za-z0-9]*) continue ;; esac
+            m=$p/codeumbrella-run
+            [ -d "$p" ] && [ ! -L "$p" ] && [ -f "$m" ] && [ ! -L "$m" ] || continue
+            [ "$(cat "$m")" = "{run}" ] && rm -r "$p"
+          done
+          exit 0

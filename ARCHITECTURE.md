@@ -141,6 +141,6 @@ an error · a bad result with no path for it · a changed paper · a maximum
 - The learner removes no entry. It marks a done entry with a strikethrough and the run id of the repair.
 - Then the step `tidy_lessons` removes a done entry only if its PR is merged. If `gh` gives an error, it removes nothing.
 - Then the step `clean_up` removes the two copies `work` and `clean`. The notebook, the log and the papers stay.
-- A run that stops before the merge keeps its copies, because `resume` uses them.
+- A run that stops before the merge keeps its copies until `codeumbrella clean` removes them. `resume` uses them.
 - For a faster run, remove four parts together. They are the step `learn`, `lessons` in `check_safety`, `lessons` in `check_review`, and `next: save_lessons` of `merge`. Then the run ends after `merge`, and the copies stay.
 - `check_use` clones the run branch into a scratch folder in the temp folder. It builds the work there and runs the examples of the spec.

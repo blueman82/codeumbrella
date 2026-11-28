@@ -13,7 +13,7 @@ use std::{env, fs};
 
 static COUNT: AtomicU32 = AtomicU32::new(0);
 
-/// The one command of the step `clean_up`.
+/// The first command of the step `clean_up`.
 const CLEAN: [&str; 4] = [
     "rm",
     "-r",
@@ -176,7 +176,7 @@ fn save_lessons_goes_to_clean_up_and_the_run_ends_after_it() {
     assert!(save.on_bad.is_none(), "{:?}", save.on_bad);
     let clean = graph.step("clean_up").unwrap();
     assert_eq!(clean.kind, Kind::Command);
-    assert_eq!(clean.run.len(), 1, "{:?}", clean.run);
+    assert_eq!(clean.run.len(), 2, "{:?}", clean.run);
     assert!(clean.next.is_none(), "{:?}", clean.next);
     assert!(clean.on_bad.is_none(), "{:?}", clean.on_bad);
     assert!(clean.max_tries.is_none(), "{:?}", clean.max_tries);
@@ -191,10 +191,10 @@ fn save_lessons_goes_to_clean_up_and_the_run_ends_after_it() {
 }
 
 #[test]
-fn clean_up_names_only_the_two_copies_of_its_own_run() {
+fn the_first_command_of_clean_up_names_only_the_two_copies_of_its_run() {
     let graph = default_sheet();
     let clean = graph.step("clean_up").unwrap();
-    assert_eq!(clean.run, [CLEAN]);
+    assert_eq!(clean.run[0], CLEAN);
     let words = &clean.run[0];
     // The only option is `-r`. There is no `-f`.
     let options = words.iter().filter(|w| w.starts_with('-'));
