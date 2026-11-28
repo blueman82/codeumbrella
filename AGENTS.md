@@ -99,6 +99,7 @@ To install the command and the chat command on a computer, run `./install.sh`.
 | `tests/walls.rs` | Tests of the safety settings and the safety checks. Each one becomes bad if a wall goes. |
 | `tests/step_tools.rs` | Tests of `tool`, `model` and `effort`, with a simulated `claude` and `codex`. |
 | `tests/attacker.rs` | Tests of the plan attacker: its step, its files, its settings and its rules page. |
+| `tests/attacker_words.rs` | Tests of the plain words check of the attacker and of its documents. |
 | `tests/scratch_folder.rs` | Tests of the scratch folder of the attacker, its Codex entry and the documents. |
 | `tests/run_tool.rs` | Tests of the stop message and of the tool of the run. |
 | `tests/new_roles.rs` | Tests of the roles `reviewer`, `security` and `simplifier`, the new steps and the documents. |
@@ -334,6 +335,10 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - The person of this project decided this on 24 and 25 November 2026. A break was only a note, and the person does not read the code.
 - The reviewer reads each point of the part `## A break`. The check is "does the change follow this point, yes or no".
 - The person gave approval for the pages on 25 November 2026. So no worker writes or changes a point of a page.
+- The attacker checks the comments and texts of the paper tests for the refused words and sentence limits.
+- Such a problem gives a bad result of the attacker. The step `correct_plan` corrects it before the tests question.
+- The attacker and the reviewer use one list of refused words. It stays in `AGENTS.md` only.
+- A run of this project showed the cause on 25 November 2026. A refused word in a paper test stopped it.
 
 ## Rust rules
 
