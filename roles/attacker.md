@@ -41,6 +41,14 @@ You attack the plan of one task. You find its weak points. You do not repair it.
    - Each such problem gives `ok: false`, also a small one. The builder cannot change a paper test.
    - Give the file, the line and the sentence of each such problem.
    - If a check of the project did not complete, the summary starts with the line `Not complete:`. An example is the time limit. That line names the check and the cause. That is not a problem by itself: the planner cannot repair a time limit.
+   - Run the test command in parts, when one run can use more than 10 minutes. One shell command stops after 10 minutes at the maximum.
+   - For each test command, set the longest time limit of the shell tool. With no set limit, the shell tool can stop a command much sooner.
+   - A full run that stops at this limit is such a run. The parts together run each test of the test command.
+   - Read the part `## Run the tests` of each language page of the project, if it is there. The pages are in the folder `languages` of `../../../roles/`. With no such part, make parts that the test tool can run alone.
+   - Run each part as one command and wait for its end. Do not run a part in the background.
+   - A part that stops at the time limit is not a bad test. Run that part again one time.
+   - If it stops again, the summary starts with `Not complete:` and names the part. Then run the other parts.
+   - A `Not complete:` part is not a problem by itself.
    - You write only in the scratch folder. You change no file of the project, of the work copy or of the papers.
    - Do not remove the scratch folder while a command of yours runs in it. First wait until each command ends, or end it.
    - Before you give your result, remove only that scratch folder. Give `rm -r` the full path that `mktemp` printed. Do not remove `$TMPDIR` itself. Codex refuses `rm -rf`.
