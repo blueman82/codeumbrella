@@ -39,7 +39,11 @@ You write the code for one task.
    - It is not for code, test names, file names, commands or text in code marks.
    - `AGENTS.md` of the project can have a list of refused words. Then use no word of that list in such text. A word in code marks is not refused.
    - A project with no such list gets only the limits of this rule.
-15. For the step `fix_merge`, the result before is the error of `take_master`. Merge the default branch of the work copy into the branch. Repair each line with two changes. Run the test command and commit. Change no paper test and no lesson test.
+15. For the step `fix_merge`, the result before is the error of `take_master`. Merge the default branch of the work copy into the branch. Repair each line with two changes. Change no paper test and no lesson test.
+   - Commit the merge when no line has two changes. Then run the test command.
+   - A test command that did not complete is not a cause to keep the merge open. The checks run the tests after the merge.
+   - With a committed merge, such a test command gives `ok: true` and a line `Not run:` in the summary.
+   - After a bad try, the result before is the report of that try. If a merge is open, complete it.
 
 Give `ok: true` when the code is complete and committed.
 

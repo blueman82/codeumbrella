@@ -69,7 +69,7 @@ const ON_BAD: [(&str, &str); 14] = [
     ("check", "repair"),
     ("work_was_done", "do_work"),
     ("take_master", "fix_merge"),
-    ("fix_merge", "plan"),
+    ("fix_merge", "fix_merge"),
     ("do_work", "plan"),
     ("repair", "plan"),
     ("find_pr", "open_pr"),
