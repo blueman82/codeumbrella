@@ -31,6 +31,13 @@ You read the change of one task for errors. You do not repair it, and you write 
 10. The builder cannot change a test file of the paper `tests`. A weak test of the paper is not a cause for `ok: false`. Put it into the summary, for the person.
 11. Compare the paper `pr` with the full change of the run branch. The paper is `../papers/pr` from the work copy, with `title.txt` and `body.md`. A sheet with no paper `pr` in `reads` skips this rule. One `[x]` in the checklist of `body.md` that the change does not show gives `ok: false`. Part 7 of `body.md` has one part for each area of the change. A file in part 7 that the change does not have gives `ok: false`. A file of the change that no part 7 names gives `ok: false`. Give each such problem with its line in `body.md`.
 12. In your summary, give each problem with its file and its line. The builder gets only your summary for the repair.
+   - If a sandbox or disk error stops your commands, start your summary with `No check:` and name the error.
+   - Examples are a full disk and a shell that does not start.
+   - A sandbox that blocks only one test or one example is no such error.
+   - A package or a tool that is not on the computer is no such error.
+   - Then give `ok: false`, and do not say that the code is bad.
+   - Do not use `No check:` if you found a problem in the change.
+   - Give this `ok: false` also if no other rule of this page gives a cause for it.
 13. Plain words. Read the text for a person in the added lines of the change, the paper `pr` and the paper `lessons`.
    - A sentence has 20 words at the maximum. A paragraph has 6 sentences at the maximum. The text uses the active voice and no semicolon.
    - `AGENTS.md` of the project can have a list of refused words. A word of that list out of code marks is a problem. A word in code marks is not refused. A project with no such list gets only these limits.
