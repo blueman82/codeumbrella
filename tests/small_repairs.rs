@@ -84,7 +84,7 @@ fn lacks(o: &Output, needle: &str) {
 }
 
 const CLAUDE: &str = r#"echo called > "$PWD/bin/claude.$$"
-echo '{"is_error":false,"result":"","structured_output":{"ok":true,"summary":"done"}}'"#;
+echo '{"type":"result","is_error":false,"result":"","structured_output":{"ok":true,"summary":"done"}}'"#;
 
 const CODEX: &str = r#"echo called > "$PWD/bin/codex.$$"
 while [ "$1" != "--output-last-message" ]; do shift; done
@@ -93,11 +93,11 @@ echo '{"ok":true,"summary":"done"}' > "$2""#;
 /// A simulated `claude` that copies the lock file and its parent number.
 const CLAUDE_LOCK: &str = r#"cat "$PWD/bin/../.codeumbrella/runs/"*/lock > "$PWD/bin/lockcopy"
 echo $PPID > "$PWD/bin/ppid"
-echo '{"is_error":false,"result":"","structured_output":{"ok":true,"summary":"done"}}'"#;
+echo '{"type":"result","is_error":false,"result":"","structured_output":{"ok":true,"summary":"done"}}'"#;
 
 /// A simulated `claude` that takes 2 seconds.
 const CLAUDE_SLOW: &str = r#"sleep 2
-echo '{"is_error":false,"result":"","structured_output":{"ok":true,"summary":"done"}}'"#;
+echo '{"type":"result","is_error":false,"result":"","structured_output":{"ok":true,"summary":"done"}}'"#;
 
 /// A sheet: copy, a worker, a question, a worker, a question, a worker.
 const THREE: &str = r#"start: copy

@@ -441,7 +441,7 @@ const LESSONS: &str = "Runs read to: run-1\n\n- A lesson. (run-1, 19 November 20
 /// A simulated `claude`. From the work copy, it writes the file of the
 /// paper `lessons`. Then it gives a good result.
 const CLAUDE: &str = r#"cp "$PWD/bin/lessons.md" ../papers/lessons/lessons.md
-echo '{"is_error":false,"result":"","structured_output":{"ok":true,"summary":"done"}}'"#;
+echo '{"type":"result","is_error":false,"result":"","structured_output":{"ok":true,"summary":"done"}}'"#;
 
 /// A simulated `gh` that records its words and gives a good result.
 const GH: &str = r#"echo "$@" >> "$PWD/bin/gh.txt""#;

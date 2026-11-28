@@ -109,7 +109,7 @@ fn claude(tools: &Path) -> String {
 for a in "$@"; do echo "$a"; done > "{t}/args.txt"
 p=""; for a in "$@"; do [ "$p" = "--settings" ] && [ ! -f "{t}/settings.json" ] && printf '%s' "$a" > "{t}/settings.json"; p="$a"; done
 touch evil.txt
-echo '{{"is_error":false,"result":"","structured_output":{{"ok":true,"summary":"done"}}}}'"#
+echo '{{"type":"result","is_error":false,"result":"","structured_output":{{"ok":true,"summary":"done"}}}}'"#
     )
 }
 

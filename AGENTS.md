@@ -210,6 +210,8 @@ The file `graph.example.yaml` tells what each line does. A step can have only th
 - `model` and `effort` have only letters, digits, `.`, `-` and `_`. Thus no quote or brace can get to the tool command.
 - `model` and `effort` cannot start with `-`. Thus the tool does not read them as an option.
 - A worker that ends with an error code gives no good result.
+- The result of a Claude worker is the last line of its reply with `"type":"result"`. Lines after it do not count.
+- The cause: on 27 November 2026 the disk of the Mac was full. After the result of a safety checker, `claude` wrote a `session_writes_lost` line. The run stopped and did not use the result.
 - A worker does not get the values `GH_TOKEN` and `GITHUB_TOKEN` of the person.
 - For a Claude worker, only the settings file of its role counts. The worker uses no settings, hooks or tool servers of the project or of the person.
 - A live test on 16 November 2026 showed the cause. With the project settings, a hook of the project ran in a worker, with no sandbox.
