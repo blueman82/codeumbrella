@@ -7,6 +7,7 @@ use codeumbrella::codex::Codex;
 use codeumbrella::engine::{Job, Lock, Numbers, Outcome, Run, Status, Worker};
 use codeumbrella::graph::{Graph, Tool};
 use std::collections::BTreeMap;
+use std::fs::DirEntry;
 use std::io::ErrorKind;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use std::{env, fs, path::Path, path::PathBuf, process::Command};
@@ -328,8 +329,7 @@ fn clean(runs: &Path, only: Option<&str>) -> Result<()> {
     } else {
         match fs::read_dir(runs) {
             Ok(found) => {
-                let mut dirs: Vec<PathBuf> =
-                    found.filter_map(|e| e.ok().map(|e| e.path())).collect();
+                let mut dirs: Vec<_> = found.flatten().map(|e| e.path()).collect();
                 dirs.sort();
                 dirs
             }
@@ -394,24 +394,24 @@ fn temp_folders() -> BTreeMap<PathBuf, String> {
     bases.extend(env::var_os("CLAUDE_CODE_TMPDIR").map(PathBuf::from));
     // A base can be a link. A `claude` folder or a temp folder cannot.
     let folders = |dir: &Path| {
-        let found = fs::read_dir(dir).into_iter().flatten().flatten();
-        found
+        entries(dir)
             .filter(|e| e.file_type().is_ok_and(|t| t.is_dir()))
-            .map(|e| (e.file_name().to_string_lossy().into_owned(), e.path()))
             .collect::<Vec<_>>()
     };
+    let named = |e: &DirEntry, start| e.file_name().to_string_lossy().starts_with(start);
     let mut found = BTreeMap::new();
     for base in bases {
         let mut all = folders(&base);
         let inner: Vec<_> = all
             .iter()
-            .filter(|(name, _)| name.starts_with("claude"))
-            .flat_map(|(_, path)| folders(path))
+            .filter(|e| named(e, "claude"))
+            .flat_map(|e| folders(&e.path()))
             .collect();
         all.extend(inner);
-        for (name, path) in all {
+        for e in all {
+            let path = e.path();
             let mark = path.join(MARK);
-            let ours = name.starts_with("scratch.") || name.starts_with("lesson.");
+            let ours = named(&e, "scratch.") || named(&e, "lesson.");
             if !ours || !fs::symlink_metadata(&mark).is_ok_and(|m| m.is_file()) {
                 continue;
             }
@@ -423,13 +423,15 @@ fn temp_folders() -> BTreeMap<PathBuf, String> {
     found
 }
 
+/// The entries of a folder. A folder that cannot be read has none.
+fn entries(dir: &Path) -> impl Iterator<Item = DirEntry> {
+    fs::read_dir(dir).into_iter().flatten().flatten()
+}
+
 /// The sum of the file lengths in `path`. It follows no link.
 fn size(path: &Path) -> u64 {
     match fs::symlink_metadata(path) {
-        Ok(m) if m.is_dir() => {
-            let found = fs::read_dir(path).into_iter().flatten().flatten();
-            found.map(|e| size(&e.path())).sum()
-        }
+        Ok(m) if m.is_dir() => entries(path).map(|e| size(&e.path())).sum(),
         Ok(m) if m.is_file() => m.len(),
         _ => 0,
     }
