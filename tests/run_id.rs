@@ -92,7 +92,7 @@ const NOT_PERMITTED: [&str; 69] = [
 
 /// A simulated `claude` that gives a good result.
 const CLAUDE: &str = r#"true
-echo '{"is_error":false,"result":"","structured_output":{"ok":true,"summary":"done"}}'"#;
+echo '{"type":"result","is_error":false,"result":"","structured_output":{"ok":true,"summary":"done"}}'"#;
 
 /// A sheet: copy, then one worker step.
 const WORKER: &str = r#"start: copy

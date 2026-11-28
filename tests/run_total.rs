@@ -442,7 +442,7 @@ steps:
 
 /// A last line of `claude` with a cost, turns, a model and tokens.
 const LAST: &str = concat!(
-    r#"{"is_error":false,"result":"","#,
+    r#"{"type":"result","is_error":false,"result":"","#,
     r#""structured_output":{"ok":true,"summary":"done"},"#,
     r#""total_cost_usd":1.25,"num_turns":7,"#,
     r#""modelUsage":{"claude-opus-5-5":{"inputTokens":1}},"#,
@@ -453,7 +453,7 @@ const LAST: &str = concat!(
 
 /// A last line of `claude` with no cost, no turns and no model.
 const PLAIN: &str = concat!(
-    r#"{"is_error":false,"result":"","#,
+    r#"{"type":"result","is_error":false,"result":"","#,
     r#""structured_output":{"ok":true,"summary":"done"}}"#,
 );
 

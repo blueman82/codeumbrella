@@ -37,7 +37,7 @@ struct Reply {
     usage: Option<Usage>,
 }
 
-/// The tokens in the last line of the Claude output. No field counts as 0.
+/// The tokens in the result line of the Claude output. No field counts as 0.
 #[derive(Default, Deserialize)]
 #[serde(default)]
 #[allow(clippy::struct_field_names)] // The names are those of the Claude output.
@@ -117,15 +117,21 @@ impl Claude {
     }
 }
 
-/// Reads the reply text of a Claude worker: the last line is the result. It
-/// writes the cost, the turns, the model and the tokens into `numbers`.
+/// Reads the reply text of a Claude worker. The result is the last line with
+/// `"type":"result"`, because `claude` can write more lines after it, for example
+/// when the disk is full. It writes the cost, the turns, the model and the tokens
+/// into `numbers`.
 ///
 /// # Errors
-/// Gives an error for a last line that is not a reply, for an error that
-/// claude reported, and for a reply with no result in the correct format.
+/// Gives an error for a text with no result line, for a result line that it
+/// cannot read, for an error that claude reported, and for a reply with no result in the correct format.
 pub fn read_reply(text: &str, numbers: &mut Numbers) -> Result<Outcome> {
-    let reply: Reply = serde_json::from_str(text.lines().last().unwrap_or_default())
-        .context("claude gave no result")?;
+    let line = text.lines().rev().find(|line| {
+        serde_json::from_str::<serde_json::Value>(line).is_ok_and(|v| v["type"] == "result")
+    });
+    // With no result line, the empty text gives the JSON error that `work` looks for.
+    let reply: Reply =
+        serde_json::from_str(line.unwrap_or_default()).context("claude gave no result")?;
     numbers.dollars = reply.total_cost_usd;
     numbers.turns = reply.num_turns;
     numbers.model = reply.model_usage.and_then(|m| m.keys().next().cloned());

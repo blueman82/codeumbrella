@@ -322,7 +322,7 @@ fn id(o: &Output) -> String {
 const GOOD_CLAUDE: &str = r#"env > "$PWD/bin/env.txt"
 for a in "$@"; do echo "$a"; done > "$PWD/bin/args.txt"
 p=""; for a in "$@"; do [ "$p" = "--settings" ] && [ ! -f "$PWD/bin/settings.json" ] && printf '%s' "$a" > "$PWD/bin/settings.json"; p="$a"; done
-echo '{"is_error":false,"result":"","structured_output":{"ok":true,"summary":"done"}}'"#;
+echo '{"type":"result","is_error":false,"result":"","structured_output":{"ok":true,"summary":"done"}}'"#;
 
 #[test]
 fn a_claude_worker_gets_its_settings_and_no_github_token() {

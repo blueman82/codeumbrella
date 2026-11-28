@@ -649,7 +649,7 @@ steps:
 
 /// A simulated `claude`. It writes the paper `lessons`.
 const CLAUDE: &str = r#"cp "BIN/lessons.md" ../papers/lessons/lessons.md
-echo '{"is_error":false,"result":"","structured_output":{"ok":true,"summary":"done"}}'"#;
+echo '{"type":"result","is_error":false,"result":"","structured_output":{"ok":true,"summary":"done"}}'"#;
 
 /// The commands of a step of the default sheet, as a list for a sheet.
 fn commands(name: &str) -> String {
