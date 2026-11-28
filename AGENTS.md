@@ -120,7 +120,7 @@ To install the command and the chat command on a computer, run `./install.sh`.
 | `tests/full_check.rs` | Tests of the full check that cannot run in the sandbox: the chat page, the rules pages, `init` and the documents. |
 | `tests/run_id.rs` | Tests of the run id with four digits, of `status` on an id of before, of the chat page and the documents. |
 | `tests/plain_words.rs` | Tests of the rules for plain words: the rules pages, the list of `AGENTS.md`, the sheet and the documents. |
-| `tests/test_parts.rs` | Tests of the test command in parts: the four rules pages, the Rust page, the sheet, the documents and the run path. |
+| `tests/test_parts.rs` | Tests of the test command in parts. They check the pages, the sheet, the documents and the run path. |
 | `tests/known_causes.rs` | Tests of the `resume` after a known cause: the chat page and the documents. |
 | `fuzz/` | The fuzzer, with its own workspace. A fuzzer gives the code many automatic inputs. Its targets are `fuzz_sheet`, `fuzz_claude_reply` and `fuzz_codex_trace`. |
 | `fuzz/deny.toml` | The package check of `fuzz/`. It also accepts the license NCSA, in `fuzz/` only. |
